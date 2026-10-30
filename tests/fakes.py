@@ -39,6 +39,14 @@ class FakeTrafficEnginePort:
     def apply_controls(self, commands: Mapping[str, ControlCommand]) -> None:
         self.controls = dict(commands)
 
+    def apply_step_controls(self, commands: Mapping[str, ControlCommand]) -> tuple[str, ...]:
+        self.apply_controls(commands)
+        return ()
+
+    def release_speed_controls(self, vehicle_ids: Sequence[str]) -> None:
+        for vehicle_id in vehicle_ids:
+            self.controls.pop(vehicle_id, None)
+
     def step(self, target_time_ms: int) -> TrafficSnapshot:
         if not self.started or self.closed:
             raise RuntimeError("Fake traffic engine is not running")

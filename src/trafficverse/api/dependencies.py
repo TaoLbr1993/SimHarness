@@ -51,6 +51,12 @@ class SimulationControlPort(Protocol):
 
     async def control_vehicle(self, vehicle_id: str, command: ControlCommand) -> None: ...
 
+    def enable_external_stepping(self) -> None: ...
+
+    async def step_external(
+        self, expected_sequence: int, commands: dict[str, ControlCommand]
+    ) -> SimulationFrame: ...
+
 
 RuntimeFactory = Callable[
     [UUID, UUID, str | None, SimulationRunInput | None],
@@ -76,6 +82,7 @@ class RuntimeDirectory:
         scenario_id: UUID,
         map_id: str | None = None,
         run_input: SimulationRunInput | None = None,
+        external_stepping: bool = False,
     ) -> ExperimentView:
         if self._factory is None:
             from trafficverse.domain.enums import ErrorCode
@@ -86,6 +93,8 @@ class RuntimeDirectory:
                 "experiment runtime factory is not configured",
             )
         manager = await self._factory(experiment_id, scenario_id, map_id, run_input)
+        if external_stepping:
+            manager.enable_external_stepping()
         self._managers[experiment_id] = manager
         self._workspace_ids[experiment_id] = workspace_id
         return ExperimentView(

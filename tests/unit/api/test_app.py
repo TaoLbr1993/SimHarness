@@ -81,6 +81,17 @@ class FakeManager:
             self._reject("vehicle control requires RUNNING or PAUSED")
         self.controls.append((vehicle_id, command))
 
+    def enable_external_stepping(self) -> None:
+        pass
+
+    async def step_external(
+        self, expected_sequence: int, commands: dict[str, ControlCommand]
+    ) -> SimulationFrame:
+        del expected_sequence, commands
+        if self.last_frame is None:
+            raise ValueError("fake frame is not configured")
+        return self.last_frame
+
     @staticmethod
     def _reject(message: str) -> None:
         raise TrafficVerseError(ErrorCode.INVALID_STATE_TRANSITION, message)

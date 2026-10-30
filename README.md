@@ -135,6 +135,10 @@ DISPLAY=:1 conda run -n carla python -m trafficverse.cli ui \
 
 ## 验证
 
+外部智能体可使用逐步提交批量车辆动作的同步模式：创建实验时设置 `external_stepping: true`，
+每次请求推进一步，未提交动作的车辆由 SUMO 控制。完整流程和接口见
+[外部程序同步控制车辆](docs/EXTERNAL_STEP_API.md)。
+
 ```bash
 uv run ruff format --check .
 uv run ruff check .

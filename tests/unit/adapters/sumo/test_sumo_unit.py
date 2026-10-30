@@ -199,6 +199,19 @@ def test_apply_controls_attempts_each_vehicle_and_records_rejections() -> None:
     assert adapter.diagnostics().rejected_control_vehicle_ids == ("missing",)
 
 
+def test_external_speed_release_and_step_failure_are_explicit() -> None:
+    runtime = FakeSumoRuntime()
+    adapter = SumoTrafficEngineAdapter(UUID(int=2), runtime)
+    adapter.load(_config())
+    adapter.release_speed_controls(("vehicle-1",))
+    assert runtime.speed_calls == [("vehicle-1", -1.0)]
+
+    runtime.fail_controls_for.add("missing")
+    assert adapter.apply_step_controls({"missing": ControlCommand(desired_speed_mps=2.0)}) == (
+        "missing",
+    )
+
+
 def test_version_mismatch_closes_connection() -> None:
     runtime = FakeSumoRuntime()
     runtime.version = "1.26.0"

@@ -13,6 +13,7 @@ EXPERIMENT_ID = UUID("00000000-0000-0000-0000-000000000050")
 class FakeManager:
     step_ms = 50
     speed_multiplier = 1.0
+    external_stepping = False
 
     def __init__(self, status: ExperimentStatus) -> None:
         self.status = status

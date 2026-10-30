@@ -20,6 +20,9 @@ class TickingSimulationPort(Protocol):
     @property
     def speed_multiplier(self) -> float: ...
 
+    @property
+    def external_stepping(self) -> bool: ...
+
     async def get_status(self) -> ExperimentStatus: ...
 
     async def run_tick(self) -> SimulationFrame: ...
@@ -56,6 +59,8 @@ class SimulationRunner:
         self._task = None
 
     async def step_if_running(self) -> bool:
+        if self._manager.external_stepping:
+            return False
         if await self._manager.get_status() is not ExperimentStatus.RUNNING:
             return False
         await self._manager.run_tick()

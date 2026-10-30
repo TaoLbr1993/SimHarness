@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -94,6 +94,15 @@ class SumoTrafficEngineAdapter:
         self._frozen_collision_poses.clear()
         self._collision_vehicle_ids.clear()
         self._connected = True
+
+    def release_speed_controls(self, vehicle_ids: Sequence[str]) -> None:
+        self._require_config()
+        for vehicle_id in vehicle_ids:
+            self._runtime.set_vehicle_speed(vehicle_id, -1.0)
+
+    def apply_step_controls(self, commands: Mapping[str, ControlCommand]) -> tuple[str, ...]:
+        self.apply_controls(commands)
+        return self._rejected_control_vehicle_ids
 
     def apply_controls(self, commands: Mapping[str, ControlCommand]) -> None:
         config = self._require_config()

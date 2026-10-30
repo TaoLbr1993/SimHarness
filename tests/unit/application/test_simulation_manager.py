@@ -63,6 +63,7 @@ class TraceTraffic:
         self.closed = False
         self.sequence = 0
         self.applied_commands: list[dict[str, ControlCommand]] = []
+        self.released: list[tuple[str, ...]] = []
 
     def load(self, config: SumoConfig) -> None:
         del config
@@ -74,6 +75,13 @@ class TraceTraffic:
         self.trace.append(f"traffic.apply:{len(commands)}")
         self.failures.check("traffic.apply")
         self.applied_commands.append(dict(commands))
+
+    def apply_step_controls(self, commands: Mapping[str, ControlCommand]) -> tuple[str, ...]:
+        self.apply_controls(commands)
+        return ()
+
+    def release_speed_controls(self, vehicle_ids: Sequence[str]) -> None:
+        self.released.append(tuple(vehicle_ids))
 
     def step(self, target_time_ms: int) -> TrafficSnapshot:
         self.trace.append(f"traffic.step:{target_time_ms}")
@@ -357,6 +365,35 @@ class Harness:
     async def ready_and_started(self) -> None:
         await self.manager.prepare(self.experiment_id)
         await self.manager.start()
+
+
+def test_external_steps_wait_for_actions_release_speed_and_reject_stale_frames() -> None:
+    async def exercise() -> None:
+        harness = Harness(carla_mode=RequirementMode.DISABLED)
+        harness.manager.enable_external_stepping()
+        await harness.ready_and_started()
+        assert harness.manager.simulation_time_ms == 0
+        first = await harness.manager.step_external(0, {})
+        assert first.traffic.sequence == 1
+        second = await harness.manager.step_external(
+            1, {"vehicle-1": ControlCommand(desired_speed_mps=8.0)}
+        )
+        assert second.traffic.sequence == 2
+        with pytest.raises(TrafficVerseError):
+            await harness.manager.step_external(1, {})
+        assert harness.manager.simulation_time_ms == 100
+        third = await harness.manager.step_external(2, {})
+        assert third.traffic.sequence == 3
+        assert harness.traffic.released[-1] == ("vehicle-1",)
+        assert harness.traffic.applied_commands == [
+            {},
+            {"vehicle-1": ControlCommand(desired_speed_mps=8.0, lane_change_duration_s=0.05)},
+            {},
+        ]
+        assert not any(item.startswith("controller:") for item in harness.trace)
+        await harness.manager.stop()
+
+    asyncio.run(exercise())
 
 
 def test_complete_lifecycle_tick_order_pause_and_speed() -> None:

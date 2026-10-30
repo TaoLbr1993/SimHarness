@@ -251,6 +251,11 @@ controller(previous snapshot)
 停止顺序为：停止接收新命令、完成当前 tick、关闭 CARLA 并恢复 world settings/销毁 owned actor、
 关闭 SUMO、flush logger、发布最终状态。重复 stop/close 必须安全。
 
+外部同步步进模式由实验创建请求选择。`SimulationRunner` 在该模式不自动调用 manager；外部批次
+经 API 交给 `SimulationManager`，在锁内校验上一帧序号、释放已省略车辆的速度覆盖、提交动作并
+恰好推进一次，返回新帧。空批次让所有车辆按 SUMO 原生规则推进。该模式不运行内置混合场景
+控制器或碰撞冻结逻辑。协议和初始帧获取详见 `docs/EXTERNAL_STEP_API.md`。
+
 ## 8. ROI 与 CARLA
 
 未映射车辆进入核心半径时 spawn；已映射车辆离开 `radius + buffer` 后 destroy；Buffer 内保持 binding。

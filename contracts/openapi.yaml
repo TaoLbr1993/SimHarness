@@ -138,6 +138,27 @@ components:
       - file
       title: Body_import_map_api_v1_maps_import_post
       type: object
+    CarlaFrame:
+      additionalProperties: false
+      properties:
+        actor_count:
+          minimum: 0.0
+          title: Actor Count
+          type: integer
+        carla_frame:
+          minimum: 0.0
+          title: Carla Frame
+          type: integer
+        simulation_time_ms:
+          minimum: 0.0
+          title: Simulation Time Ms
+          type: integer
+      required:
+      - simulation_time_ms
+      - carla_frame
+      - actor_count
+      title: CarlaFrame
+      type: object
     ComponentStatus:
       enum:
       - HEALTHY
@@ -145,6 +166,46 @@ components:
       - UNAVAILABLE
       - DISABLED
       title: ComponentStatus
+      type: string
+    DomainEvent:
+      additionalProperties: false
+      properties:
+        event_id:
+          format: uuid
+          title: Event Id
+          type: string
+        event_type:
+          minLength: 1
+          title: Event Type
+          type: string
+        experiment_id:
+          format: uuid
+          title: Experiment Id
+          type: string
+        payload:
+          $ref: '#/components/schemas/JsonValue'
+        severity:
+          $ref: '#/components/schemas/EventSeverity'
+        simulation_time_ms:
+          minimum: 0.0
+          title: Simulation Time Ms
+          type: integer
+      required:
+      - event_id
+      - experiment_id
+      - event_type
+      - severity
+      - simulation_time_ms
+      - payload
+      title: DomainEvent
+      type: object
+    EventSeverity:
+      enum:
+      - INFO
+      - WARNING
+      - ERROR
+      - CRITICAL
+      title: EventSeverity
       type: string
     ExperimentCreateRequest:
       additionalProperties: false
@@ -155,6 +216,10 @@ components:
             type: string
           - type: 'null'
           title: Configuration Id
+        external_stepping:
+          default: false
+          title: External Stepping
+          type: boolean
         map_id:
           anyOf:
           - minLength: 1
@@ -218,6 +283,24 @@ components:
       - speed_multiplier
       title: ExperimentView
       type: object
+    ExternalStepRequest:
+      additionalProperties: false
+      description: Actions for exactly one step based on a particular observation.
+      properties:
+        actions:
+          default: []
+          items:
+            $ref: '#/components/schemas/VehicleControlRequest'
+          title: Actions
+          type: array
+        expected_sequence:
+          minimum: 0.0
+          title: Expected Sequence
+          type: integer
+      required:
+      - expected_sequence
+      title: ExternalStepRequest
+      type: object
     HTTPValidationError:
       properties:
         detail:
@@ -242,6 +325,14 @@ components:
           type: string
       title: HealthResponse
       type: object
+    JsonValue: {}
+    LaneChangeDirection:
+      enum:
+      - NONE
+      - LEFT
+      - RIGHT
+      title: LaneChangeDirection
+      type: string
     MapImportJob:
       additionalProperties: false
       properties:
@@ -361,6 +452,41 @@ components:
       - validated
       - network_schema_version
       title: MapSummary
+      type: object
+    MetricSample:
+      additionalProperties: false
+      properties:
+        dimensions:
+          additionalProperties:
+            type: string
+          title: Dimensions
+          type: object
+        experiment_id:
+          format: uuid
+          title: Experiment Id
+          type: string
+        metric_name:
+          minLength: 1
+          title: Metric Name
+          type: string
+        simulation_time_ms:
+          minimum: 0.0
+          title: Simulation Time Ms
+          type: integer
+        unit:
+          minLength: 1
+          title: Unit
+          type: string
+        value:
+          title: Value
+          type: number
+      required:
+      - experiment_id
+      - metric_name
+      - value
+      - unit
+      - simulation_time_ms
+      title: MetricSample
       type: object
     ReadinessComponent:
       additionalProperties: false
@@ -485,6 +611,31 @@ components:
       - map_name
       - relative_directory
       title: SimulationConfigurationView
+      type: object
+    SimulationFrame:
+      additionalProperties: false
+      properties:
+        carla:
+          anyOf:
+          - $ref: '#/components/schemas/CarlaFrame'
+          - type: 'null'
+        events:
+          default: []
+          items:
+            $ref: '#/components/schemas/DomainEvent'
+          title: Events
+          type: array
+        metrics:
+          default: []
+          items:
+            $ref: '#/components/schemas/MetricSample'
+          title: Metrics
+          type: array
+        traffic:
+          $ref: '#/components/schemas/TrafficSnapshot'
+      required:
+      - traffic
+      title: SimulationFrame
       type: object
     SimulationHistoryDetail:
       additionalProperties: false
@@ -897,6 +1048,45 @@ components:
       - phase
       title: TrafficLightState
       type: object
+    TrafficSnapshot:
+      additionalProperties: false
+      properties:
+        collision_vehicle_ids:
+          default: []
+          items:
+            type: string
+          title: Collision Vehicle Ids
+          type: array
+        experiment_id:
+          format: uuid
+          title: Experiment Id
+          type: string
+        sequence:
+          minimum: 0.0
+          title: Sequence
+          type: integer
+        simulation_time_ms:
+          minimum: 0.0
+          title: Simulation Time Ms
+          type: integer
+        traffic_lights:
+          default: []
+          items:
+            $ref: '#/components/schemas/TrafficLightState'
+          title: Traffic Lights
+          type: array
+        vehicles:
+          default: []
+          items:
+            $ref: '#/components/schemas/VehicleState'
+          title: Vehicles
+          type: array
+      required:
+      - experiment_id
+      - simulation_time_ms
+      - sequence
+      title: TrafficSnapshot
+      type: object
     ValidationError:
       properties:
         loc:
@@ -947,6 +1137,39 @@ components:
       - TAKEOVER
       title: VehicleAction
       type: string
+    VehicleControlRequest:
+      additionalProperties: false
+      properties:
+        desired_acceleration_mps2:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Desired Acceleration Mps2
+        desired_speed_mps:
+          anyOf:
+          - minimum: 0.0
+            type: number
+          - type: 'null'
+          title: Desired Speed Mps
+        lane_change:
+          $ref: '#/components/schemas/LaneChangeDirection'
+          default: NONE
+        stop_requested:
+          default: false
+          title: Stop Requested
+          type: boolean
+        takeover_requested:
+          default: false
+          title: Takeover Requested
+          type: boolean
+        vehicle_id:
+          minLength: 1
+          title: Vehicle Id
+          type: string
+      required:
+      - vehicle_id
+      title: VehicleControlRequest
+      type: object
     VehicleState:
       additionalProperties: false
       properties:
@@ -1417,6 +1640,37 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
           description: Validation Error
       summary: Start Experiment
+  /api/v1/experiments/{experiment_id}/step:
+    post:
+      operationId: step_experiment_api_v1_experiments__experiment_id__step_post
+      parameters:
+      - in: path
+        name: experiment_id
+        required: true
+        schema:
+          format: uuid
+          title: Experiment Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalStepRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationFrame'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Step Experiment
   /api/v1/experiments/{experiment_id}/stop:
     post:
       operationId: stop_experiment_api_v1_experiments__experiment_id__stop_post

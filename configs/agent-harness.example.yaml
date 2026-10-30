@@ -1,0 +1,19 @@
+# Replace these IDs with the actual workspace and scenario UUIDs.
+api_url: http://127.0.0.1:8000
+workspace_id: 00000000-0000-0000-0000-000000000000
+scenario_id: 00000000-0000-0000-0000-000000000042
+map_id: image2road
+max_steps: 100
+request_timeout_s: 30
+
+# Empty means SUMO controls all vehicles. Wrapper classes are placeholders only.
+bindings: []
+# Future example (do not enable until the wrapper is implemented):
+# bindings:
+#   - name: l5_driver
+#     wrapper: trafficverse.agent_harness.models.local:LocalModel
+#     vehicle_ids: []
+#     automation_levels: [L5]
+# Other placeholders:
+#     wrapper: trafficverse.agent_harness.models.api:ApiModel
+#     wrapper: trafficverse.agent_harness.models.jev:JevModel

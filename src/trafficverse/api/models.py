@@ -91,6 +91,7 @@ class ExperimentCreateRequest(StrictModel):
     map_id: str | None = Field(default=None, min_length=1)
     configuration_id: str | None = Field(default=None, pattern=r"^\d{4}(?:-\d{2}){5}$")
     run_kind: SimulationRunKind = SimulationRunKind.SIMULATION
+    external_stepping: bool = False
 
     @model_validator(mode="after")
     def test_run_requires_configuration(self) -> ExperimentCreateRequest:
@@ -141,6 +142,35 @@ class VehicleControlRequest(StrictModel):
             and not self.stop_requested
         ):
             raise ValueError("vehicle control requires at least one intent")
+        return self
+
+
+class ExternalStepRequest(StrictModel):
+    """Actions for exactly one step based on a particular observation."""
+
+    expected_sequence: int = Field(ge=0)
+    actions: tuple[VehicleControlRequest, ...] = ()
+
+    @model_validator(mode="after")
+    def validate_actions(self) -> ExternalStepRequest:
+        ids = [action.vehicle_id for action in self.actions]
+        if len(ids) != len(set(ids)):
+            raise ValueError("each vehicle may have at most one action")
+        if any(action.takeover_requested for action in self.actions):
+            raise ValueError("takeover_requested is not a step action")
+        if any(
+            action.desired_speed_mps is not None and action.desired_acceleration_mps2 is not None
+            for action in self.actions
+        ):
+            raise ValueError("choose either speed or acceleration for each vehicle")
+        if any(
+            action.stop_requested
+            and (
+                action.desired_speed_mps is not None or action.desired_acceleration_mps2 is not None
+            )
+            for action in self.actions
+        ):
+            raise ValueError("stop cannot be combined with speed or acceleration")
         return self
 
 

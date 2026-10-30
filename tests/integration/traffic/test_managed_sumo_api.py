@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import os
 import shutil
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -17,6 +18,66 @@ SCENARIO_PATH = REPOSITORY_ROOT / "configs/scenarios/core-run-town04.yaml"
 SOURCE_OUTPUTS = REPOSITORY_ROOT / "configs/maps/image2road/outputs"
 
 pytestmark = [pytest.mark.integration, pytest.mark.traffic]
+
+
+@pytest.mark.skipif(
+    os.getenv("TRAFFICVERSE_SUMO_PACKAGE_INTEGRATION") != "1" or shutil.which("sumo") is None,
+    reason="set TRAFFICVERSE_SUMO_PACKAGE_INTEGRATION=1 with host SUMO available",
+)
+def test_external_stepping_runs_real_sumo_only_on_request(tmp_path: Path) -> None:
+    app = build_core_api(
+        SCENARIO_PATH,
+        repository_root=REPOSITORY_ROOT,
+        artifact_root=tmp_path / "maps",
+        sumo_artifact_root=tmp_path / "sumo",
+    )
+    with TestClient(app) as client:
+        workspace_id = client.get("/api/v1/workspaces").json()[0]["workspace_id"]
+        created = client.post(
+            "/api/v1/experiments",
+            json={
+                "workspace_id": workspace_id,
+                "scenario_id": str(UUID(int=42)),
+                "map_id": "image2road",
+                "external_stepping": True,
+            },
+        )
+        assert created.status_code == 202, created.text
+        experiment_id = created.json()["experiment_id"]
+        root = f"/api/v1/experiments/{experiment_id}"
+        assert client.post(f"{root}/prepare").status_code == 200
+        assert client.post(f"{root}/start").status_code == 200
+        time.sleep(0.2)
+        assert client.get(root).json()["simulation_time_ms"] == 0
+        first = client.post(f"{root}/step", json={"expected_sequence": 0, "actions": []})
+        assert first.status_code == 200, first.text
+        traffic = first.json()["traffic"]
+        assert traffic["sequence"] == 1
+        assert len(traffic["vehicles"]) >= 2
+        vehicle_ids = [vehicle["vehicle_id"] for vehicle in traffic["vehicles"][:2]]
+        second = client.post(
+            f"{root}/step",
+            json={
+                "expected_sequence": 1,
+                "actions": [
+                    {"vehicle_id": vehicle_id, "desired_speed_mps": 0.0}
+                    for vehicle_id in vehicle_ids
+                ]
+                + [{"vehicle_id": "missing-vehicle", "desired_speed_mps": 0.0}],
+            },
+        )
+        assert second.status_code == 200, second.text
+        assert second.json()["traffic"]["sequence"] == 2
+        assert any(
+            event["payload"]["vehicle_id"] == "missing-vehicle"
+            and event["payload"]["reason"] == "VEHICLE_NOT_ACTIVE"
+            for event in second.json()["events"]
+        )
+        assert client.post(f"{root}/step", json={"expected_sequence": 1}).status_code == 409
+        third = client.post(f"{root}/step", json={"expected_sequence": 2, "actions": []})
+        assert third.status_code == 200, third.text
+        assert third.json()["traffic"]["sequence"] == 3
+        assert client.post(f"{root}/stop", json={}).status_code == 200
 
 
 def _message(

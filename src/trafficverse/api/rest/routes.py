@@ -16,6 +16,7 @@ from trafficverse.api.models import (
     CommandOutcome,
     ExperimentCreateRequest,
     ExperimentView,
+    ExternalStepRequest,
     HealthResponse,
     MapImportJob,
     MapSummary,
@@ -33,7 +34,9 @@ from trafficverse.domain.errors import TrafficVerseError
 from trafficverse.domain.models import (
     AgentApiRecord,
     AgentApiWrite,
+    ControlCommand,
     SimulationConfigurationDraft,
+    SimulationFrame,
     SimulationHistoryDetail,
     SimulationHistorySummary,
     SimulationReplayWindow,
@@ -324,6 +327,7 @@ def build_router(dependencies: ApiDependencies) -> APIRouter:
             request.scenario_id,
             run_input.map_id if run_input is not None else request.map_id,
             run_input,
+            external_stepping=request.external_stepping,
         )
 
     @router.get("/experiments/{experiment_id}", response_model=ExperimentView)
@@ -339,6 +343,20 @@ def build_router(dependencies: ApiDependencies) -> APIRouter:
     async def start_experiment(experiment_id: UUID) -> ExperimentView:
         await _execute(dependencies.commands, experiment_id, "experiment.start", {})
         return await dependencies.runtimes.view(experiment_id)
+
+    @router.post("/experiments/{experiment_id}/step", response_model=SimulationFrame)
+    async def step_experiment(experiment_id: UUID, request: ExternalStepRequest) -> SimulationFrame:
+        manager = await dependencies.runtimes.get(experiment_id)
+        commands = {
+            action.vehicle_id: ControlCommand(
+                desired_speed_mps=action.desired_speed_mps,
+                desired_acceleration_mps2=action.desired_acceleration_mps2,
+                lane_change=action.lane_change,
+                stop_requested=action.stop_requested,
+            )
+            for action in request.actions
+        }
+        return await manager.step_external(request.expected_sequence, commands)
 
     @router.post("/experiments/{experiment_id}/pause", response_model=ExperimentView)
     async def pause_experiment(experiment_id: UUID) -> ExperimentView:
