@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLayout,
+    QLineEdit,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -201,6 +202,13 @@ class LiveMonitorPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
+        layout.addWidget(QLabel("实验 ID（复制给 Agent）"))
+        self.experiment_id_input = QLineEdit()
+        self.experiment_id_input.setObjectName("experimentIdInput")
+        self.experiment_id_input.setReadOnly(True)
+        self.experiment_id_input.setPlaceholderText("创建实验后显示")
+        layout.addWidget(self.experiment_id_input)
+
         self.start_button = QPushButton("启动")
         self.start_button.setObjectName("primaryButton")
         self.pause_button = QPushButton("暂停")
@@ -230,6 +238,10 @@ class LiveMonitorPage(QWidget):
         layout.addLayout(button_grid)
         layout.addWidget(self._speed_controls())
         return panel("运行控制", content, kicker="仿真生命周期")
+
+    @Slot(str)
+    def set_experiment_id(self, experiment_id: str) -> None:
+        self.experiment_id_input.setText(experiment_id)
 
     def _level_metrics_panel(self) -> QFrame:
         content = QWidget()

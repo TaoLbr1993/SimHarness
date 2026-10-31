@@ -2,6 +2,7 @@
 
 import logging
 import sys
+import time
 from collections.abc import Mapping
 from uuid import UUID
 
@@ -63,11 +64,22 @@ class AgentManager:
         ).actions
 
     def run(self) -> UUID:
-        experiment_id = self._client.create(self._config)
-        logger.info("Created experiment %s", experiment_id)
+        owned = self._config.experiment_id is None
+        experiment_id = self._client.create(self._config) if owned else self._config.experiment_id
+        assert experiment_id is not None
+        logger.info("Using experiment %s", experiment_id)
         try:
-            self._client.prepare(experiment_id)
-            self._client.start(experiment_id)
+            if owned:
+                self._client.prepare(experiment_id)
+                self._client.start(experiment_id)
+            else:
+                experiment = self._client.experiment(experiment_id)
+                if not experiment.external_stepping:
+                    raise ValueError("experiment is not configured for external stepping")
+                if experiment.status is not ExperimentStatus.RUNNING:
+                    raise ValueError("desktop experiment must be running before the agent connects")
+                if experiment.latest_sequence != 0:
+                    raise ValueError("only a fresh, unstepped experiment can be attached")
             frame = self._client.step(experiment_id, 0, ())
             logger.info("Step %s: %s vehicles", frame.traffic.sequence, len(frame.traffic.vehicles))
             for _ in range(1, self._config.max_steps):
@@ -76,6 +88,8 @@ class AgentManager:
                     break
                 if status != ExperimentStatus.RUNNING.value:
                     raise RuntimeError(f"experiment is not running: {status}")
+                if self._config.step_delay_s:
+                    time.sleep(self._config.step_delay_s)
                 actions = self.actions_for(frame)
                 frame = self._client.step(experiment_id, frame.traffic.sequence, actions)
                 for event in frame.events:
@@ -85,9 +99,10 @@ class AgentManager:
             return experiment_id
         finally:
             active_error = sys.exc_info()[0] is not None
-            try:
-                self._client.stop(experiment_id)
-            except Exception:
-                logger.exception("Failed to stop experiment %s", experiment_id)
-                if not active_error:
-                    raise
+            if owned:
+                try:
+                    self._client.stop(experiment_id)
+                except Exception:
+                    logger.exception("Failed to stop experiment %s", experiment_id)
+                    if not active_error:
+                        raise

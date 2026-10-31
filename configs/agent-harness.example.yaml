@@ -1,9 +1,13 @@
-# Replace these IDs with the actual workspace and scenario UUIDs.
+# Paste the experiment ID shown on the desktop after starting an Agent-controlled run.
+# When experiment_id is set, the agent connects to that experiment and does not create one.
 api_url: http://127.0.0.1:8000
+experiment_id: null
+# These fields are only needed when experiment_id is null and the agent creates the run.
 workspace_id: 00000000-0000-0000-0000-000000000000
 scenario_id: 00000000-0000-0000-0000-000000000042
 map_id: image2road
 max_steps: 100
+step_delay_s: 0.2
 request_timeout_s: 30
 
 # Empty means SUMO controls all vehicles. Wrapper classes are placeholders only.

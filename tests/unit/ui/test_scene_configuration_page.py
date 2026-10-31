@@ -26,6 +26,9 @@ def _application() -> QApplication:
 def test_scene_configuration_only_lists_direct_sumo_packages() -> None:
     _application()
     page = SceneConfigurationPage(load_web_map=False)
+
+    assert page.external_stepping.text() == "等待外部 Agent 控制"
+    assert not page.external_stepping.isChecked()
     selected_maps: list[str] = []
     page.map_selected.connect(selected_maps.append)
     page.set_maps(

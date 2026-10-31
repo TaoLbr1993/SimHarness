@@ -7,6 +7,7 @@ import platform
 from PySide6.QtCore import Property, QPoint, Qt, QTime, Signal, Slot
 from PySide6.QtGui import QColor, QPainter, QPaintEvent, QPalette, QPen, QPolygon
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QFrame,
     QGridLayout,
@@ -191,6 +192,9 @@ class SceneConfigurationPage(QWidget):
         widget.setObjectName("simulationHeaderActions")
         row = QHBoxLayout(widget)
         row.setContentsMargins(0, 0, 0, 0)
+        self.external_stepping = QCheckBox("等待外部 Agent 控制")
+        self.external_stepping.setObjectName("externalSteppingCheckBox")
+        row.addWidget(self.external_stepping)
         self.test_button = QPushButton("测试")
         self.test_button.setObjectName("testSimulationConfigurationButton")
         self.test_button.clicked.connect(self._request_test)

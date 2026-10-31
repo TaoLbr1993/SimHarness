@@ -24,6 +24,8 @@ if TYPE_CHECKING:
 
 class SimulationControlPort(Protocol):
     @property
+    def external_stepping(self) -> bool: ...
+    @property
     def experiment_id(self) -> UUID | None: ...
 
     @property
@@ -103,6 +105,8 @@ class RuntimeDirectory:
             status=ExperimentStatus.CREATED,
             simulation_time_ms=manager.simulation_time_ms,
             speed_multiplier=manager.speed_multiplier,
+            external_stepping=manager.external_stepping,
+            latest_sequence=manager.last_frame.traffic.sequence if manager.last_frame else 0,
         )
 
     def register(
@@ -135,6 +139,8 @@ class RuntimeDirectory:
             status=await manager.get_status(),
             simulation_time_ms=manager.simulation_time_ms,
             speed_multiplier=manager.speed_multiplier,
+            external_stepping=manager.external_stepping,
+            latest_sequence=manager.last_frame.traffic.sequence if manager.last_frame else 0,
         )
 
 

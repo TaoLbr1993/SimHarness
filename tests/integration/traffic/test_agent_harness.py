@@ -5,6 +5,7 @@ import subprocess
 import sys
 import threading
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.request import urlopen
 from uuid import UUID
@@ -57,6 +58,79 @@ class TestAgent:
         return tuple(
             VehicleControlRequest(vehicle_id=v.vehicle_id, desired_speed_mps=0) for v in vehicles
         )
+
+
+@pytest.mark.skipif(
+    os.getenv("TRAFFICVERSE_SUMO_PACKAGE_INTEGRATION") != "1" or shutil.which("sumo") is None,
+    reason="requires real SUMO",
+)
+def test_agent_attaches_to_desktop_experiment(tmp_path: Path) -> None:
+    app = build_core_api(
+        ROOT / "configs/scenarios/core-run-town04.yaml",
+        repository_root=ROOT,
+        artifact_root=tmp_path / "maps",
+        sumo_artifact_root=tmp_path / "sumo",
+        configuration_root=tmp_path / "configs",
+        simulation_artifact_root=tmp_path / "simulations",
+        test_artifact_root=tmp_path / "tests",
+    )
+    with TestClient(app) as client:
+        workspace = client.get("/api/v1/workspaces").json()[0]["workspace_id"]
+        saved = client.post(
+            "/api/v1/simulation-configurations",
+            json={
+                "workspace_id": workspace,
+                "scenario_id": str(UUID(int=42)),
+                "scene_name": "Agent integration",
+                "description": "",
+                "map_id": "image2road",
+                "duration_ms": 60000,
+                "automation_demands": [],
+            },
+        )
+        assert saved.status_code == 201, saved.text
+        created = client.post(
+            "/api/v1/experiments",
+            json={
+                "workspace_id": workspace,
+                "scenario_id": str(UUID(int=42)),
+                "map_id": "image2road",
+                "configuration_id": saved.json()["configuration_id"],
+                "external_stepping": True,
+            },
+        )
+        assert created.status_code == 202
+        experiment_id = UUID(created.json()["experiment_id"])
+        root = f"/api/v1/experiments/{experiment_id}"
+        assert client.post(root + "/prepare").status_code == 200
+        assert client.post(root + "/start").status_code == 200
+        config = HarnessConfig(experiment_id=experiment_id, max_steps=3)
+        transport = TestClientTransport(client)
+        with client.websocket_connect(f"/api/v1/ws?experiment_id={experiment_id}") as websocket:
+            assert websocket.receive_json()["type"] == "session.ready"
+            websocket.send_json(
+                {
+                    "schema_version": "1.0",
+                    "type": "subscribe",
+                    "message_id": "subscribe",
+                    "experiment_id": str(experiment_id),
+                    "simulation_time_ms": 0,
+                    "sequence": 0,
+                    "sent_at": datetime.now(timezone.utc).isoformat(),
+                    "payload": {"topics": ["vehicles"], "max_hz": 20},
+                }
+            )
+            assert websocket.receive_json()["type"] == "command.accepted"
+            assert AgentManager(config, transport, {}).run() == experiment_id
+            message = websocket.receive_json()
+            assert message["type"] == "vehicle.delta"
+            assert message["payload"]["vehicles"]
+        view = client.get(root).json()
+        assert view["status"] == "RUNNING"
+        assert view["latest_sequence"] == 3
+        with pytest.raises(ValueError, match="fresh"):
+            AgentManager(config, transport, {}).run()
+        assert client.post(root + "/stop", json={}).status_code == 200
 
 
 @pytest.mark.skipif(

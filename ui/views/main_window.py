@@ -24,6 +24,7 @@ from ui.models import (
     ReplayRecord,
     ReplaySummary,
     ReplayWindow,
+    SimulationConfigurationDraft,
     TrafficScenarioPreset,
     WorkspaceOverview,
     WorkspaceSummary,
@@ -165,8 +166,8 @@ class MainWindow(QMainWindow):
         self.live_page.speed_changed.connect(self._set_live_or_replay_speed)
         self.scene_page.map_selected.connect(vm.select_map)
         self.scene_page.configuration_save_requested.connect(vm.save_configuration)
-        self.scene_page.launch_requested.connect(vm.launch_configuration)
-        self.scene_page.test_requested.connect(vm.test_configuration)
+        self.scene_page.launch_requested.connect(self._launch_scene_configuration)
+        self.scene_page.test_requested.connect(self._test_scene_configuration)
         self.traffic_scenes_page.scene_selected.connect(self._launch_traffic_scenario)
         self.traffic_scenes_page.configuration_requested.connect(self._configure_traffic_scenario)
         self.traffic_scenes_page.preview_requested.connect(vm.preview_map_asset)
@@ -195,6 +196,7 @@ class MainWindow(QMainWindow):
         vm.traffic_lights_changed.connect(self._set_traffic_lights)
         vm.live_metrics_changed.connect(self._set_live_metrics)
         vm.experiment_status_changed.connect(self._set_status)
+        vm.experiment_id_changed.connect(self.live_page.set_experiment_id)
         vm.simulation_time_changed.connect(self._set_time)
         vm.control_availability_changed.connect(self._set_controls)
         vm.connection_changed.connect(self.live_page.set_connection)
@@ -446,7 +448,22 @@ class MainWindow(QMainWindow):
             else f"正在准备“{value.name}”并进入仿真运行……"
         )
         self._show_notice("info", message)
+        self._viewmodel.set_external_stepping(False)
         self._viewmodel.launch_configuration(self.scene_page.current_configuration())
+
+    @Slot(object)
+    def _launch_scene_configuration(self, value: object) -> None:
+        if not isinstance(value, SimulationConfigurationDraft):
+            return
+        self._viewmodel.set_external_stepping(self.scene_page.external_stepping.isChecked())
+        self._viewmodel.launch_configuration(value)
+
+    @Slot(object)
+    def _test_scene_configuration(self, value: object) -> None:
+        if not isinstance(value, SimulationConfigurationDraft):
+            return
+        self._viewmodel.set_external_stepping(self.scene_page.external_stepping.isChecked())
+        self._viewmodel.test_configuration(value)
 
     @Slot(object)
     def _configure_traffic_scenario(self, value: object) -> None:

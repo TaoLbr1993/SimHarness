@@ -125,6 +125,8 @@ class ExperimentView(ProtocolModel):
     status: ExperimentStatus
     simulation_time_ms: int = Field(ge=0)
     speed_multiplier: float = Field(gt=0.0)
+    external_stepping: bool = False
+    latest_sequence: int = Field(default=0, ge=0)
 
 
 class AutomationDemand(ProtocolModel):

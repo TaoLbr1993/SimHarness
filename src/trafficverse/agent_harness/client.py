@@ -6,7 +6,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from uuid import UUID
 
-from trafficverse.api.models import VehicleControlRequest
+from trafficverse.api.models import ExperimentView, VehicleControlRequest
 from trafficverse.domain.models import SimulationFrame
 
 from .config import HarnessConfig
@@ -20,6 +20,7 @@ class SimulationClient(Protocol):
         self, experiment_id: UUID, sequence: int, actions: tuple[VehicleControlRequest, ...]
     ) -> SimulationFrame: ...
     def status(self, experiment_id: UUID) -> str: ...
+    def experiment(self, experiment_id: UUID) -> ExperimentView: ...
     def stop(self, experiment_id: UUID) -> None: ...
 
 
@@ -76,6 +77,9 @@ class HttpSimulationClient:
         if not isinstance(response, dict) or not isinstance(response.get("status"), str):
             raise ValueError("experiment status response is invalid")
         return str(response["status"])
+
+    def experiment(self, experiment_id: UUID) -> ExperimentView:
+        return ExperimentView.model_validate(self._request(f"/experiments/{experiment_id}"))
 
     def stop(self, experiment_id: UUID) -> None:
         self._request(f"/experiments/{experiment_id}/stop", {"reason": "AGENT_HARNESS_STOP"})

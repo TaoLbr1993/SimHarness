@@ -128,6 +128,7 @@ class FakeRest(QObject):
         map_id: str,
         configuration_id: str | None = None,
         run_kind: str = "simulation",
+        external_stepping: bool = False,
     ) -> None:
         value: object = (
             (workspace_id, scenario_id, map_id)
@@ -135,6 +136,8 @@ class FakeRest(QObject):
             else (workspace_id, scenario_id, map_id, configuration_id, run_kind)
         )
         self.calls.append(("create", value))
+        if external_stepping:
+            self.calls.append(("external-stepping", True))
 
 
 class FakeRealtime(QObject):
@@ -629,6 +632,45 @@ def test_launch_creates_experiment_then_opens_monitor_and_starts() -> None:
     assert ("create", (WORKSPACE_ID, SCENARIO_ID, "image2road")) in rest.calls
     assert monitor_requests == 1
     assert realtime.sent == [("experiment.prepare", {})]
+
+
+def test_external_mode_creates_experiment_and_publishes_id() -> None:
+    viewmodel, rest, _ = _viewmodel()
+    _enter_workspace(viewmodel)
+    viewmodel.handle_rest_success(
+        "maps.list",
+        [
+            {
+                "map_id": "image2road",
+                "kind": "sumo",
+                "display_name": "Image road",
+                "validated": True,
+                "network_schema_version": "sumo-net/display-1.0",
+                "manifest_available": False,
+                "sumo_config_file": "image2road.sumocfg",
+                "sumo_step_ms": 1000,
+            }
+        ],
+    )
+    viewmodel.select_map("image2road")
+    viewmodel.set_external_stepping(True)
+    identifiers: list[str] = []
+    viewmodel.experiment_id_changed.connect(identifiers.append)
+    assert viewmodel.create_experiment()
+    assert ("external-stepping", True) in rest.calls
+    viewmodel.handle_rest_success(
+        "experiment.create",
+        {
+            "experiment_id": str(EXPERIMENT_ID),
+            "workspace_id": str(WORKSPACE_ID),
+            "status": "CREATED",
+            "simulation_time_ms": 0,
+            "speed_multiplier": 1.0,
+            "external_stepping": True,
+            "latest_sequence": 0,
+        },
+    )
+    assert identifiers == [str(EXPERIMENT_ID)]
 
 
 def test_unsaved_page_configuration_is_saved_before_simulation_creation() -> None:

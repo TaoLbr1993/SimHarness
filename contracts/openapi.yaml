@@ -261,6 +261,15 @@ components:
           format: uuid
           title: Experiment Id
           type: string
+        external_stepping:
+          default: false
+          title: External Stepping
+          type: boolean
+        latest_sequence:
+          default: 0
+          minimum: 0.0
+          title: Latest Sequence
+          type: integer
         simulation_time_ms:
           minimum: 0.0
           title: Simulation Time Ms

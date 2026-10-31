@@ -54,6 +54,7 @@ class RunViewModel(QObject):
     traffic_lights_changed = Signal(object)
     component_health_changed = Signal(object)
     experiment_status_changed = Signal(str)
+    experiment_id_changed = Signal(str)
     simulation_time_changed = Signal(int)
     live_metrics_changed = Signal(object)
     control_availability_changed = Signal(object)
@@ -92,6 +93,7 @@ class RunViewModel(QObject):
         self._run_kind_for_create: _RunKind = "simulation"
         self._import_job_id: UUID | None = None
         self._experiment_id: UUID | None = None
+        self._external_stepping_for_create = False
         self._experiment_workspace_id: UUID | None = None
         self._status: ExperimentStatus | None = None
         self._world: WorldState | None = None
@@ -278,6 +280,9 @@ class RunViewModel(QObject):
         """Save changed values when needed, then launch a formal simulation."""
         self._save_then_launch(configuration, "simulation")
 
+    def set_external_stepping(self, enabled: bool) -> None:
+        self._external_stepping_for_create = enabled
+
     def test_configuration(self, configuration: SimulationConfigurationDraft) -> None:
         """Save changed values when needed, then launch an isolated test run."""
         self._save_then_launch(configuration, "test")
@@ -356,13 +361,17 @@ class RunViewModel(QObject):
         if self._selected_map_id is None:
             self.notification.emit("error", "请先选择一份已验证的 SUMO 场景包。")
             return False
-        self._rest.create_experiment(
+        args = (
             self._active_workspace_id,
             self._scenario_id,
             self._selected_map_id,
             self._configuration_id_for_create,
             self._run_kind_for_create,
         )
+        if self._external_stepping_for_create:
+            self._rest.create_experiment(*args, external_stepping=True)
+        else:
+            self._rest.create_experiment(*args)
         return True
 
     def launch_experiment(self) -> None:
@@ -623,6 +632,7 @@ class RunViewModel(QObject):
             self.notification.emit("error", "实验不属于当前工作区，已拒绝加载。")
             return
         self._experiment_id = view.experiment_id
+        self.experiment_id_changed.emit(str(view.experiment_id))
         self._experiment_workspace_id = view.workspace_id
         self._world = WorldState(view.experiment_id, simulation_time_ms=view.simulation_time_ms)
         self._last_snapshot_recovery_time_ms = None
@@ -787,6 +797,7 @@ class RunViewModel(QObject):
         self._realtime.close()
         self._realtime_connected = False
         self._experiment_id = None
+        self.experiment_id_changed.emit("")
         self._experiment_workspace_id = None
         self._status = None
         self._world = None

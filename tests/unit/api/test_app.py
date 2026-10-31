@@ -38,6 +38,7 @@ class FakeManager:
         self.speed_multiplier = 1.0
         self.last_frame: SimulationFrame | None = None
         self.controls: list[tuple[str, ControlCommand]] = []
+        self.external_stepping = False
 
     @property
     def experiment_id(self) -> UUID:
@@ -82,7 +83,7 @@ class FakeManager:
         self.controls.append((vehicle_id, command))
 
     def enable_external_stepping(self) -> None:
-        pass
+        self.external_stepping = True
 
     async def step_external(
         self, expected_sequence: int, commands: dict[str, ControlCommand]

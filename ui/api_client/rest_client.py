@@ -196,6 +196,7 @@ class RestApiClient(QObject):
         map_id: str,
         configuration_id: str | None = None,
         run_kind: str = "simulation",
+        external_stepping: bool = False,
     ) -> None:
         payload: dict[str, object] = {
             "workspace_id": str(workspace_id),
@@ -205,6 +206,8 @@ class RestApiClient(QObject):
         if configuration_id is not None:
             payload["configuration_id"] = configuration_id
             payload["run_kind"] = run_kind
+        if external_stepping:
+            payload["external_stepping"] = True
         self._post_json(
             "experiment.create",
             "/api/v1/experiments",

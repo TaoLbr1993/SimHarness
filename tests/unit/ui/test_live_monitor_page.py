@@ -43,6 +43,9 @@ def _stub_web_map(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_live_monitor_is_two_dimensional_and_exposes_requested_controls_and_metrics() -> None:
     _application()
     page = LiveMonitorPage(load_web_map=False)
+    page.set_experiment_id("experiment-123")
+    assert page.experiment_id_input.text() == "experiment-123"
+    assert page.experiment_id_input.isReadOnly()
 
     labels = {label.text() for label in page.findChildren(QLabel)}
     buttons = {button.text() for button in page.findChildren(QPushButton)}

@@ -29,11 +29,13 @@ class HarnessConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     api_url: str = "http://127.0.0.1:8000"
-    workspace_id: UUID
-    scenario_id: UUID
-    map_id: str = Field(min_length=1)
+    experiment_id: UUID | None = None
+    workspace_id: UUID | None = None
+    scenario_id: UUID | None = None
+    map_id: str | None = Field(default=None, min_length=1)
     configuration_id: str | None = None
     max_steps: int = Field(default=100, ge=1)
+    step_delay_s: float = Field(default=0, ge=0)
     request_timeout_s: float = Field(default=30.0, gt=0)
     bindings: tuple[Binding, ...] = ()
 
@@ -42,6 +44,10 @@ class HarnessConfig(BaseModel):
         names = [binding.name for binding in self.bindings]
         if len(names) != len(set(names)):
             raise ValueError("binding names must be unique")
+        if self.experiment_id is None and (
+            self.workspace_id is None or self.scenario_id is None or self.map_id is None
+        ):
+            raise ValueError("provide experiment_id or workspace_id, scenario_id and map_id")
         return self
 
 
