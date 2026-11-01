@@ -1,13 +1,7 @@
-"""Placeholder for a remote API vehicle decision model."""
+"""Remote OpenAI-compatible API model."""
 
-from trafficverse.api.models import VehicleControlRequest
-from trafficverse.domain.models import TrafficSnapshot, VehicleState
+from .http_chat import ChatModel
 
 
-class ApiModel:
-    """Remote API adapter; inference is not implemented."""
-
-    def decide(
-        self, snapshot: TrafficSnapshot, vehicles: tuple[VehicleState, ...]
-    ) -> tuple[VehicleControlRequest, ...]:
-        raise NotImplementedError("ApiModel inference is not implemented")
+class ApiModel(ChatModel):
+    """A remotely hosted OpenAI-compatible Chat Completions endpoint."""

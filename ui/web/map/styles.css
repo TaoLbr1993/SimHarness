@@ -120,6 +120,7 @@ button { font: inherit; }
 }
 
 .legend-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.legend-item[hidden] { display: none; }
 .legend-icon { position: relative; display: inline-block; flex: 0 0 auto; }
 .legend-icon.l0,
 .legend-icon.l1,

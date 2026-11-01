@@ -38,6 +38,16 @@ def _workspace() -> WorkspaceSummary:
     )
 
 
+def test_general_traffic_overview_hides_agent_and_level_counts() -> None:
+    _application()
+    page = WorkspaceOverviewPage(load_web_map=False, traffic_mode=True)
+
+    assert not page._metric_values["agent_count"].isVisibleTo(page)
+    assert all(not label.isVisibleTo(page) for label in page._automation_values.values())
+    assert page.recent_table.isColumnHidden(3)
+    page.close()
+
+
 def test_workspace_navigation_searches_selects_and_requests_creation() -> None:
     _application()
     navigation = WorkspaceNavigationRail()

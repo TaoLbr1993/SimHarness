@@ -163,10 +163,12 @@ class SceneConfigurationPage(QWidget):
         parent: QWidget | None = None,
         *,
         load_web_map: bool = False,
+        traffic_mode: bool = False,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("sceneConfigurationPage")
         self._load_web_map = load_web_map
+        self._traffic_mode = traffic_mode
         self.automation_rows: list[_AutomationConfigurationRow] = []
 
         root = QVBoxLayout(self)
@@ -263,7 +265,10 @@ class SceneConfigurationPage(QWidget):
         layout = QVBoxLayout(section)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(16)
-        layout.addWidget(self._automation_configuration())
+        automation = self._automation_configuration()
+        if self._traffic_mode:
+            automation.hide()
+        layout.addWidget(automation)
         layout.addStretch(1)
         layout.addWidget(self._simulation_parameters())
         layout.addLayout(self._footer_actions())
@@ -367,7 +372,9 @@ class SceneConfigurationPage(QWidget):
             description=self.description.toPlainText().strip(),
             map_id=str(self.map_combo.currentData() or ""),
             duration_ms=self.duration_time.time().msecsSinceStartOfDay(),
-            automation_demands=tuple(
+            automation_demands=()
+            if self._traffic_mode
+            else tuple(
                 AutomationDemand(level=row.level, vehicle_count=row.vehicle_count)
                 for row in self.automation_rows
             ),

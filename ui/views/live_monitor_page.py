@@ -36,10 +36,13 @@ class LiveMonitorPage(QWidget):
     restart_requested = Signal()
     speed_changed = Signal(float)
 
-    def __init__(self, *, load_web_map: bool, parent: QWidget | None = None) -> None:
+    def __init__(
+        self, *, load_web_map: bool, traffic_mode: bool = False, parent: QWidget | None = None
+    ) -> None:
         super().__init__(parent)
         self.setObjectName("liveMonitorPage")
         self._replay_mode = False
+        self._traffic_mode = traffic_mode
         self._replay_seen_vehicle_ids: set[str] = set()
         self._replay_active_vehicle_ids: set[str] = set()
         self._replay_entered_at_ms: dict[str, int] = {}
@@ -151,7 +154,10 @@ class LiveMonitorPage(QWidget):
         sidebar_layout.setSpacing(12)
         sidebar_layout.addWidget(self._statistics_panel())
         sidebar_layout.addWidget(self._simulation_controls())
-        sidebar_layout.addWidget(self._level_metrics_panel(), 1)
+        levels_panel = self._level_metrics_panel()
+        if self._traffic_mode:
+            levels_panel.hide()
+        sidebar_layout.addWidget(levels_panel, 1)
 
         workspace = QWidget()
         layout = QHBoxLayout(workspace)

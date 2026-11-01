@@ -6,13 +6,19 @@ import time
 from collections.abc import Mapping
 from uuid import UUID
 
-from trafficverse.api.models import ExternalStepRequest, VehicleControlRequest
-from trafficverse.domain.enums import ExperimentStatus
-from trafficverse.domain.models import SimulationFrame, VehicleState
+from trafficverse.api.models import (
+    ExternalLocalStepRequest,
+    ExternalStepRequest,
+    VehicleControlRequest,
+)
+from trafficverse.domain.enums import AutomationLevel, ExperimentStatus
+from trafficverse.domain.models.observation import LocalObservationFrame, VehicleObservation
 
+from .agent import DrivingAgent
 from .client import SimulationClient
 from .config import HarnessConfig
 from .models.base import VehicleAgent
+from .skills.provider import FileSkillProvider
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +32,18 @@ class AgentManager:
         self._agents = agents
         if set(agents) != {binding.name for binding in config.bindings}:
             raise ValueError("agent instances must match the configured binding names")
+        provider = FileSkillProvider(config.skills_directory)
+        self._driving_agents = {
+            binding.name: DrivingAgent(binding, agents[binding.name], provider)
+            for binding in config.bindings
+        }
 
-    def actions_for(self, frame: SimulationFrame) -> tuple[VehicleControlRequest, ...]:
-        assignments: dict[str, list[VehicleState]] = {
+    def _assign(self, frame: LocalObservationFrame) -> dict[str, list[VehicleObservation]]:
+        assignments: dict[str, list[VehicleObservation]] = {
             binding.name: [] for binding in self._config.bindings
         }
-        for vehicle in frame.traffic.vehicles:
+        for observation in frame.observations:
+            vehicle = observation.ego
             matching = [
                 binding.name
                 for binding in self._config.bindings
@@ -43,15 +55,18 @@ class AgentManager:
                     f"vehicle {vehicle.vehicle_id} matches multiple agents: {matching}"
                 )
             if matching:
-                assignments[matching[0]].append(vehicle)
+                assignments[matching[0]].append(observation)
+        return assignments
 
+    def actions_for(self, frame: LocalObservationFrame) -> tuple[VehicleControlRequest, ...]:
+        assignments = self._assign(frame)
         actions: list[VehicleControlRequest] = []
         for binding in self._config.bindings:
-            vehicles = tuple(assignments[binding.name])
-            if not vehicles:
+            observations = tuple(assignments[binding.name])
+            if not observations:
                 continue
-            allowed = {vehicle.vehicle_id for vehicle in vehicles}
-            decisions = self._agents[binding.name].decide(frame.traffic, vehicles)
+            allowed = {item.ego.vehicle_id for item in observations}
+            decisions = self._driving_agents[binding.name].decide(observations)
             for decision in decisions:
                 action = VehicleControlRequest.model_validate(decision)
                 if action.vehicle_id not in allowed:
@@ -59,9 +74,25 @@ class AgentManager:
                 if action.vehicle_id in {item.vehicle_id for item in actions}:
                     raise ValueError(f"duplicate action for {action.vehicle_id}")
                 actions.append(action)
-        return ExternalStepRequest(
-            expected_sequence=frame.traffic.sequence, actions=tuple(actions)
-        ).actions
+        return ExternalStepRequest(expected_sequence=frame.sequence, actions=tuple(actions)).actions
+
+    def _step_request(
+        self, sequence: int, actions: tuple[VehicleControlRequest, ...]
+    ) -> ExternalLocalStepRequest:
+        return ExternalLocalStepRequest(
+            expected_sequence=sequence,
+            actions=actions,
+            radius_m=self._config.observation_radius_m,
+            vehicle_ids=tuple(
+                sorted({v for binding in self._config.bindings for v in binding.vehicle_ids})
+            ),
+            automation_levels=tuple(
+                AutomationLevel(level)
+                for level in sorted(
+                    {v for binding in self._config.bindings for v in binding.automation_levels}
+                )
+            ),
+        )
 
     def run(self) -> UUID:
         owned = self._config.experiment_id is None
@@ -80,8 +111,8 @@ class AgentManager:
                     raise ValueError("desktop experiment must be running before the agent connects")
                 if experiment.latest_sequence != 0:
                     raise ValueError("only a fresh, unstepped experiment can be attached")
-            frame = self._client.step(experiment_id, 0, ())
-            logger.info("Step %s: %s vehicles", frame.traffic.sequence, len(frame.traffic.vehicles))
+            frame = self._client.step(experiment_id, self._step_request(0, ()))
+            logger.info("Step %s: %s observations", frame.sequence, len(frame.observations))
             for _ in range(1, self._config.max_steps):
                 status = self._client.status(experiment_id)
                 if status == ExperimentStatus.COMPLETED.value:
@@ -91,11 +122,19 @@ class AgentManager:
                 if self._config.step_delay_s:
                     time.sleep(self._config.step_delay_s)
                 actions = self.actions_for(frame)
-                frame = self._client.step(experiment_id, frame.traffic.sequence, actions)
+                previous = frame
+                frame = self._client.step(
+                    experiment_id, self._step_request(frame.sequence, actions)
+                )
+                assignments = self._assign(previous)
+                for binding in self._config.bindings:
+                    self._driving_agents[binding.name].record_transition(
+                        tuple(assignments[binding.name]), actions, frame
+                    )
                 for event in frame.events:
                     if event.event_type == "vehicle.control.rejected":
                         logger.warning("Vehicle action rejected: %s", event.payload)
-                logger.info("Step %s: %s actions", frame.traffic.sequence, len(actions))
+                logger.info("Step %s: %s actions", frame.sequence, len(actions))
             return experiment_id
         finally:
             active_error = sys.exc_info()[0] is not None

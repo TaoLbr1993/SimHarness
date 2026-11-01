@@ -256,6 +256,10 @@ controller(previous snapshot)
 恰好推进一次，返回新帧。空批次让所有车辆按 SUMO 原生规则推进。该模式不运行内置混合场景
 控制器或碰撞冻结逻辑。协议和初始帧获取详见 `docs/EXTERNAL_STEP_API.md`。
 
+局部观测步进在取得同一步不可变全局帧后，由应用层按所选车辆及 XY 平面距离生成局部观测。
+观测只包含各自车和给定半径内的车辆，保留帧序号与时间，不进行车道关系或遮挡判断；
+Agent 使用局部观测决策。既有全局步进及实时可视化帧保持可用。
+
 ## 8. ROI 与 CARLA
 
 未映射车辆进入核心半径时 spawn；已映射车辆离开 `radius + buffer` 后 destroy；Buffer 内保持 binding。

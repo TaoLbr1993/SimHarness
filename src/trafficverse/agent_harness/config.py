@@ -2,10 +2,40 @@
 
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 from uuid import UUID
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+
+class ModelConfig(BaseModel):
+    """Connection settings; credentials are resolved from the named environment variable."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    base_url: str = Field(min_length=1)
+    model_id: str = Field(min_length=1)
+    api_key_env: str | None = Field(default=None, min_length=1)
+    timeout_s: float = Field(default=30.0, gt=0, allow_inf_nan=False)
+    jev_acceleration_mps2: float = Field(default=1.0, gt=0, allow_inf_nan=False)
+
+    @field_validator("base_url")
+    @classmethod
+    def validate_base_url(cls, value: str) -> str:
+        parsed = urlsplit(value)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            raise ValueError("base_url must be an HTTP(S) URL")
+        if parsed.username or parsed.password or parsed.query or parsed.fragment:
+            raise ValueError("base_url cannot contain credentials, a query or fragment")
+        return value.rstrip("/")
+
+
+class MemoryConfig(BaseModel):
+    """Per-vehicle in-process memory configuration."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    enabled: bool = False
+    max_steps: int = Field(default=10, ge=1, le=1000)
 
 
 class Binding(BaseModel):
@@ -13,10 +43,13 @@ class Binding(BaseModel):
 
     name: str = Field(min_length=1)
     wrapper: str = Field(
-        min_length=3, description="Python module:class; constructed without arguments"
+        min_length=3, description="Python module:class; accepts model if configured"
     )
     vehicle_ids: tuple[str, ...] = ()
     automation_levels: tuple[Literal["L0", "L1", "L2", "L3", "L4", "L5"], ...] = ()
+    model: ModelConfig | None = None
+    memory: MemoryConfig = Field(default_factory=MemoryConfig)
+    skills: tuple[str, ...] = ()
 
     @model_validator(mode="after")
     def require_selector(self) -> "Binding":
@@ -37,6 +70,8 @@ class HarnessConfig(BaseModel):
     max_steps: int = Field(default=100, ge=1)
     step_delay_s: float = Field(default=0, ge=0)
     request_timeout_s: float = Field(default=30.0, gt=0)
+    observation_radius_m: float = Field(default=100.0, gt=0, allow_inf_nan=False)
+    skills_directory: Path | None = None
     bindings: tuple[Binding, ...] = ()
 
     @model_validator(mode="after")
@@ -53,4 +88,9 @@ class HarnessConfig(BaseModel):
 
 def load_config(path: Path) -> HarnessConfig:
     with path.open(encoding="utf-8") as stream:
-        return HarnessConfig.model_validate(yaml.safe_load(stream))
+        config = HarnessConfig.model_validate(yaml.safe_load(stream))
+    if config.skills_directory is not None and not config.skills_directory.is_absolute():
+        return config.model_copy(
+            update={"skills_directory": (path.resolve().parent / config.skills_directory).resolve()}
+        )
+    return config

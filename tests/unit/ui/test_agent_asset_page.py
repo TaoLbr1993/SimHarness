@@ -30,6 +30,15 @@ def test_empty_catalog_displays_mock_agents_for_all_automation_levels() -> None:
     assert page.table.item(5, 1).text() == "L5完全自动驾驶智能体"
 
 
+def test_general_traffic_catalog_shows_only_real_agents_without_level_column() -> None:
+    _application()
+    page = AgentAssetPage(traffic_mode=True)
+
+    assert page.table.rowCount() == 0
+    assert page.table.isColumnHidden(0)
+    page.close()
+
+
 def test_each_mock_agent_row_has_edit_and_delete_buttons() -> None:
     _application()
     page = AgentAssetPage()

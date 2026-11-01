@@ -114,6 +114,17 @@ def test_live_monitor_map_can_maximize_and_restore_without_recreating_the_web_ma
     page.close()
 
 
+def test_general_traffic_hides_level_metrics_but_keeps_traffic_statistics() -> None:
+    _application()
+    page = LiveMonitorPage(load_web_map=False, traffic_mode=True)
+    labels = {label.text(): label for label in page.findChildren(QLabel)}
+
+    assert not labels["分级实时指标"].isVisibleTo(page)
+    assert labels["当前车辆数"].isVisibleTo(page)
+    assert labels["平均速度"].isVisibleTo(page)
+    page.close()
+
+
 def test_live_monitor_formats_metrics_and_enables_controls_from_experiment_state() -> None:
     _application()
     page = LiveMonitorPage(load_web_map=False)

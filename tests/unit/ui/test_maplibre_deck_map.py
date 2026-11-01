@@ -11,6 +11,14 @@ from trafficverse.cli import SOFTWARE_WEBGL_FLAGS, _build_parser, _configure_sof
 MAP_WEB_ROOT = Path(__file__).resolve().parents[3] / "ui/web/map"
 
 
+def test_both_desktop_entries_accept_the_same_connection_options() -> None:
+    parser = _build_parser()
+    for command in ("ui", "traffic-ui"):
+        args = parser.parse_args([command, "--api-url", "http://127.0.0.1:9000"])
+        assert args.command == command
+        assert args.api_url == "http://127.0.0.1:9000"
+
+
 def test_map_page_uses_offline_maplibre_deck_bundle() -> None:
     html = (MAP_WEB_ROOT / "index.html").read_text(encoding="utf-8")
     blank_style = json.loads((MAP_WEB_ROOT / "styles/blank-style.json").read_text(encoding="utf-8"))
@@ -296,7 +304,7 @@ def test_map_renders_automation_colored_vehicle_models_with_zoom_lod() -> None:
         assert style.count(f"{level}: [{rgb}]") == 4
         assert css.count(f"--{level.lower()}: {hex_color}") == 2
         assert f"{level}:[{rgb.replace(' ', '')}]" in bundle
-    assert 'vehicle.automation_level === "L5" ? theme.vehicleOutline' in source
+    assert '!state.trafficPresentation && vehicle.automation_level === "L5"' in source
     assert "vehicleTailLight" not in style
     assert "emergencyVehicle: [239, 68, 68]" in style
     assert "emergencyVehicle: [220, 38, 38]" in style
@@ -332,7 +340,9 @@ def test_map_hud_shows_large_automation_and_signal_legends_only() -> None:
     css = (MAP_WEB_ROOT / "styles.css").read_text(encoding="utf-8")
 
     assert 'aria-label="地图图例"' in html
-    assert html.count('class="legend-item"') == 7
+    assert html.count('class="legend-item"') == 8
+    assert html.count("data-mixed-only") == 6
+    assert "data-traffic-only hidden" in html
     assert all(label in html for label in ("L0", "L1", "L2", "L3", "L4", "L5", "交通信号"))
     assert "救护车" not in html
     assert "障碍物" not in html

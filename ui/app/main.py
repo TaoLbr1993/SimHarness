@@ -16,13 +16,15 @@ from ui.views import MainWindow
 DEFAULT_SCENARIO_ID = UUID("00000000-0000-0000-0000-000000000042")
 
 
-def run(api_url: str, scenario_id: UUID = DEFAULT_SCENARIO_ID) -> int:
+def run(
+    api_url: str, scenario_id: UUID = DEFAULT_SCENARIO_ID, *, traffic_mode: bool = False
+) -> int:
     app = QApplication.instance() or QApplication(sys.argv)
     app.setApplicationName("TrafficVerse")
     rest = RestApiClient(api_url)
     realtime = RealtimeClient(api_url)
     viewmodel = RunViewModel(rest, realtime, scenario_id)
-    window = MainWindow(viewmodel)
+    window = MainWindow(viewmodel, traffic_mode=traffic_mode)
     window.show()
     QTimer.singleShot(0, viewmodel.initialize)
     return app.exec()

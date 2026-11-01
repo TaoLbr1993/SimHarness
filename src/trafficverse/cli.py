@@ -132,21 +132,22 @@ def _build_parser() -> argparse.ArgumentParser:
     carla_smoke.add_argument("--vehicles", type=int, default=10)
     carla_smoke.add_argument("--ticks", type=int, default=240)
 
-    ui = subcommands.add_parser("ui", help="open the TrafficVerse Core Run desktop UI")
-    ui.add_argument(
-        "--api-url",
-        default=os.getenv("TRAFFICVERSE_API_URL", "http://127.0.0.1:8000"),
-    )
-    ui.add_argument(
-        "--scenario-id",
-        type=UUID,
-        default=UUID("00000000-0000-0000-0000-000000000042"),
-    )
-    ui.add_argument(
-        "--allow-software-webgl",
-        action="store_true",
-        help="allow Chromium WebGL on a blocklisted software renderer such as llvmpipe",
-    )
+    for command, help_text in (
+        ("ui", "open the mixed-automation desktop UI"),
+        ("traffic-ui", "open the general-traffic desktop UI"),
+    ):
+        ui = subcommands.add_parser(command, help=help_text)
+        ui.add_argument(
+            "--api-url", default=os.getenv("TRAFFICVERSE_API_URL", "http://127.0.0.1:8000")
+        )
+        ui.add_argument(
+            "--scenario-id", type=UUID, default=UUID("00000000-0000-0000-0000-000000000042")
+        )
+        ui.add_argument(
+            "--allow-software-webgl",
+            action="store_true",
+            help="allow Chromium WebGL on a blocklisted software renderer such as llvmpipe",
+        )
     serve = subcommands.add_parser("serve", help="serve the Core Run REST/WebSocket API")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)
@@ -355,7 +356,7 @@ def _run_ui(args: argparse.Namespace) -> int:
         ):
             _fail("UI dependencies are unavailable; run 'uv sync --extra ui'")
         raise
-    return run(args.api_url, args.scenario_id)
+    return run(args.api_url, args.scenario_id, traffic_mode=args.command == "traffic-ui")
 
 
 def _run_serve(args: argparse.Namespace) -> int:
@@ -515,7 +516,7 @@ def main(argv: list[str] | None = None) -> int:
             return _run_carla_doctor(args)
         if args.command == "carla" and args.carla_command == "smoke":
             return _run_carla_smoke(args)
-        if args.command == "ui":
+        if args.command in {"ui", "traffic-ui"}:
             return _run_ui(args)
         if args.command == "serve":
             return _run_serve(args)

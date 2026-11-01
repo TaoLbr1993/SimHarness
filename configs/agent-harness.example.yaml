@@ -9,15 +9,37 @@ map_id: image2road
 max_steps: 100
 step_delay_s: 0.2
 request_timeout_s: 30
+observation_radius_m: 100  # XY radius in meters around each assigned vehicle
+# Optional custom Skill directory, relative to this config file; default is bundled skills.
+# skills_directory: agent-skills
 
-# Empty means SUMO controls all vehicles. Wrapper classes are placeholders only.
+# Empty means SUMO controls all vehicles. Uncomment one binding and set real vehicle IDs.
 bindings: []
-# Future example (do not enable until the wrapper is implemented):
+# Local OpenAI-compatible model service (replace model_id and URL):
 # bindings:
-#   - name: l5_driver
+#   - name: local_driver
 #     wrapper: trafficverse.agent_harness.models.local:LocalModel
-#     vehicle_ids: []
-#     automation_levels: [L5]
-# Other placeholders:
+#     vehicle_ids: [car_001]
+#     memory:
+#       enabled: true
+#       max_steps: 10
+#     skills: [human_cautious]
+#     model:
+#       base_url: http://127.0.0.1:8001/v1
+#       model_id: your-local-model
+#       timeout_s: 30
+# Remote OpenAI-compatible service: use a key in an environment variable, never in YAML.
 #     wrapper: trafficverse.agent_harness.models.api:ApiModel
+#     model:
+#       base_url: https://openrouter.ai/api/v1
+#       model_id: provider/model-id
+#       api_key_env: MODEL_API_KEY
+#       timeout_s: 30
+# Jev uses OpenRouter Decisions API rather than chat/completions:
 #     wrapper: trafficverse.agent_harness.models.jev:JevModel
+#     model:
+#       base_url: https://openrouter.ai/api
+#       model_id: typesafe/jev-1.14
+#       api_key_env: OPENROUTER_JEV_SK
+#       timeout_s: 30
+#       jev_acceleration_mps2: 1.0

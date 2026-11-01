@@ -47,6 +47,7 @@ from ui.views.workspace_page import (
     WorkspaceOverviewPage,
     run_workspace_dialog,
 )
+from ui.widgets import MapLibreDeckMapWidget
 
 _WINDOW_ICON_PATH = Path(__file__).resolve().parents[1] / "assets/icons/logo.svg"
 _SUCCESS_NOTICE_TIMEOUT_MS = 3_000
@@ -57,7 +58,9 @@ _CONTENT_STRETCH = 67
 class MainWindow(QMainWindow):
     """Compose the navigation shell and route view-model state into pages."""
 
-    def __init__(self, viewmodel: RunViewModel, *, load_web_map: bool = True) -> None:
+    def __init__(
+        self, viewmodel: RunViewModel, *, load_web_map: bool = True, traffic_mode: bool = False
+    ) -> None:
         configure_application_font()
         super().__init__()
         self._viewmodel = viewmodel
@@ -85,15 +88,19 @@ class MainWindow(QMainWindow):
         self._notice_timer.setInterval(_SUCCESS_NOTICE_TIMEOUT_MS)
         self._notice_timer.timeout.connect(self._hide_notice)
 
-        self.live_page = LiveMonitorPage(load_web_map=load_web_map)
-        self.scene_page = SceneConfigurationPage(load_web_map=load_web_map)
+        self.live_page = LiveMonitorPage(load_web_map=load_web_map, traffic_mode=traffic_mode)
+        self.scene_page = SceneConfigurationPage(
+            load_web_map=load_web_map, traffic_mode=traffic_mode
+        )
         self.experiments_page = ExperimentManagementPage()
         self.replay_page = DataReplayPage()
         self.traffic_scenes_page = TrafficScenePage(load_web_map=load_web_map)
         self.maps_page = MapAssetPage(load_web_map=load_web_map)
-        self.agents_page = AgentAssetPage()
+        self.agents_page = AgentAssetPage(traffic_mode=traffic_mode)
         self.settings_page = SystemSettingsPage()
-        self.workspace_page = WorkspaceOverviewPage(load_web_map=load_web_map)
+        self.workspace_page = WorkspaceOverviewPage(
+            load_web_map=load_web_map, traffic_mode=traffic_mode
+        )
         self.project_detail_page = ProjectDetailPage()
         self._pages = {
             "workspace": self.workspace_page,
@@ -109,6 +116,15 @@ class MainWindow(QMainWindow):
         }
         for page in self._pages.values():
             self.page_stack.addWidget(page)
+
+        if traffic_mode:
+            self.setWindowTitle("TrafficVerse · 普通交通仿真")
+            scripted_navigation = self.navigation.findChild(QWidget, "navContainer_traffic_scenes")
+            if scripted_navigation is not None:
+                scripted_navigation.hide()
+            for page in self._pages.values():
+                for map_widget in page.findChildren(MapLibreDeckMapWidget):
+                    map_widget.set_traffic_presentation(True)
 
         content = QWidget()
         content_layout = QVBoxLayout(content)

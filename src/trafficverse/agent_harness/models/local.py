@@ -1,13 +1,7 @@
-"""Placeholder for a locally deployed vehicle decision model."""
+"""Locally hosted OpenAI-compatible API model."""
 
-from trafficverse.api.models import VehicleControlRequest
-from trafficverse.domain.models import TrafficSnapshot, VehicleState
+from .http_chat import ChatModel
 
 
-class LocalModel:
-    """Local deployment adapter; inference is not implemented."""
-
-    def decide(
-        self, snapshot: TrafficSnapshot, vehicles: tuple[VehicleState, ...]
-    ) -> tuple[VehicleControlRequest, ...]:
-        raise NotImplementedError("LocalModel inference is not implemented")
+class LocalModel(ChatModel):
+    """A separately hosted local OpenAI-compatible Chat Completions endpoint."""

@@ -1,5 +1,7 @@
 # 大模型控制 SUMO 车辆：接口设计
 
+> **历史方案提示：**本文保留早期提出的异步架构，不描述当前 Agent Harness 的实现。当前同步控制流程请参见 [Agent Harness 使用说明](../src/trafficverse/agent_harness/README.md)和[外部步进接口](EXTERNAL_STEP_API.md)。
+
 > - 版本：v0.1
 > - 状态：Proposed（接口设计草案，尚未实现）
 > - 日期：2026-10-20

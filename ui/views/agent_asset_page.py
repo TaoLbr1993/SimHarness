@@ -65,9 +65,10 @@ class AgentAssetPage(QWidget):
     configure_requested = Signal(str, str, str, str, str)
     delete_requested = Signal(object)
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(self, parent: QWidget | None = None, *, traffic_mode: bool = False) -> None:
         super().__init__(parent)
         self.setObjectName("agentAssetPage")
+        self._traffic_mode = traffic_mode
         self._agents: tuple[AgentApiSummary, ...] = ()
         self._using_mock_agents = True
         self._editing_agent_id: UUID | None = None
@@ -137,6 +138,8 @@ class AgentAssetPage(QWidget):
         self.table.setHorizontalHeaderLabels(
             ("智驾等级", "智能体名称", "模型 ID", "API 地址", "操作")
         )
+        if self._traffic_mode:
+            self.table.setColumnHidden(0, True)
         self.table.verticalHeader().hide()
         self.table.setAlternatingRowColors(True)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -152,8 +155,8 @@ class AgentAssetPage(QWidget):
         return panel("已配置智能体", content, kicker="工作区资源")
 
     def set_agents(self, agents: tuple[AgentApiSummary, ...]) -> None:
-        self._using_mock_agents = not agents
-        self._agents = agents or _mock_agent_api_summaries()
+        self._using_mock_agents = not agents and not self._traffic_mode
+        self._agents = agents if self._traffic_mode else agents or _mock_agent_api_summaries()
         self._editing_agent_id = None
         self._reset_editor()
         self._render_agents()

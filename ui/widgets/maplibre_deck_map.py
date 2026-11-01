@@ -94,6 +94,10 @@ class MapLibreDeckMapWidget(QWebEngineView):
         if theme in {"dark", "light"}:
             self._dispatch("setTheme", theme)
 
+    def set_traffic_presentation(self, enabled: bool) -> None:
+        """Select map presentation without changing authoritative vehicle data."""
+        self._dispatch("setTrafficPresentation", enabled)
+
     @Slot(bool)
     def set_maximized(self, maximized: bool) -> None:
         self._dispatch("setMaximized", maximized)

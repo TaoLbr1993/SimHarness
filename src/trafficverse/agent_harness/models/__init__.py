@@ -1,1 +1,1 @@
-"""Model adapter placeholders; inference is not implemented."""
+"""Adapters for externally hosted vehicle decision models."""

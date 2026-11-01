@@ -159,10 +159,12 @@ class WorkspaceOverviewPage(QWidget):
         parent: QWidget | None = None,
         *,
         load_web_map: bool = False,
+        traffic_mode: bool = False,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("workspaceOverviewPage")
         self._load_web_map = load_web_map
+        self._traffic_mode = traffic_mode
         self._workspace: WorkspaceSummary | None = None
         self._metric_values: dict[str, QLabel] = {}
         self._automation_values: dict[str, QLabel] = {}
@@ -304,6 +306,8 @@ class WorkspaceOverviewPage(QWidget):
         )
         for column, (key, label, detail) in enumerate(definitions):
             card = metric_card(label, "—", detail)
+            if self._traffic_mode and key == "agent_count":
+                card.hide()
             self._metric_values[key] = self._card_value(card)
             metrics.addWidget(card, 0, column)
         layout.addLayout(metrics)
@@ -312,6 +316,8 @@ class WorkspaceOverviewPage(QWidget):
         automation.setSpacing(10)
         for level in ("L0", "L1", "L2", "L3", "L4", "L5", "其他交通参与方"):
             card = metric_card(level, "—")
+            if self._traffic_mode:
+                card.hide()
             self._automation_values[level] = self._card_value(card)
             automation.addWidget(card)
         layout.addLayout(automation)
@@ -379,6 +385,7 @@ class WorkspaceOverviewPage(QWidget):
         self.recent_table = QTableWidget(0, 4)
         self.recent_table.setObjectName("workspaceRecentTable")
         self.recent_table.setHorizontalHeaderLabels(("仿真名称", "状态", "时长", "智能体构成"))
+        self.recent_table.setColumnHidden(3, self._traffic_mode)
         self.recent_table.horizontalHeader().setStretchLastSection(True)
         self.recent_table.verticalHeader().hide()
         self.recent_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)

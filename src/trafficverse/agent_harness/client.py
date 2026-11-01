@@ -6,8 +6,8 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from uuid import UUID
 
-from trafficverse.api.models import ExperimentView, VehicleControlRequest
-from trafficverse.domain.models import SimulationFrame
+from trafficverse.api.models import ExperimentView, ExternalLocalStepRequest
+from trafficverse.domain.models.observation import LocalObservationFrame
 
 from .config import HarnessConfig
 
@@ -17,8 +17,8 @@ class SimulationClient(Protocol):
     def prepare(self, experiment_id: UUID) -> None: ...
     def start(self, experiment_id: UUID) -> None: ...
     def step(
-        self, experiment_id: UUID, sequence: int, actions: tuple[VehicleControlRequest, ...]
-    ) -> SimulationFrame: ...
+        self, experiment_id: UUID, request: ExternalLocalStepRequest
+    ) -> LocalObservationFrame: ...
     def status(self, experiment_id: UUID) -> str: ...
     def experiment(self, experiment_id: UUID) -> ExperimentView: ...
     def stop(self, experiment_id: UUID) -> None: ...
@@ -60,17 +60,12 @@ class HttpSimulationClient:
     def start(self, experiment_id: UUID) -> None:
         self._request(f"/experiments/{experiment_id}/start", {})
 
-    def step(
-        self, experiment_id: UUID, sequence: int, actions: tuple[VehicleControlRequest, ...]
-    ) -> SimulationFrame:
+    def step(self, experiment_id: UUID, request: ExternalLocalStepRequest) -> LocalObservationFrame:
         response = self._request(
-            f"/experiments/{experiment_id}/step",
-            {
-                "expected_sequence": sequence,
-                "actions": [a.model_dump(mode="json") for a in actions],
-            },
+            f"/experiments/{experiment_id}/local-step",
+            request.model_dump(mode="json"),
         )
-        return SimulationFrame.model_validate(response)
+        return LocalObservationFrame.model_validate(response)
 
     def status(self, experiment_id: UUID) -> str:
         response = self._request(f"/experiments/{experiment_id}")

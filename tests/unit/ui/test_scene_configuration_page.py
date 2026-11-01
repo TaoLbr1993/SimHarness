@@ -143,6 +143,20 @@ def test_scene_configuration_adds_levels_and_updates_vehicle_total() -> None:
     page.close()
 
 
+def test_general_traffic_keeps_sumo_demand_and_external_control() -> None:
+    _application()
+    page = SceneConfigurationPage(load_web_map=False, traffic_mode=True)
+    page.add_automation_button.click()
+    page.automation_rows[0].count_input.setValue(200)
+    page.external_stepping.setChecked(True)
+
+    assert not page.add_automation_button.isVisibleTo(page)
+    assert page.current_configuration().automation_demands == ()
+    assert page.external_stepping.isChecked()
+    assert page.external_stepping.isVisibleTo(page)
+    page.close()
+
+
 def test_scene_configuration_removes_automation_level() -> None:
     _application()
     page = SceneConfigurationPage(load_web_map=False)

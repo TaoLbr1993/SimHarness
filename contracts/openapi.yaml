@@ -292,6 +292,45 @@ components:
       - speed_multiplier
       title: ExperimentView
       type: object
+    ExternalLocalStepRequest:
+      additionalProperties: false
+      description: Step once and return local observations for the selected vehicles.
+      properties:
+        actions:
+          default: []
+          items:
+            $ref: '#/components/schemas/VehicleControlRequest'
+          title: Actions
+          type: array
+        all_vehicles:
+          default: false
+          title: All Vehicles
+          type: boolean
+        automation_levels:
+          default: []
+          items:
+            $ref: '#/components/schemas/AutomationLevel'
+          title: Automation Levels
+          type: array
+        expected_sequence:
+          minimum: 0.0
+          title: Expected Sequence
+          type: integer
+        radius_m:
+          exclusiveMinimum: 0.0
+          title: Radius M
+          type: number
+        vehicle_ids:
+          default: []
+          items:
+            type: string
+          title: Vehicle Ids
+          type: array
+      required:
+      - expected_sequence
+      - radius_m
+      title: ExternalLocalStepRequest
+      type: object
     ExternalStepRequest:
       additionalProperties: false
       description: Actions for exactly one step based on a particular observation.
@@ -342,6 +381,44 @@ components:
       - RIGHT
       title: LaneChangeDirection
       type: string
+    LocalObservationFrame:
+      additionalProperties: false
+      properties:
+        events:
+          default: []
+          items:
+            $ref: '#/components/schemas/DomainEvent'
+          title: Events
+          type: array
+        experiment_id:
+          format: uuid
+          title: Experiment Id
+          type: string
+        observations:
+          default: []
+          items:
+            $ref: '#/components/schemas/VehicleObservation'
+          title: Observations
+          type: array
+        radius_m:
+          exclusiveMinimum: 0.0
+          title: Radius M
+          type: number
+        sequence:
+          minimum: 0.0
+          title: Sequence
+          type: integer
+        simulation_time_ms:
+          minimum: 0.0
+          title: Simulation Time Ms
+          type: integer
+      required:
+      - experiment_id
+      - simulation_time_ms
+      - sequence
+      - radius_m
+      title: LocalObservationFrame
+      type: object
     MapImportJob:
       additionalProperties: false
       properties:
@@ -496,6 +573,20 @@ components:
       - unit
       - simulation_time_ms
       title: MetricSample
+      type: object
+    NearbyVehicle:
+      additionalProperties: false
+      properties:
+        distance_m:
+          minimum: 0.0
+          title: Distance M
+          type: number
+        vehicle:
+          $ref: '#/components/schemas/VehicleState'
+      required:
+      - vehicle
+      - distance_m
+      title: NearbyVehicle
       type: object
     ReadinessComponent:
       additionalProperties: false
@@ -1179,6 +1270,26 @@ components:
       - vehicle_id
       title: VehicleControlRequest
       type: object
+    VehicleObservation:
+      additionalProperties: false
+      properties:
+        ego:
+          $ref: '#/components/schemas/VehicleState'
+        nearby_vehicles:
+          default: []
+          items:
+            $ref: '#/components/schemas/NearbyVehicle'
+          title: Nearby Vehicles
+          type: array
+        radius_m:
+          exclusiveMinimum: 0.0
+          title: Radius M
+          type: number
+      required:
+      - ego
+      - radius_m
+      title: VehicleObservation
+      type: object
     VehicleState:
       additionalProperties: false
       properties:
@@ -1518,6 +1629,37 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
           description: Validation Error
       summary: Get Experiment
+  /api/v1/experiments/{experiment_id}/local-step:
+    post:
+      operationId: local_step_experiment_api_v1_experiments__experiment_id__local_step_post
+      parameters:
+      - in: path
+        name: experiment_id
+        required: true
+        schema:
+          format: uuid
+          title: Experiment Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalLocalStepRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocalObservationFrame'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Local Step Experiment
   /api/v1/experiments/{experiment_id}/pause:
     post:
       operationId: pause_experiment_api_v1_experiments__experiment_id__pause_post

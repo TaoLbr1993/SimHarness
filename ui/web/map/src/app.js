@@ -65,6 +65,7 @@ const state = {
   selectedVehicleId: null,
   followScenarioVehicles: true,
   legendVisible: true,
+  trafficPresentation: false,
   maximizeEnabled: false,
   maximized: false,
   theme: "light",
@@ -180,7 +181,8 @@ function vehicleColor(vehicle, alpha = 245) {
   if (isAmbulance(vehicle)) {
     return [...activeTheme().emergencyVehicle, alpha];
   }
-  const color = activeTheme().vehicle[vehicle.automation_level] ?? activeTheme().vehicle.HUMAN;
+  const level = state.trafficPresentation ? "HUMAN" : vehicle.automation_level;
+  const color = activeTheme().vehicle[level] ?? activeTheme().vehicle.HUMAN;
   return [...color, alpha];
 }
 
@@ -188,8 +190,8 @@ function vehicleAccentColor(vehicle, alpha = 245) {
   if (isAmbulance(vehicle)) {
     return [...activeTheme().emergencyVehicleAccent, alpha];
   }
-  const color =
-    activeTheme().vehicleAccent[vehicle.automation_level] ?? activeTheme().vehicleAccent.HUMAN;
+  const level = state.trafficPresentation ? "HUMAN" : vehicle.automation_level;
+  const color = activeTheme().vehicleAccent[level] ?? activeTheme().vehicleAccent.HUMAN;
   return [...color, alpha];
 }
 
@@ -213,7 +215,8 @@ function vehicleTooltip(vehicle) {
     return `${vehicle.vehicle_id}\n固定道路障碍物`;
   }
   const speedKmh = Number.isFinite(vehicle.speed_mps) ? vehicle.speed_mps * 3.6 : 0;
-  const identity = isAmbulance(vehicle) ? "救护车" : `等级 ${vehicle.automation_level}`;
+  const identity = isAmbulance(vehicle) ? "救护车" :
+    state.trafficPresentation ? "车辆" : `等级 ${vehicle.automation_level}`;
   return `${vehicle.vehicle_id}\n${identity} · ${speedKmh.toFixed(1)} km/h\n车道 ${vehicle.lane_id}`;
 }
 
@@ -393,7 +396,7 @@ function vehicleDetailParts(vehicles) {
         }))
       )
     ];
-    if (vehicle.automation_level !== "HUMAN") {
+    if (!state.trafficPresentation && vehicle.automation_level !== "HUMAN") {
       parts.push({
         vehicle,
         kind: "sensor",
@@ -721,7 +724,8 @@ function vehicleLayers() {
           ? vehicleColor(vehicle)
           : vehicleColor(vehicle, 235),
       getLineColor: (vehicle) =>
-        vehicle.automation_level === "L5" ? theme.vehicleOutline : vehicleColor(vehicle),
+        !state.trafficPresentation && vehicle.automation_level === "L5"
+          ? theme.vehicleOutline : vehicleColor(vehicle),
       getRadius: (vehicle) =>
         vehicle.vehicle_id === state.selectedVehicleId
           ? LAYER_STYLE.compactVehicleSelectedRadiusPx
@@ -731,8 +735,8 @@ function vehicleLayers() {
       lineWidthMinPixels: 1.25,
       parameters: FLAT_LAYER_PARAMETERS,
       updateTriggers: {
-        getFillColor: [state.theme, state.selectedVehicleId],
-        getLineColor: state.theme,
+        getFillColor: [state.theme, state.selectedVehicleId, state.trafficPresentation],
+        getLineColor: [state.theme, state.trafficPresentation],
         getRadius: state.selectedVehicleId
       }
     }),
@@ -750,7 +754,7 @@ function vehicleLayers() {
       sizeUnits: "pixels",
       parameters: FLAT_LAYER_PARAMETERS,
       updateTriggers: {
-        getColor: state.theme,
+        getColor: [state.theme, state.trafficPresentation],
         getSize: state.selectedVehicleId
       }
     }),
@@ -766,7 +770,7 @@ function vehicleLayers() {
       stroked: true,
       parameters: FLAT_LAYER_PARAMETERS,
       updateTriggers: {
-        getFillColor: state.theme,
+        getFillColor: [state.theme, state.trafficPresentation],
         getLineColor: state.theme,
         getLineWidth: state.selectedVehicleId
       }
@@ -1055,6 +1059,16 @@ function fitNetwork(network) {
 document.getElementById("reset-view").addEventListener("click", () => resetView());
 
 window.TrafficVerseMap = {
+  setTrafficPresentation(enabled) {
+    state.trafficPresentation = Boolean(enabled);
+    document.querySelectorAll("[data-mixed-only]").forEach((item) => {
+      item.hidden = state.trafficPresentation;
+    });
+    document.querySelectorAll("[data-traffic-only]").forEach((item) => {
+      item.hidden = !state.trafficPresentation;
+    });
+    renderLayers();
+  },
   setLegendVisible(visible) {
     state.legendVisible = Boolean(visible);
     document.getElementById("map-hud").hidden = !visible;

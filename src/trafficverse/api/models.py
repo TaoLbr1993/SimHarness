@@ -9,6 +9,7 @@ from uuid import UUID
 from pydantic import AnyHttpUrl, Field, JsonValue, StringConstraints, model_validator
 
 from trafficverse.domain.enums import (
+    AutomationLevel,
     ComponentStatus,
     ExperimentStatus,
     LaneChangeDirection,
@@ -174,6 +175,15 @@ class ExternalStepRequest(StrictModel):
         ):
             raise ValueError("stop cannot be combined with speed or acceleration")
         return self
+
+
+class ExternalLocalStepRequest(ExternalStepRequest):
+    """Step once and return local observations for the selected vehicles."""
+
+    radius_m: float = Field(gt=0, allow_inf_nan=False)
+    vehicle_ids: tuple[str, ...] = ()
+    automation_levels: tuple[AutomationLevel, ...] = ()
+    all_vehicles: bool = False
 
 
 class SubscribeRequest(StrictModel):

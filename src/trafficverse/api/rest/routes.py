@@ -16,6 +16,7 @@ from trafficverse.api.models import (
     CommandOutcome,
     ExperimentCreateRequest,
     ExperimentView,
+    ExternalLocalStepRequest,
     ExternalStepRequest,
     HealthResponse,
     MapImportJob,
@@ -29,6 +30,7 @@ from trafficverse.api.models import (
     WorkspaceUpdateRequest,
     WorkspaceView,
 )
+from trafficverse.application.vehicle_observation import local_observations
 from trafficverse.domain.enums import ErrorCode
 from trafficverse.domain.errors import TrafficVerseError
 from trafficverse.domain.models import (
@@ -44,6 +46,7 @@ from trafficverse.domain.models import (
     WorkspaceRecord,
     WorkspaceWrite,
 )
+from trafficverse.domain.models.observation import LocalObservationFrame
 
 
 def _require_accepted(outcome: CommandOutcome) -> None:
@@ -357,6 +360,19 @@ def build_router(dependencies: ApiDependencies) -> APIRouter:
             for action in request.actions
         }
         return await manager.step_external(request.expected_sequence, commands)
+
+    @router.post("/experiments/{experiment_id}/local-step", response_model=LocalObservationFrame)
+    async def local_step_experiment(
+        experiment_id: UUID, request: ExternalLocalStepRequest
+    ) -> LocalObservationFrame:
+        frame = await step_experiment(experiment_id, request)
+        return local_observations(
+            frame,
+            radius_m=request.radius_m,
+            vehicle_ids=request.vehicle_ids,
+            automation_levels=request.automation_levels,
+            all_vehicles=request.all_vehicles,
+        )
 
     @router.post("/experiments/{experiment_id}/pause", response_model=ExperimentView)
     async def pause_experiment(experiment_id: UUID) -> ExperimentView:

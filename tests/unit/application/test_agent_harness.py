@@ -5,8 +5,10 @@ import pytest
 from trafficverse.agent_harness.config import Binding, HarnessConfig
 from trafficverse.agent_harness.manager import AgentManager
 from trafficverse.api.models import VehicleControlRequest
+from trafficverse.application.vehicle_observation import local_observations
 from trafficverse.domain.enums import AutomationLevel, VehicleAction
 from trafficverse.domain.models import SimulationFrame, TrafficSnapshot, Vector3, VehicleState
+from trafficverse.domain.models.observation import VehicleObservation
 
 
 def _frame() -> SimulationFrame:
@@ -38,11 +40,11 @@ def _frame() -> SimulationFrame:
 
 class Agent:
     def decide(
-        self, snapshot: TrafficSnapshot, vehicles: tuple[VehicleState, ...]
+        self, observations: tuple[VehicleObservation, ...]
     ) -> tuple[VehicleControlRequest, ...]:
-        del snapshot
         return tuple(
-            VehicleControlRequest(vehicle_id=v.vehicle_id, desired_speed_mps=2) for v in vehicles
+            VehicleControlRequest(vehicle_id=v.ego.vehicle_id, desired_speed_mps=2)
+            for v in observations
         )
 
 
@@ -61,7 +63,8 @@ def test_multiple_agents_receive_only_their_assigned_vehicles() -> None:
     )
     # actions_for does not access the client.
     manager = AgentManager(config, None, {"first": Agent(), "second": Agent()})  # type: ignore[arg-type]
-    assert [action.vehicle_id for action in manager.actions_for(_frame())] == ["a", "b"]
+    frame = local_observations(_frame(), radius_m=10, all_vehicles=True)
+    assert [action.vehicle_id for action in manager.actions_for(frame)] == ["a", "b"]
 
 
 def test_conflicting_assignments_are_rejected() -> None:
@@ -73,4 +76,23 @@ def test_conflicting_assignments_are_rejected() -> None:
     )
     manager = AgentManager(config, None, {"first": Agent(), "second": Agent()})  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="multiple agents"):
-        manager.actions_for(_frame())
+        manager.actions_for(local_observations(_frame(), radius_m=10, all_vehicles=True))
+
+
+def test_agent_receives_only_assigned_ego_observations() -> None:
+    class RecordingAgent(Agent):
+        received: tuple[VehicleObservation, ...] = ()
+
+        def decide(
+            self, observations: tuple[VehicleObservation, ...]
+        ) -> tuple[VehicleControlRequest, ...]:
+            self.received = observations
+            return super().decide(observations)
+
+    agent = RecordingAgent()
+    config = _config((Binding(name="first", wrapper="x:Y", vehicle_ids=("a",)),))
+    manager = AgentManager(config, None, {"first": agent})  # type: ignore[arg-type]
+    frame = local_observations(_frame(), radius_m=10, all_vehicles=True)
+    manager.actions_for(frame)
+    assert [item.ego.vehicle_id for item in agent.received] == ["a"]
+    assert [item.vehicle.vehicle_id for item in agent.received[0].nearby_vehicles] == ["b"]
