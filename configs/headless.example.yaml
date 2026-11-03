@@ -1,0 +1,24 @@
+# Run: trafficverse run --config configs/headless.example.yaml --scenario image2road
+schema_version: '1.0'
+map_id: image2road
+max_steps: 100  # Includes the first empty step used to obtain observations.
+step_delay_s: 0
+request_timeout_s: 30
+observation_radius_m: 100
+
+# Empty bindings let SUMO control every vehicle; no model is called.
+bindings: []
+# To enable an agent, replace bindings: [] with a binding like this:
+# bindings:
+#   - name: api_driver
+#     wrapper: trafficverse.agent_harness.models.api:ApiModel
+#     vehicle_ids: [car_001]  # Use a vehicle ID that occurs in the scenario.
+#     model:
+#       base_url: https://example.com/v1
+#       model_id: your-model
+#       api_key_env: MODEL_API_KEY  # Name of an environment variable, not the key itself.
+#       timeout_s: 30
+#     memory:
+#       enabled: false
+#       max_steps: 10
+#     skills: []

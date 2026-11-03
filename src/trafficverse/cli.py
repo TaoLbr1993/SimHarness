@@ -167,6 +167,9 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=_repository_root() / "artifacts/maps",
     )
+    headless = subcommands.add_parser("run", help="run an agent simulation without a desktop")
+    headless.add_argument("--config", type=Path, required=True, help="headless YAML configuration")
+    headless.add_argument("--scenario", default=None, help="override the configured SUMO map ID")
     return parser
 
 
@@ -502,6 +505,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
     try:
+        if args.command == "run":
+            from trafficverse.agent_harness.headless import run_headless
+
+            return run_headless(args.config, _repository_root(), args.scenario)
         if args.command == "doctor":
             return _run_doctor(args)
         if args.command == "scenario" and args.scenario_command == "validate":

@@ -4,148 +4,166 @@
 
 <h1 align="center">SimHarness</h1>
 
-<p align="center">面向交通仿真的智能体 Harness，围绕仿真流程连接智能体与车辆控制。</p>
+<p align="center">
+  <a href="https://github.com/TaoLbr1993/SimHarness/stargazers"><img src="https://img.shields.io/github/stars/TaoLbr1993/SimHarness?style=flat" alt="GitHub stars"></a>
+  <img src="https://img.shields.io/badge/Python-3.10-blue?logo=python&amp;logoColor=white" alt="Python 3.10">
+  <img src="https://img.shields.io/badge/Simulator-SUMO-18a999" alt="SUMO simulator">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+</p>
 
-<p align="center"><a href="docs/index.md">中文文档</a> · <a href="docs/en/index.md">English Documentation</a></p>
+<p align="center">An agent harness for traffic simulation, connecting agents and vehicle control through a simulation-centered workflow.</p>
 
-SimHarness 基于 SUMO 提供交通仿真、车辆观测和控制接口，支持外部程序将不同类型的智能体接入同一个交通场景，并通过桌面界面查看仿真过程。项目也提供可选的 Agent Harness，用于运行大模型或自定义车辆控制器。
+<p align="center">English · <a href="README.zh-CN.md">简体中文</a> · <a href="docs/en/index.md">English Documentation</a> · <a href="docs/index.md">中文文档</a></p>
 
-## 核心特性
+## SimHarness
 
-### Agent Native
+SimHarness is an **agent-native harness for traffic simulation**. With a single command, it can connect local LLMs, LLM APIs, and Jev-style decision models to a traffic simulation. It also provides components such as Memory and Skills for traffic agents, making it easier to set up and run simulations.
 
-支持接入本地和远程大模型服务、Jev 以及自定义智能体。Agent Harness 提供车辆分配、模型调用和动作提交的运行流程，并支持按需启用 Memory 和驾驶风格 Skill。
+### Core Features
 
-### Simulation-Centric
+- **Agent Native:** Run traffic simulations with local or remote LLM services, Jev, or custom agents. SimHarness provides a workflow for assigning vehicles, calling models, and submitting actions, with optional Memory and driving-style Skills.
 
-以交通仿真为中心组织智能体与车辆的交互。外部程序可以获取车辆及其周边范围内的观测，控制部分车辆；其余车辆继续由 SUMO 控制。同一个场景可以接入大模型，也可以接入规则策略或其他非模型算法。
+- **Simulation-Centric:** SimHarness is built around the traffic simulation loop. It provides interfaces for observing vehicles and nearby traffic and controlling selected vehicles, allowing LLM agents to interact with the simulation. The same scenario can also accommodate rule-based policies and other non-model algorithms.
 
-## 功能概览
+### Functionality
 
-- **SUMO 场景运行**：加载 `configs/maps/` 下的 SUMO 场景，运行交通仿真。
-- **车辆观测与控制**：按距离获取邻车信息，通过接口批量提交车辆动作；支持目标速度、加速度、换道和停车请求。
-- **外部智能体接入**：支持通过 API 接入，也可使用 Agent Harness 按车辆 ID 或场景中的自动驾驶等级分配控制器。
-- **大模型与自定义控制器**：提供 OpenAI 兼容接口及 Jev 封装，也支持实现自定义 Python 控制器。
-- **Memory 与 Skill**：可选的车辆短期记忆与驾驶风格配置，默认均不启用。
-- **可视化与回放**：通过桌面界面查看交通仿真，支持保存、查看和回放正式仿真结果。
+- **Vehicle observation and control:** Obtain nearby vehicles within a distance radius and submit vehicle actions in batches, including speed, acceleration, lane-change, and stop requests.
+- **External agent integration:** Connect through the API or use the Agent Harness to assign controllers by vehicle ID or the scenario's automation level.
+- **Models and custom controllers:** Use OpenAI-compatible and Jev adapters, or implement a custom Python controller.
+- **Memory and Skills:** Optionally provide short-term per-vehicle memory and driving-style instructions. Both are disabled by default.
+- **Visualization and replay:** View traffic in the desktop interface and save, inspect, and replay simulation runs.
 
-## 系统架构
+### Architecture
 
-```text
-                     ┌───────────────────────────┐
-                     │     桌面可视化界面          │
-                     │  场景配置、运行状态、回放    │
-                     └─────────────┬─────────────┘
-                                   │ REST / WebSocket
-┌──────────────────────┐           │
-│   外部程序 / Agent     │           ▼
-│                      │    ┌─────────────────────────┐
-│  模型或自定义控制器     │◄──►│   SimHarness 应用层       │
-│  可选 Memory / Skill   │    │ 实验管理、局部观测、动作   │
-└──────────────────────┘    └────────────┬────────────┘
-                                         │ TraCI
-                                         ▼
-                                ┌─────────────────┐
-                                │       SUMO      │
-                                │ 交通状态与仿真推进 │
-                                └─────────────────┘
+```mermaid
+flowchart LR
+    UI["Desktop UI<br/>Configure · Visualize · Replay"]
+    External["External program<br/>Custom agent or algorithm"]
+
+    subgraph Agent["Agent Harness · optional external process"]
+        Manager["Agent Manager<br/>Vehicle assignment & decisions"]
+        Controller["Models / custom controllers"]
+        Context["Memory & Skills<br/>(optional)"]
+        Manager <--> Controller
+        Context -.-> Manager
+    end
+
+    subgraph SimHarness["SimHarness · simulation application"]
+        API["REST / WebSocket API"]
+        Simulation["Experiment & simulation manager"]
+        Observation["Local observation mapping"]
+        API -->|"step & vehicle actions"| Simulation
+        Simulation -->|"traffic snapshot"| Observation
+        Observation -->|"local observations"| API
+        Simulation -->|"global frames & events"| API
+    end
+
+    SUMO[("SUMO<br/>Traffic simulation")]
+    UI <-->|"configuration & live data"| API
+    External <-->|"steps & observations"| API
+    Manager <-->|"steps & observations"| API
+    Simulation <-->|"TraCI: actions & state"| SUMO
+
+    classDef interface fill:#e8f8f7,stroke:#0d9e9a,color:#123a45
+    classDef core fill:#edf3fb,stroke:#24558b,color:#12345b
+    classDef engine fill:#fff4dd,stroke:#db9919,color:#593c0a
+    class UI,External,Manager,Controller,Context interface
+    class API,Simulation,Observation core
+    class SUMO engine
 ```
 
-SUMO 是交通状态的来源。外部控制模式下，仿真等待外部程序提交动作，再推进下一步；本轮没有动作的车辆交由 SUMO 控制。车辆观测目前基于 SUMO 状态按平面距离筛选，不模拟传感器误差或遮挡。
+SUMO is the source of traffic state. In external control mode, the simulation waits for a program to submit actions before advancing. Vehicles without actions are controlled by SUMO. Local observations currently filter SUMO state by XY distance; they do not simulate sensor errors or occlusion.
 
-## 快速开始
+## News
 
-### 环境要求
+- **(2026-11-02)** SimHarness was released.
 
-- Python 3.10 和 [uv](https://docs.astral.sh/uv/)。
-- 安装 [SUMO](https://sumo.dlr.de/docs/Downloads.php)，并确保终端的 `PATH` 中可以找到 `sumo`。
-- 桌面界面需要图形环境。
+## Quick Start
 
-### 安装
+Run a SUMO scenario and optional agents with one command, without starting a desktop UI or a separate backend.
+
+### Prerequisites
+
+- Python 3.10 and [uv](https://docs.astral.sh/uv/).
+- [SUMO](https://sumo.dlr.de/docs/Downloads.php), with `sumo` on `PATH` or in an installed Python `sumo` package.
+
+### Installation
 
 ```bash
 git clone https://github.com/TaoLbr1993/SimHarness.git
 cd SimHarness
-uv sync --frozen --extra sumo --extra ui
+uv sync --frozen --extra sumo
 ```
 
-### 运行交通仿真
-
-在第一个终端启动后端：
+### Run a Scenario
 
 ```bash
-uv run trafficverse serve --host 127.0.0.1 --port 8000
+uv run trafficverse run --config configs/headless.example.yaml --scenario image2road
 ```
 
-在第二个终端启动普通交通界面：
+The command starts a temporary local backend, creates and runs the experiment, and shuts it down when finished. `--scenario` selects a SUMO scenario ID discovered under `configs/maps/`.
 
-```bash
-uv run trafficverse traffic-ui --api-url http://127.0.0.1:8000
+The [example configuration](configs/headless.example.yaml) defaults to `bindings: []`: no model is called, and SUMO controls all vehicles. Each run saves its summary and per-step requests and observations under `artifacts/headless/<run-id>/`. With no bindings, no selected-vehicle observations are recorded.
+
+### Connect an Agent
+
+To control vehicles, copy the example configuration and replace the empty `bindings` with a model and vehicle assignment:
+
+```yaml
+bindings:
+  - name: api_driver
+    wrapper: trafficverse.agent_harness.models.api:ApiModel
+    vehicle_ids: [car_001]  # Replace with a vehicle ID in the scenario.
+    model:
+      base_url: https://example.com/v1
+      model_id: your-model
+      api_key_env: MODEL_API_KEY
+      timeout_s: 30
 ```
 
-在界面中进入工作区，创建仿真并选择 SUMO 场景，然后开始运行。项目内的 `image2road` 是可用于尝试的场景之一；也可以将完整的 SUMO 场景目录放入 `configs/maps/`，通过场景中的 `.sumocfg` 加载。
+Set `MODEL_API_KEY` in the environment before running; the YAML contains only the variable name. Replace the URL and model ID with those of your OpenAI-compatible service. Memory and Skills are optional. See the [headless guide](docs/en/headless-run.md) for the full configuration, local models, Jev, and result format.
 
-## 接入智能体
+To use the desktop UI instead, follow [Getting Started](docs/en/getting-started.md). To connect an independent program directly, see the [external control API](docs/en/external-step-api.md).
 
-下面以桌面端实验连接 Agent Harness 为例：
-
-1. 按照快速开始启动后端和桌面界面。
-2. 创建仿真时勾选“等待外部 Agent 控制”，开始仿真，并从运行页面复制实验 ID。
-3. 编辑 [`configs/agent-harness.example.yaml`](configs/agent-harness.example.yaml)，填入 `experiment_id`，根据需要配置 `bindings`、模型服务和实际车辆 ID。
-4. 在项目根目录启动 Agent：
-
-   ```bash
-   uv run python -m trafficverse.agent_harness --config configs/agent-harness.example.yaml
-   ```
-
-示例配置默认使用空的 `bindings`：此时 Agent 不会调用模型，车辆由 SUMO 控制，可先用于检查接入流程。配置模型前，需要准备对应模型服务；API 密钥通过环境变量提供。
-
-Agent 按配置取得车辆的局部观测，调用控制器并批量提交动作。局部观测半径由 `observation_radius_m` 设置，默认 100 米。模型请求失败或返回无效动作时，相应动作会被省略，由 SUMO 控制车辆。
-
-通过实验 ID 接入时，实验需要处于运行中且尚未步进。Agent 进程结束后，不会自动停止由桌面端创建的实验；可以在桌面端停止。完整配置、Memory 和 Skill 的用法见 [Agent Harness 使用说明](src/trafficverse/agent_harness/README.md)。
-
-外部程序也可以不使用内置 Agent Harness，直接通过同步步进 API 接入。请求格式和控制语义见 [外部程序同步控制车辆](docs/EXTERNAL_STEP_API.md)。
-
-## 项目结构
+## Project Structure
 
 ```text
 SimHarness/
-├── src/trafficverse/        # 仿真应用、API、SUMO 适配和 Agent Harness
-├── ui/                      # 桌面界面与地图展示
-├── configs/                 # 场景、地图和 Agent 配置
-├── contracts/               # API 与消息契约
-├── docs/                    # 项目文档
-├── tests/                   # 单元、契约与集成测试
-└── scripts/                 # 开发和资产处理脚本
+├── src/trafficverse/        # Simulation application, API, SUMO adapter, Agent Harness
+├── ui/                      # Desktop interface and map visualization
+├── configs/                 # Scenario, map, and agent configuration
+├── contracts/               # API and message contracts
+├── docs/                    # Project documentation
+├── tests/                   # Unit, contract, and integration tests
+└── scripts/                 # Development and asset-processing scripts
 ```
 
 ## Future Features
 
- - 支持交通灯等其他交通元素的控制
- - 适配highway-env、carla等其他仿真工具
- - 更多的感知域方式
- - 接口化的评估函数接入和展示
- - 更多的Agent控制模式
+- Control of other traffic elements, such as traffic lights.
+- Support for other simulators, such as highway-env and CARLA.
+- Additional observation methods.
+- Integration and display of evaluation functions through defined interfaces.
+- More agent control modes.
 
+## Documentation
 
+- [Documentation home](docs/en/index.md)
+- [Getting started](docs/en/getting-started.md)
+- [Run without a desktop](docs/en/headless-run.md)
+- [Agent Harness guide](docs/en/agent-harness.md)
+- [External control API](docs/en/external-step-api.md)
+- [Memory and Skills](docs/en/memory-and-skills.md)
+- [Map asset catalog and supported formats](docs/MAP_ASSET_CATALOG.md) (Chinese)
+- [Current architecture and data flow](docs/en/architecture.md)
+- [System design and target architecture](docs/SYSTEM_DESIGN.md) (Chinese)
+- [Agent development guide](docs/AGENT_DEVELOPMENT_GUIDE.md) (Chinese)
 
-## 文档
+Some design documents describe target architectures or historical proposals. Refer to the current implementation and feature guides when using the system.
 
-- [文档入口](docs/index.md)
-- [安装与运行](docs/GETTING_STARTED.md)
-- [Agent Harness 使用说明](src/trafficverse/agent_harness/README.md)
-- [外部程序同步控制车辆](docs/EXTERNAL_STEP_API.md)
-- [Memory 与 Skill 设计和使用](docs/AGENT_MEMORY_SKILL_DESIGN.md)
-- [地图资产目录与支持格式](docs/MAP_ASSET_CATALOG.md)
-- [当前架构与数据流](docs/ARCHITECTURE.md)
-- [系统设计与目标架构](docs/SYSTEM_DESIGN.md)
-- [Agent 开发指南](docs/AGENT_DEVELOPMENT_GUIDE.md)
+## Contributing and License
 
-部分系统设计文档包含目标架构和历史方案，使用时请结合当前代码与对应功能说明。
-
-## 贡献与许可证
-
-欢迎通过 GitHub Issue 反馈问题或提出建议，也欢迎通过 Pull Request 参与改进。运行项目检查：
+Issues and pull requests are welcome. To run project checks:
 
 ```bash
 uv run ruff format --check .
@@ -154,4 +172,4 @@ uv run mypy src tests
 uv run pytest
 ```
 
-仓库根目录目前尚未声明项目许可证。
+This project is licensed under the [MIT License](LICENSE).

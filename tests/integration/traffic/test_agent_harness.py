@@ -306,3 +306,56 @@ def test_cli_runs_against_http_server_and_real_sumo(tmp_path: Path) -> None:
         server.should_exit = True
         thread.join(timeout=10)
         assert not thread.is_alive()
+
+
+@pytest.mark.skipif(
+    os.getenv("TRAFFICVERSE_SUMO_PACKAGE_INTEGRATION") != "1" or shutil.which("sumo") is None,
+    reason="requires real SUMO",
+)
+def test_headless_run_records_agent_actions_and_sumo_results(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import json
+
+    from trafficverse.agent_harness import headless
+
+    config_path = tmp_path / "run.yaml"
+    config_path.write_text(
+        yaml.safe_dump(
+            {
+                "map_id": "image2road",
+                "max_steps": 3,
+                "bindings": [
+                    {
+                        "name": "test",
+                        "wrapper": "test:Agent",
+                        "automation_levels": ["L0", "L1", "L2", "L3", "L4", "L5"],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(headless, "load_agent", lambda binding: TestAgent())
+    assert headless.run_headless(config_path, ROOT, output_root=tmp_path / "output") == 0
+    summary_file = next((tmp_path / "output").glob("*/summary.json"))
+    summary = json.loads(summary_file.read_text(encoding="utf-8"))
+    records = [
+        json.loads(line)
+        for line in summary_file.with_name("steps.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert summary["status"] == "COMPLETED"
+    assert summary["steps"] == len(records) == 3
+    assert records[0]["response"]["observations"]
+    assert records[1]["request"]["actions"]
+    assert records[1]["response"]["observations"]
+    assert records[1]["response"]["sequence"] == 2
+
+
+def test_headless_rejects_unknown_sumo_scenario(tmp_path: Path) -> None:
+    from trafficverse.agent_harness.headless import run_headless
+
+    config = tmp_path / "run.yaml"
+    config.write_text("map_id: no-such-scenario\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="SUMO scenario is missing or invalid"):
+        run_headless(config, ROOT, output_root=tmp_path / "output")
