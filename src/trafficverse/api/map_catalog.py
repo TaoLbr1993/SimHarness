@@ -9,8 +9,9 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 import yaml
+from pydantic import ValidationError
 
-from trafficverse.api.models import MapImportJob, MapSummary
+from trafficverse.api.models import GeneratedScenarioSummary, MapImportJob, MapSummary
 from trafficverse.config.loader import load_map_manifest, validate_map_manifest
 from trafficverse.config.models import MapManifest
 from trafficverse.domain.enums import ErrorCode
@@ -30,6 +31,7 @@ class _MapEntry:
     package: SumoScenarioPackage | None = None
     errors: tuple[str, ...] = ()
     config_path: Path | None = None
+    generated_scenario: GeneratedScenarioSummary | None = None
 
 
 def _validate_manifest(path: Path) -> MapManifest:
@@ -54,17 +56,21 @@ class MapCatalog:
             raise ValueError("maximum map upload size must be positive")
         self._artifact_root = artifact_root
         self._maximum_upload_bytes = maximum_upload_bytes
+        self._package_root = package_root.resolve() if package_root is not None else None
+        self._registered_directories: set[Path] = set()
         self._entries: dict[str, _MapEntry] = {}
         self._jobs: dict[UUID, MapImportJob] = {}
         self._tasks: set[asyncio.Task[None]] = set()
         for directory in built_in_directories:
             self._register_directory(directory, package_root=package_root or directory)
+            self._registered_directories.add(directory.resolve())
 
     @property
     def maximum_upload_bytes(self) -> int:
         return self._maximum_upload_bytes
 
     def list_maps(self) -> tuple[MapSummary, ...]:
+        self._discover_new_packages()
         summaries = []
         for map_id, entry in sorted(self._entries.items()):
             if entry.manifest is not None:
@@ -101,9 +107,28 @@ class MapCatalog:
                         else ((entry.config_path.name,) if entry.config_path is not None else ())
                     ),
                     validation_errors=entry.errors,
+                    generated_scenario=entry.generated_scenario,
                 )
             )
         return tuple(summaries)
+
+    def _discover_new_packages(self) -> None:
+        """Discover published native packages without rebuilding existing catalog entries."""
+        root = self._package_root
+        if root is None or not root.is_dir():
+            return
+        for directory in sorted(root.iterdir()):
+            if directory.name.startswith(".") or not directory.is_dir():
+                continue
+            resolved = directory.resolve()
+            if not resolved.is_relative_to(root) or resolved in self._registered_directories:
+                continue
+            # Core manifest assets retain their startup validation path. Empty/staging
+            # directories are not registered, so later completed publication is discoverable.
+            if (directory / "manifest.yaml").is_file() or not any(directory.glob("*.sumocfg")):
+                continue
+            self._register_directory(directory, package_root=root)
+            self._registered_directories.add(resolved)
 
     def manifest(self, map_id: str) -> MapManifest:
         entry = self._require_entry(map_id)
@@ -227,14 +252,39 @@ class MapCatalog:
                     allowed_root=package_root,
                     package_id=map_id,
                 )
-                entry = _MapEntry(directory=directory, package=package, config_path=config_path)
-            except SumoPackageError as error:
+                generated_scenario = self._generated_scenario(directory)
+                entry = _MapEntry(
+                    directory=directory,
+                    package=package,
+                    config_path=config_path,
+                    generated_scenario=generated_scenario,
+                )
+            except (SumoPackageError, OSError, ValueError) as error:
                 entry = _MapEntry(
                     directory=directory,
                     errors=(str(error),),
                     config_path=config_path,
                 )
             self._register_entry(map_id, entry)
+
+    @staticmethod
+    def _generated_scenario(directory: Path) -> GeneratedScenarioSummary | None:
+        """Read optional draft parameters from the package's selected manifest only."""
+        manifest_path = next(iter(sorted(directory.glob("*.manifest.json"))), None)
+        if manifest_path is None:
+            return None
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        spec = payload.get("spec") if isinstance(payload, dict) else None
+        if not isinstance(spec, dict) or "nl2map" not in spec:
+            return None
+        try:
+            return GeneratedScenarioSummary.model_validate(spec["nl2map"])
+        except ValidationError as error:
+            details = "; ".join(
+                f"{'.'.join(map(str, item['loc']))}: {item['msg']}"
+                for item in error.errors(include_input=False, include_url=False)
+            )
+            raise SumoPackageError(f"invalid NL2MAP scenario metadata: {details}") from error
 
     def _register_entry(self, map_id: str, entry: _MapEntry) -> None:
         if map_id in self._entries:

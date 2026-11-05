@@ -349,6 +349,121 @@ components:
       - expected_sequence
       title: ExternalStepRequest
       type: object
+    GeneratedAutomationShare:
+      additionalProperties: false
+      description: Actual departure allocation, rather than requested fractional percentages.
+      properties:
+        level:
+          enum:
+          - L0
+          - L1
+          - L2
+          - L3
+          - L4
+          - L5
+          title: Level
+          type: string
+        share_percent:
+          maximum: 100.0
+          minimum: 0.0
+          title: Share Percent
+          type: number
+        vehicle_count:
+          maximum: 20000.0
+          minimum: 0.0
+          title: Vehicle Count
+          type: integer
+      required:
+      - level
+      - vehicle_count
+      - share_percent
+      title: GeneratedAutomationShare
+      type: object
+    GeneratedScenarioSummary:
+      additionalProperties: false
+      description: Declared NL2MAP scene inputs; these fields contain no simulation
+        observations.
+      properties:
+        automation_mix:
+          items:
+            $ref: '#/components/schemas/GeneratedAutomationShare'
+          maxItems: 6
+          title: Automation Mix
+          type: array
+        description:
+          maxLength: 8000
+          minLength: 1
+          title: Description
+          type: string
+        desired_density_veh_per_km_lane:
+          exclusiveMinimum: 0.0
+          maximum: 120.0
+          title: Desired Density Veh Per Km Lane
+          type: number
+        duration_s:
+          maximum: 3600.0
+          minimum: 60.0
+          title: Duration S
+          type: integer
+        inflow_veh_per_hour_per_lane:
+          anyOf:
+          - exclusiveMinimum: 0.0
+            maximum: 10000.0
+            type: number
+          - type: 'null'
+          title: Inflow Veh Per Hour Per Lane
+        planned_vehicles:
+          maximum: 20000.0
+          minimum: 1.0
+          title: Planned Vehicles
+          type: integer
+        seed:
+          maximum: 2147483647.0
+          minimum: 0.0
+          title: Seed
+          type: integer
+        simulation_mode:
+          default: traffic
+          enum:
+          - traffic
+          - autonomy
+          title: Simulation Mode
+          type: string
+        task_id:
+          pattern: ^\d{8}_\d{6}_[0-9a-f]{6}$
+          title: Task Id
+          type: string
+        traffic_state:
+          enum:
+          - free_flow
+          - moderate
+          - congested
+          title: Traffic State
+          type: string
+        unverified_requirements:
+          items:
+            maxLength: 8000
+            minLength: 1
+            type: string
+          maxItems: 32
+          title: Unverified Requirements
+          type: array
+        warmup_s:
+          maximum: 3500.0
+          minimum: 0.0
+          title: Warmup S
+          type: integer
+      required:
+      - task_id
+      - description
+      - traffic_state
+      - desired_density_veh_per_km_lane
+      - planned_vehicles
+      - duration_s
+      - warmup_s
+      - seed
+      title: GeneratedScenarioSummary
+      type: object
     HTTPValidationError:
       properties:
         detail:
@@ -482,6 +597,10 @@ components:
             type: string
           title: Files
           type: array
+        generated_scenario:
+          anyOf:
+          - $ref: '#/components/schemas/GeneratedScenarioSummary'
+          - type: 'null'
         kind:
           default: core_run
           enum:

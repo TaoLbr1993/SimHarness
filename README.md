@@ -35,42 +35,7 @@ SimHarness is an **agent-native harness for traffic simulation**. With a single 
 
 ### Architecture
 
-```mermaid
-flowchart LR
-    UI["Desktop UI<br/>Configure · Visualize · Replay"]
-    External["External program<br/>Custom agent or algorithm"]
-
-    subgraph Agent["Agent Harness · optional external process"]
-        Manager["Agent Manager<br/>Vehicle assignment & decisions"]
-        Controller["Models / custom controllers"]
-        Context["Memory & Skills<br/>(optional)"]
-        Manager <--> Controller
-        Context -.-> Manager
-    end
-
-    subgraph SimHarness["SimHarness · simulation application"]
-        API["REST / WebSocket API"]
-        Simulation["Experiment & simulation manager"]
-        Observation["Local observation mapping"]
-        API -->|"step & vehicle actions"| Simulation
-        Simulation -->|"traffic snapshot"| Observation
-        Observation -->|"local observations"| API
-        Simulation -->|"global frames & events"| API
-    end
-
-    SUMO[("SUMO<br/>Traffic simulation")]
-    UI <-->|"configuration & live data"| API
-    External <-->|"steps & observations"| API
-    Manager <-->|"steps & observations"| API
-    Simulation <-->|"TraCI: actions & state"| SUMO
-
-    classDef interface fill:#e8f8f7,stroke:#0d9e9a,color:#123a45
-    classDef core fill:#edf3fb,stroke:#24558b,color:#12345b
-    classDef engine fill:#fff4dd,stroke:#db9919,color:#593c0a
-    class UI,External,Manager,Controller,Context interface
-    class API,Simulation,Observation core
-    class SUMO engine
-```
+![SimHarness architecture](docs/assets/simharness-architecture.png)
 
 SUMO is the source of traffic state. In external control mode, the simulation waits for a program to submit actions before advancing. Vehicles without actions are controlled by SUMO. Local observations currently filter SUMO state by XY distance; they do not simulate sensor errors or occlusion.
 

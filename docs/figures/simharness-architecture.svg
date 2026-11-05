@@ -1,0 +1,111 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1390" viewBox="0 0 1800 1390"><rect width="100%" height="100%" fill="#ffffff" /><defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#23384d" /></marker></defs>
+<rect x="18" y="18" width="1764" height="1354" rx="24" fill="#eaf5fd" stroke="#27333d" stroke-width="1.5" />
+<text x="57" y="67.5" text-anchor="start" dominant-baseline="central" font-family="Arial, sans-serif" font-size="43" fill="#122e4a" font-weight="700">SimHarness</text>
+<text x="60" y="110.5" text-anchor="start" dominant-baseline="central" font-family="Arial, sans-serif" font-size="22" fill="#44637a" font-weight="400">A Traffic Frame-Centric Simulation &amp; Agent Harness</text>
+<rect x="43" y="145" width="1714" height="287" rx="15" fill="#fff0f3" stroke="#283744" stroke-width="1.5" />
+<text x="889" y="173.5" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="23" fill="#152b40" font-weight="700">Agent Harness  |  Traffic-aware Agent Decision</text>
+<rect x="65" y="205" width="500" height="192" rx="15" fill="#fbcdd2" stroke="#283744" stroke-width="1.5" />
+<text x="315.0" y="232.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="21" fill="#152b40" font-weight="700">Agent Management</text>
+<rect x="80.0" y="256.0" width="229.0" height="56.5" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="194.5" y="284.25" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Vehicle assignment</text>
+<rect x="321.0" y="256.0" width="229.0" height="56.5" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="435.5" y="284.25" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Decision orchestration</text>
+<rect x="80.0" y="324.5" width="229.0" height="56.5" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="194.5" y="352.75" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Action validation</text>
+<rect x="321.0" y="324.5" width="229.0" height="56.5" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="435.5" y="352.75" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Batch action submission</text>
+<rect x="583" y="205" width="545" height="192" rx="15" fill="#cec9f4" stroke="#283744" stroke-width="1.5" />
+<text x="855.5" y="232.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="21" fill="#152b40" font-weight="700">Model &amp; Controller</text>
+<rect x="598.0" y="256.0" width="251.5" height="56.5" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="723.75" y="284.25" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Local model wrapper</text>
+<rect x="861.5" y="256.0" width="251.5" height="56.5" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="987.25" y="284.25" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Remote API wrapper</text>
+<rect x="598.0" y="324.5" width="251.5" height="56.5" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="723.75" y="352.75" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Jev adapter</text>
+<rect x="861.5" y="324.5" width="251.5" height="56.5" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="987.25" y="352.75" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Custom controller</text>
+<rect x="1146" y="205" width="588" height="192" rx="15" fill="#bce5db" stroke="#283744" stroke-width="1.5" />
+<text x="1440.0" y="232.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="21" fill="#152b40" font-weight="700">Agent Context</text>
+<rect x="1161.0" y="256.0" width="273.0" height="56.5" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="1297.5" y="284.25" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Local vehicle observation</text>
+<rect x="1446.0" y="256.0" width="273.0" height="56.5" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="1582.5" y="284.25" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Memory · optional</text>
+<rect x="1161.0" y="324.5" width="273.0" height="56.5" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="1297.5" y="352.75" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Driving skills · optional</text>
+<rect x="1446.0" y="324.5" width="273.0" height="56.5" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="1582.5" y="352.75" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Next-state feedback</text>
+<rect x="43" y="459" width="1714" height="114" rx="15" fill="#c2e2fa" stroke="#283744" stroke-width="1.5" />
+<text x="889.0" y="484.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="21" fill="#152b40" font-weight="700">Interaction Interface  |  Simulation APIs</text>
+<rect x="67" y="511" width="500" height="42" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="317.0" y="532.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Experiment &amp; scenario management</text>
+<rect x="584" y="511" width="545" height="42" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="856.5" y="532.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Simulation stepping &amp; vehicle control</text>
+<rect x="1147" y="511" width="587" height="42" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="1440.5" y="532.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Traffic observation &amp; live updates</text>
+<rect x="43" y="600" width="1714" height="349" rx="15" fill="#d9edfc" stroke="#283744" stroke-width="1.5" />
+<text x="889" y="628.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="23" fill="#152b40" font-weight="700">Traffic Simulation Capability Layer</text>
+<rect x="65" y="663" width="533" height="245" rx="15" fill="#a7d4f6" stroke="#283744" stroke-width="1.5" />
+<text x="331.5" y="690.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="21" fill="#152b40" font-weight="700">Scenario Management</text>
+<rect x="80.0" y="714.0" width="245.5" height="51.333333333333336" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="202.75" y="739.6666666666666" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Workspace &amp; scenarios</text>
+<rect x="337.5" y="714.0" width="245.5" height="51.333333333333336" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="460.25" y="739.6666666666666" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">SUMO package discovery</text>
+<rect x="80.0" y="777.3333333333334" width="245.5" height="51.333333333333336" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="202.75" y="803.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Map catalog / validation</text>
+<rect x="337.5" y="777.3333333333334" width="245.5" height="51.333333333333336" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="460.25" y="803.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Simulation configuration</text>
+<rect x="80.0" y="840.6666666666666" width="245.5" height="51.333333333333336" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="202.75" y="866.3333333333333" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">OpenDRIVE import</text>
+<rect x="337.5" y="840.6666666666666" width="245.5" height="51.333333333333336" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="460.25" y="866.3333333333333" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Display GeoJSON</text>
+<rect x="616" y="663" width="534" height="245" rx="15" fill="#a7d4f6" stroke="#283744" stroke-width="1.5" />
+<text x="883.0" y="690.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="21" fill="#152b40" font-weight="700">Multi-Vehicle Interaction</text>
+<rect x="631.0" y="714.0" width="246.0" height="51.333333333333336" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="754.0" y="739.6666666666666" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Vehicle selection</text>
+<rect x="889.0" y="714.0" width="246.0" height="51.333333333333336" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="1012.0" y="739.6666666666666" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Ego state</text>
+<rect x="631.0" y="777.3333333333334" width="246.0" height="51.333333333333336" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="754.0" y="803.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Nearby vehicles · XY radius</text>
+<rect x="889.0" y="777.3333333333334" width="246.0" height="51.333333333333336" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="1012.0" y="803.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Local observations</text>
+<rect x="631.0" y="840.6666666666666" width="246.0" height="51.333333333333336" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="754.0" y="866.3333333333333" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Speed / acceleration</text>
+<rect x="889.0" y="840.6666666666666" width="246.0" height="51.333333333333336" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="1012.0" y="866.3333333333333" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Lane change / stop</text>
+<rect x="1168" y="663" width="566" height="245" rx="15" fill="#a7d4f6" stroke="#283744" stroke-width="1.5" />
+<text x="1451.0" y="690.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="21" fill="#152b40" font-weight="700">Simulation Management</text>
+<rect x="1183.0" y="714.0" width="262.0" height="51.333333333333336" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="1314.0" y="739.6666666666666" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Experiment lifecycle</text>
+<rect x="1457.0" y="714.0" width="262.0" height="51.333333333333336" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="1588.0" y="739.6666666666666" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Simulation manager / runner</text>
+<rect x="1183.0" y="777.3333333333334" width="262.0" height="51.333333333333336" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="1314.0" y="803.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Synchronous stepping</text>
+<rect x="1457.0" y="777.3333333333334" width="262.0" height="51.333333333333336" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="1588.0" y="803.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Sequence control</text>
+<rect x="1183.0" y="840.6666666666666" width="262.0" height="51.333333333333336" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="1314.0" y="866.3333333333333" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Traffic frames &amp; events</text>
+<rect x="1457.0" y="840.6666666666666" width="262.0" height="51.333333333333336" rx="9" fill="#f4f7fa" stroke="#293744" stroke-width="1.5" />
+<text x="1588.0" y="866.3333333333333" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="16" fill="#152b40" font-weight="400">Run history &amp; replay</text>
+<rect x="43" y="976" width="1714" height="304" rx="15" fill="#fff1db" stroke="#283744" stroke-width="1.5" />
+<text x="889" y="1005.5" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="23" fill="#152b40" font-weight="700">Traffic Simulation Core</text>
+<line x1="514" y1="457" x2="514" y2="434" stroke="#23384d" stroke-width="2" marker-end="url(#a)" />
+<line x1="547" y1="434" x2="547" y2="457" stroke="#23384d" stroke-width="2" marker-end="url(#a)" />
+<line x1="514" y1="598" x2="514" y2="575" stroke="#23384d" stroke-width="2" marker-end="url(#a)" />
+<line x1="547" y1="575" x2="547" y2="598" stroke="#23384d" stroke-width="2" marker-end="url(#a)" />
+<line x1="514" y1="974" x2="514" y2="951" stroke="#23384d" stroke-width="2" marker-end="url(#a)" />
+<line x1="547" y1="951" x2="547" y2="974" stroke="#23384d" stroke-width="2" marker-end="url(#a)" />
+<line x1="855" y1="457" x2="855" y2="434" stroke="#23384d" stroke-width="2" marker-end="url(#a)" />
+<line x1="888" y1="434" x2="888" y2="457" stroke="#23384d" stroke-width="2" marker-end="url(#a)" />
+<line x1="855" y1="598" x2="855" y2="575" stroke="#23384d" stroke-width="2" marker-end="url(#a)" />
+<line x1="888" y1="575" x2="888" y2="598" stroke="#23384d" stroke-width="2" marker-end="url(#a)" />
+<line x1="855" y1="974" x2="855" y2="951" stroke="#23384d" stroke-width="2" marker-end="url(#a)" />
+<line x1="888" y1="951" x2="888" y2="974" stroke="#23384d" stroke-width="2" marker-end="url(#a)" />
+<line x1="1196" y1="457" x2="1196" y2="434" stroke="#23384d" stroke-width="2" marker-end="url(#a)" />
+<line x1="1229" y1="434" x2="1229" y2="457" stroke="#23384d" stroke-width="2" marker-end="url(#a)" />
+<line x1="1196" y1="598" x2="1196" y2="575" stroke="#23384d" stroke-width="2" marker-end="url(#a)" />
+<line x1="1229" y1="575" x2="1229" y2="598" stroke="#23384d" stroke-width="2" marker-end="url(#a)" />
+<line x1="1196" y1="974" x2="1196" y2="951" stroke="#23384d" stroke-width="2" marker-end="url(#a)" />
+<line x1="1229" y1="951" x2="1229" y2="974" stroke="#23384d" stroke-width="2" marker-end="url(#a)" />
+<text x="899.0" y="1325.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="18" fill="#3b5264" font-weight="400">Frame-centered loop: Traffic Frame → observations → agent decisions → vehicle actions → SUMO step → next Traffic Frame</text>
+<rect x="65" y="1041" width="870" height="186" rx="15" fill="#ffdfb4" stroke="#283744" stroke-width="1.5" /><text x="500.0" y="1070.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="22" fill="#152b40" font-weight="700">Simulation Engine &amp; Adapter</text><rect x="85" y="1106" width="400" height="42" rx="9" fill="#fffaf0" stroke="#293744" stroke-width="1.5" /><text x="285.0" y="1127.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="17" fill="#152b40" font-weight="400">Current implementation: SUMO / TraCI</text><rect x="500" y="1106" width="415" height="42" rx="9" fill="#fffaf0" stroke="#293744" stroke-width="1.5" /><text x="707.5" y="1127.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="17" fill="#152b40" font-weight="400">Traffic state &amp; vehicle actions</text><rect x="85" y="1165" width="400" height="42" rx="9" fill="#fffaf0" stroke="#293744" stroke-width="1.5" /><text x="285.0" y="1186.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="17" fill="#152b40" font-weight="400">Road network · vehicles · signals</text><rect x="500" y="1165" width="415" height="42" rx="9" fill="#fffaf0" stroke="#293744" stroke-width="1.5" /><text x="707.5" y="1186.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="17" fill="#152b40" font-weight="400">Advance simulation &amp; read state</text><rect x="1025" y="1041" width="708" height="186" rx="15" fill="#d3e8fa" stroke="#283744" stroke-width="1.5" /><text x="1379.0" y="1071.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="21" fill="#152b40" font-weight="700">Traffic Frame  |  Simulation Foundation</text><rect x="1045" y="1106" width="668" height="42" rx="9" fill="#f5f9fd" stroke="#293744" stroke-width="1.5" /><text x="1379.0" y="1127.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="17" fill="#152b40" font-weight="400">Vehicle states · Simulation time · Sequence</text><rect x="1045" y="1165" width="668" height="42" rx="9" fill="#f5f9fd" stroke="#293744" stroke-width="1.5" /><text x="1379.0" y="1186.0" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif" font-size="17" fill="#152b40" font-weight="400">Foundation for observation &amp; interaction</text><line x1="936" y1="1135" x2="1023" y2="1135" stroke="#23384d" stroke-width="2" marker-end="url(#a)" /></svg>

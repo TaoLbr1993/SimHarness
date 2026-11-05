@@ -8,6 +8,7 @@ from uuid import UUID
 
 import pytest
 
+from trafficverse.api.map_catalog import MapCatalog
 from trafficverse.domain.enums import AutomationLevel, ErrorCode, SimulationRunKind
 from trafficverse.domain.errors import TrafficVerseError
 from trafficverse.domain.models import AutomationDemand, SimulationConfigurationDraft
@@ -166,6 +167,34 @@ def test_save_with_empty_automation_demand_preserves_original_route_file(
     assert route_option is not None
     assert end_option.attrib["value"] == "60"
     assert route_option.attrib["value"] == "demo.rou.xml"
+
+
+def test_published_generated_scene_preserves_scripted_demand_when_ui_has_counts(
+    tmp_path: Path,
+) -> None:
+    maps_root = tmp_path / "configs/maps"
+    config_path = _package(maps_root)
+    manifest = config_path.with_name("scenario.manifest.json")
+    manifest.write_text(
+        json.dumps({"spec": {"name": "Generated congestion", "trafficDemandMode": "scripted"}}),
+        encoding="utf-8",
+    )
+    original = config_path.with_name("demo.rou.xml").read_bytes()
+    catalog = MapCatalog((), artifact_root=tmp_path / "maps", package_root=maps_root)
+    assert catalog.list_maps()[0].validated
+    store = SumoSimulationConfigurationStore(
+        package_resolver=catalog.sumo_package,
+        configuration_root=tmp_path / "configs/configs",
+        simulation_artifact_root=tmp_path / "artifacts/simulations",
+        test_artifact_root=tmp_path / "artifacts/tests",
+    )
+
+    snapshot = store.save(_draft())
+
+    copied = tmp_path / snapshot.relative_directory / "demo/demo.rou.xml"
+    assert copied.read_bytes() == original
+    assert config_path.with_name("demo.rou.xml").read_bytes() == original
+    assert not tuple((tmp_path / "artifacts").glob("simulations/*"))
 
 
 def test_save_preserves_scripted_accident_vehicles_when_demands_are_present(

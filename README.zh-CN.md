@@ -35,42 +35,7 @@ SimHarness 是一个面向交通仿真的 **Agent Native Harness**。通过一�
 
 ### 系统架构
 
-```mermaid
-flowchart LR
-    UI["桌面界面<br/>配置 · 展示 · 回放"]
-    External["外部程序<br/>自定义 Agent 或算法"]
-
-    subgraph Agent["Agent Harness · 可选外部进程"]
-        Manager["Agent Manager<br/>车辆分配与决策"]
-        Controller["模型 / 自定义控制器"]
-        Context["Memory 与 Skill<br/>（可选）"]
-        Manager <--> Controller
-        Context -.-> Manager
-    end
-
-    subgraph SimHarness["SimHarness · 仿真应用"]
-        API["REST / WebSocket API"]
-        Simulation["实验与仿真管理"]
-        Observation["局部观测映射"]
-        API -->|"步进与车辆动作"| Simulation
-        Simulation -->|"交通快照"| Observation
-        Observation -->|"局部观测"| API
-        Simulation -->|"全局帧与事件"| API
-    end
-
-    SUMO[("SUMO<br/>交通仿真")]
-    UI <-->|"配置与实时数据"| API
-    External <-->|"步进与观测"| API
-    Manager <-->|"步进与观测"| API
-    Simulation <-->|"TraCI：动作与状态"| SUMO
-
-    classDef interface fill:#e8f8f7,stroke:#0d9e9a,color:#123a45
-    classDef core fill:#edf3fb,stroke:#24558b,color:#12345b
-    classDef engine fill:#fff4dd,stroke:#db9919,color:#593c0a
-    class UI,External,Manager,Controller,Context interface
-    class API,Simulation,Observation core
-    class SUMO engine
-```
+![SimHarness 系统架构](docs/assets/simharness-architecture.png)
 
 SUMO 是交通状态的来源。外部控制模式下，仿真等待外部程序提交动作，再推进下一步；本轮没有动作的车辆交由 SUMO 控制。车辆观测目前基于 SUMO 状态按平面距离筛选，不模拟传感器误差或遮挡。
 

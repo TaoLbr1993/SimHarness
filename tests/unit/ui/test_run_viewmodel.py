@@ -4,6 +4,7 @@ from uuid import UUID
 
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QApplication
+from ui.api_client.scenario_generator import ScenarioGeneratorClient
 from ui.models import (
     AutomationDemand,
     ControlAvailability,
@@ -14,6 +15,7 @@ from ui.models import (
     ReplayWindow,
     SimulationConfigurationDraft,
 )
+from ui.models.scenario_revision import ScenarioRevisionRequest
 from ui.viewmodels import RunViewModel
 
 EXPERIMENT_ID = UUID("00000000-0000-0000-0000-000000000010")
@@ -181,6 +183,184 @@ def _viewmodel() -> tuple[RunViewModel, FakeRest, FakeRealtime]:
     realtime = FakeRealtime()
     viewmodel = RunViewModel(rest, realtime, SCENARIO_ID)  # type: ignore[arg-type]
     return viewmodel, rest, realtime
+
+
+class FakeGenerator(ScenarioGeneratorClient):
+    def __init__(self) -> None:
+        super().__init__()
+        self.descriptions: list[str] = []
+        self.publications: list[str] = []
+        self.modes: list[str] = []
+        self.revisions: list[tuple[str, ScenarioRevisionRequest | dict[str, object] | int]] = []
+
+    def generate(self, description: str, *, simulation_mode: str = "traffic") -> None:
+        self.descriptions.append(description)
+        self.modes.append(simulation_mode)
+
+    def publish(self, task_id: str) -> None:
+        self.publications.append(task_id)
+
+    def revise(
+        self, task_id: str, revision: ScenarioRevisionRequest | dict[str, object] | int
+    ) -> None:
+        self.revisions.append((task_id, revision))
+
+
+def test_late_previous_selection_cannot_replace_current_scene_network() -> None:
+    vm, rest, _ = _viewmodel()
+    networks: list[object] = []
+    assets: list[tuple[str, object]] = []
+    vm.network_changed.connect(networks.append)
+    vm.asset_network_changed.connect(lambda map_id, network: assets.append((map_id, network)))
+    vm.handle_rest_success(
+        "maps.list",
+        [
+            {
+                "map_id": map_id,
+                "kind": "sumo",
+                "validated": True,
+                "network_schema_version": "sumo-net/display-1.0",
+                "manifest_available": False,
+            }
+            for map_id in ("previous", "generated")
+        ],
+    )
+    vm.select_map("generated")
+    assert ("network", "previous") in rest.calls
+    assert ("network", "generated") in rest.calls
+    current_network = {"type": "FeatureCollection", "features": [], "name": "generated"}
+    previous_network = {"type": "FeatureCollection", "features": [], "name": "previous"}
+    vm.handle_rest_success("map.network:generated", current_network)
+    vm.handle_rest_success("map.network:previous", previous_network)
+    assert networks == [current_network]
+    vm.handle_rest_success("asset.map.network:previous", previous_network)
+    assert assets == [("previous", previous_network)]
+    assert networks == [current_network]
+
+
+def test_scene_generation_refreshes_and_selects_draft_without_creating_experiment() -> None:
+    _app()
+    rest, realtime, generator = FakeRest(), FakeRealtime(), FakeGenerator()
+    vm = RunViewModel(rest, realtime, SCENARIO_ID, generator=generator)  # type: ignore[arg-type]
+    selected: list[str] = []
+    states: list[tuple[bool, str]] = []
+    publication_states: list[tuple[bool, str]] = []
+    vm.generated_scene_selected.connect(selected.append)
+    vm.generation_state_changed.connect(lambda busy, text: states.append((busy, text)))
+    vm.publication_state_changed.connect(lambda busy, text: publication_states.append((busy, text)))
+    vm.generate_scene("测试拥堵车速", simulation_mode="autonomy")
+    vm.generate_scene("不能并行重复生成")
+    assert generator.descriptions == ["测试拥堵车速"]
+    assert generator.modes == ["autonomy"]
+    assert not rest.calls
+    map_id = "nl2-20261104_100000_aabbcc"
+    task_id = map_id.removeprefix("nl2-")
+    generator.draft_ready.emit({"task_id": task_id})
+    assert not rest.calls and not generator.publications
+    vm.publish_scene(task_id)
+    assert not generator.publications
+    generator.preview_ready.emit("20261104_000000_ffffff", b"stale image")
+    vm.publish_scene(task_id)
+    assert not generator.publications
+    generator.preview_ready.emit(task_id, b"actual image")
+    vm.publish_scene(task_id)
+    vm.publish_scene(task_id)
+    assert generator.publications == [task_id]
+    generator.succeeded.emit(map_id)
+    assert rest.calls == [("maps", None)]
+    vm.handle_rest_failure("maps.list", "服务不可达")
+    assert not publication_states[-1][0]
+    assert "Scene saved" in publication_states[-1][1]
+    vm.refresh_maps()
+    vm.handle_rest_success(
+        "maps.list",
+        [
+            {
+                "map_id": map_id,
+                "kind": "sumo",
+                "validated": True,
+                "network_schema_version": "sumo-net/display-1.0",
+                "manifest_available": False,
+                "generated_scenario": {
+                    "task_id": "20261104_100000_aabbcc",
+                    "description": "测试拥堵车速",
+                    "traffic_state": "congested",
+                    "desired_density_veh_per_km_lane": 65,
+                    "planned_vehicles": 1300,
+                    "duration_s": 600,
+                    "warmup_s": 120,
+                    "seed": 42,
+                    "inflow_veh_per_hour_per_lane": 1950,
+                },
+            }
+        ],
+    )
+    assert selected == [map_id]
+    assert not publication_states[-1][0]
+    assert "no simulation has started" in publication_states[-1][1]
+    vm.publish_scene(task_id)
+    assert generator.publications == [task_id]
+    assert vm.experiment_id is None
+    assert not realtime.sent
+    assert all(call[0] in {"maps", "network"} for call in rest.calls)
+    vm.generate_scene("再生成一个场景")
+    generator.failed.emit("缺少地点")
+    assert states[-1] == (False, "缺少地点")
+    vm.generate_scene("生成十字路口")
+    assert len(generator.descriptions) == 3
+
+
+def test_scene_generation_failure_exposes_reason_and_allows_retry_without_experiment() -> None:
+    _app()
+    rest, realtime, generator = FakeRest(), FakeRealtime(), FakeGenerator()
+    vm = RunViewModel(rest, realtime, SCENARIO_ID, generator=generator)  # type: ignore[arg-type]
+    events: list[tuple[str, object]] = []
+    vm.generation_state_changed.connect(
+        lambda busy, message: events.append(("state", (busy, message)))
+    )
+    vm.scene_generation_failed.connect(lambda message: events.append(("failure", message)))
+    description = "生成北航附近 1 公里路网"
+    reason = "地图服务连接超时，请稍后重试。"
+
+    vm.generate_scene(description)
+    vm.generate_scene(description)
+    assert generator.descriptions == [description]
+    generator.failed.emit(reason)
+    assert events[-2:] == [("state", (False, reason)), ("failure", reason)]
+
+    vm.generate_scene(description)
+    assert generator.descriptions == [description, description]
+    assert not rest.calls and not generator.publications and not realtime.sent
+    assert vm.experiment_id is None
+
+
+def test_revision_waits_for_new_map_preview_and_retains_source_after_failure() -> None:
+    _app()
+    rest, realtime, generator = FakeRest(), FakeRealtime(), FakeGenerator()
+    vm = RunViewModel(rest, realtime, SCENARIO_ID, generator=generator)  # type: ignore[arg-type]
+    states: list[tuple[bool, str]] = []
+    vm.revision_state_changed.connect(lambda busy, text: states.append((busy, text)))
+    source_id, revised_id = "20261104_100000_aabbcc", "20261104_100003_ccddee"
+    generator.draft_ready.emit({"task_id": source_id})
+    generator.preview_ready.emit(source_id, b"old map")
+    vm.revise_scene(source_id, 500)
+    vm.revise_scene(source_id, 600)
+    vm.publish_scene(source_id)
+    assert generator.revisions == [(source_id, 500)] and not generator.publications
+    generator.revision_failed.emit("发车计划更新失败")
+    assert states[-1] == (False, "发车计划更新失败")
+    vm.revise_scene(source_id, 500)
+    generator.draft_ready.emit({"task_id": revised_id, "parent_task_id": source_id})
+    assert not states[-1][0]
+    vm.publish_scene(source_id)
+    vm.publish_scene(revised_id)
+    generator.preview_ready.emit(source_id, b"late old map")
+    vm.publish_scene(revised_id)
+    assert not generator.publications
+    generator.preview_ready.emit(revised_id, b"new map")
+    vm.publish_scene(revised_id)
+    assert generator.publications == [revised_id]
+    assert vm.experiment_id is None and not rest.calls and not realtime.sent
 
 
 def _enter_workspace(viewmodel: RunViewModel) -> None:

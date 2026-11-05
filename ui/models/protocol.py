@@ -77,6 +77,31 @@ class Envelope(ProtocolModel):
     payload: JsonValue
 
 
+class GeneratedAutomationShare(ProtocolModel):
+    """Actual departure allocation, rather than requested fractional percentages."""
+
+    level: Literal["L0", "L1", "L2", "L3", "L4", "L5"]
+    vehicle_count: int = Field(ge=0, le=20000)
+    share_percent: float = Field(ge=0, le=100, allow_inf_nan=False)
+
+
+class GeneratedScenarioSummary(ProtocolModel):
+    """Unexecuted demand settings accompanying a language-generated SUMO package."""
+
+    task_id: str
+    description: str
+    traffic_state: Literal["free_flow", "moderate", "congested"]
+    desired_density_veh_per_km_lane: float
+    planned_vehicles: int
+    duration_s: int
+    warmup_s: int
+    seed: int
+    inflow_veh_per_hour_per_lane: float | None
+    unverified_requirements: tuple[str, ...] = ()
+    simulation_mode: Literal["traffic", "autonomy"] = "traffic"
+    automation_mix: tuple[GeneratedAutomationShare, ...] = ()
+
+
 class MapSummary(ProtocolModel):
     map_id: str = Field(min_length=1)
     kind: Literal["core_run", "sumo"] = "core_run"
@@ -92,6 +117,7 @@ class MapSummary(ProtocolModel):
     sumo_end_time_ms: int | None = Field(default=None, ge=0)
     files: tuple[str, ...] = ()
     validation_errors: tuple[str, ...] = ()
+    generated_scenario: GeneratedScenarioSummary | None = None
 
 
 class MapManifest(ProtocolModel):

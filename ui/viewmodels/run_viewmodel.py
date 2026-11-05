@@ -11,6 +11,7 @@ from uuid import UUID
 from PySide6.QtCore import QObject, QTimer, Signal
 
 from ui.api_client import RealtimeClient, RestApiClient
+from ui.api_client.scenario_generator import ScenarioGeneratorClient
 from ui.models import (
     AgentApiSummary,
     ControlAvailability,
@@ -32,6 +33,7 @@ from ui.models import (
     WorkspaceSummary,
     WorldState,
 )
+from ui.scene_language import Language, normalize_language, text
 
 _AUTOMATION_LEVELS = ("L0", "L1", "L2", "L3", "L4", "L5")
 _SNAPSHOT_RECOVERY_INTERVAL_MS = 1_000
@@ -65,6 +67,15 @@ class RunViewModel(QObject):
     replay_network_changed = Signal(str, object)
     replay_window_changed = Signal(object)
     notification = Signal(str, str)
+    generation_state_changed = Signal(bool, str)
+    scene_generation_failed = Signal(str)
+    generated_scene_selected = Signal(str)
+    scene_draft_ready = Signal(object)
+    scene_preview_ready = Signal(bytes)
+    scene_preview_failed = Signal(str)
+    publication_state_changed = Signal(bool, str)
+    scene_published = Signal(str)
+    revision_state_changed = Signal(bool, str)
 
     def __init__(
         self,
@@ -72,11 +83,28 @@ class RunViewModel(QObject):
         realtime: RealtimeClient,
         scenario_id: UUID,
         parent: QObject | None = None,
+        *,
+        generator: ScenarioGeneratorClient | None = None,
     ) -> None:
         super().__init__(parent)
         self._rest = rest
         self._realtime = realtime
         self._scenario_id = scenario_id
+        self._generator = generator or ScenarioGeneratorClient(self)
+        self._scene_language: Language = "en"
+        self._generation_busy = False
+        self._pending_generated_map_id: str | None = None
+        self._draft_task_id: str | None = None
+        self._draft_preview_loaded = False
+        self._published_draft_map_id: str | None = None
+        self._revision_source_id: str | None = None
+        self._generator.draft_ready.connect(self._scene_draft_ready)
+        self._generator.preview_ready.connect(self._scene_preview_ready)
+        self._generator.preview_failed.connect(self._scene_preview_failed)
+        self._generator.succeeded.connect(self._generated_scene_published)
+        self._generator.failed.connect(self._generation_failed)
+        self._generator.publication_failed.connect(self._publication_failed)
+        self._generator.revision_failed.connect(self._revision_failed)
         self._workspaces: tuple[WorkspaceSummary, ...] = ()
         self._selected_workspace_id: UUID | None = None
         self._active_workspace_id: UUID | None = None
@@ -141,6 +169,184 @@ class RunViewModel(QObject):
 
     def search_workspaces(self, query: str) -> None:
         self._rest.list_workspaces(query.strip() or None)
+
+    def set_scene_language(self, language: str) -> None:
+        """Change studio presentation without changing its authored scene or requests."""
+        self._scene_language = normalize_language(language)
+        self._generator.set_language(self._scene_language)
+
+    def _scene_text(self, zh: str, en: str) -> str:
+        return text(self._scene_language, zh, en)
+
+    def generate_scene(self, description: str, *, simulation_mode: str = "traffic") -> None:
+        """Generate a private preview; only confirmation adds it to the catalog."""
+        if self._generation_busy:
+            return
+        if not description.strip():
+            self.generation_state_changed.emit(
+                False, self._scene_text("请先填写场景描述。", "Describe the scene first.")
+            )
+            return
+        self._generation_busy = True
+        self._pending_generated_map_id = None
+        self._draft_task_id = None
+        self._draft_preview_loaded = False
+        self._published_draft_map_id = None
+        self.generation_state_changed.emit(
+            True,
+            self._scene_text(
+                "正在理解需求、生成路网与车辆计划……",
+                "Interpreting your request and building the map and traffic plan…",
+            ),
+        )
+        self._generator.generate(description.strip(), simulation_mode=simulation_mode)
+
+    def _scene_draft_ready(self, payload: object) -> None:
+        if not isinstance(payload, dict) or not isinstance(payload.get("task_id"), str):
+            self._generation_failed(
+                self._scene_text(
+                    "无法读取场景草稿，请重新生成。",
+                    "Could not read the scene draft. Please generate it again.",
+                )
+            )
+            return
+        self._draft_task_id = payload["task_id"]
+        self._generation_busy = False
+        self._draft_preview_loaded = False
+        self._published_draft_map_id = None
+        self._pending_generated_map_id = None
+        revised = self._revision_source_id is not None
+        self._revision_source_id = None
+        self.scene_draft_ready.emit(payload)
+        if revised:
+            self.revision_state_changed.emit(
+                False,
+                self._scene_text(
+                    "场景设定已更新，发车计划已同步。",
+                    "Scene settings and the departure plan have been updated.",
+                ),
+            )
+        self.generation_state_changed.emit(
+            False,
+            self._scene_text(
+                "预览已生成；查看地图和设定后，确认添加到场景。",
+                "Preview ready. Review the map and settings, then confirm to add the scene.",
+            ),
+        )
+
+    def revise_scene(self, task_id: str, revision: dict[str, object] | int) -> None:
+        if self._generation_busy:
+            return
+        if task_id != self._draft_task_id:
+            self._revision_failed(
+                self._scene_text(
+                    "当前草稿已变化，请查看当前预览后再修改。",
+                    "The draft has changed. Review the current preview before editing.",
+                )
+            )
+            return
+        self._generation_busy = True
+        self._revision_source_id = task_id
+        self.revision_state_changed.emit(
+            True,
+            self._scene_text(
+                "正在应用场景设定并更新发车计划……",
+                "Applying settings and updating the departure plan…",
+            ),
+        )
+        self._generator.revise(task_id, revision)
+
+    def _revision_failed(self, message: str) -> None:
+        self._generation_busy = False
+        self._revision_source_id = None
+        self.revision_state_changed.emit(False, message)
+
+    def _scene_preview_ready(self, task_id: str, data: bytes) -> None:
+        if task_id == self._draft_task_id:
+            self._draft_preview_loaded = True
+            self.scene_preview_ready.emit(data)
+
+    def _scene_preview_failed(self, task_id: str, message: str) -> None:
+        if task_id == self._draft_task_id:
+            self._draft_preview_loaded = False
+            self.scene_preview_failed.emit(message)
+
+    def retry_scene_preview(self, task_id: str) -> None:
+        if task_id == self._draft_task_id:
+            self._generator.load_preview(task_id)
+
+    def publish_scene(self, task_id: str) -> None:
+        if self._generation_busy:
+            return
+        if task_id != self._draft_task_id or not self._draft_preview_loaded:
+            self._publication_failed(
+                self._scene_text(
+                    "请先加载当前草稿的地图预览，再添加到场景。",
+                    "Load the current map preview before adding this scene.",
+                )
+            )
+            return
+        if self._published_draft_map_id is not None:
+            self.scene_published.emit(self._published_draft_map_id)
+            self.refresh_maps()
+            return
+        self._generation_busy = True
+        self.publication_state_changed.emit(
+            True, self._scene_text("正在添加场景……", "Adding the scene…")
+        )
+        self._generator.publish(task_id)
+
+    def _publication_failed(self, message: str) -> None:
+        self._generation_busy = False
+        self.publication_state_changed.emit(False, message)
+
+    def refresh_maps(self) -> None:
+        """Reload saved scenario packages without generating or starting a run."""
+        self._rest.list_maps()
+
+    def _generated_scene_published(self, map_id: str) -> None:
+        self._published_draft_map_id = map_id
+        self._pending_generated_map_id = map_id
+        self.scene_published.emit(map_id)
+        self.publication_state_changed.emit(
+            True,
+            self._scene_text(
+                "场景已添加，正在刷新系统场景列表……", "Scene added. Refreshing the scene library…"
+            ),
+        )
+        self._rest.list_maps()
+
+    def _generation_failed(self, message: str) -> None:
+        self._generation_busy = False
+        self.generation_state_changed.emit(False, message)
+        self.scene_generation_failed.emit(message)
+
+    def _select_published_scene(self) -> None:
+        map_id = self._pending_generated_map_id
+        if map_id is None:
+            return
+        selected = next((item for item in self._maps if item.map_id == map_id), None)
+        if selected is None or not selected.validated or selected.generated_scenario is None:
+            self._publication_failed(
+                self._scene_text(
+                    f"场景 {map_id} 已保存，但系统尚未加载有效场景信息。"
+                    "请检查两服务的场景目录并刷新列表。",
+                    f"Scene {map_id} was saved, but has not loaded into the system. "
+                    "Check both services' scene directories and refresh the list.",
+                )
+            )
+            return
+        self._pending_generated_map_id = None
+        self._generation_busy = False
+        self.generated_scene_selected.emit(map_id)
+        self.publication_state_changed.emit(
+            False,
+            self._scene_text(
+                "场景已添加，尚未运行。可前往仿真配置查看或启动。",
+                "Scene added; no simulation has started. "
+                "Open Simulation setup to review or run it.",
+            ),
+        )
 
     def select_workspace(self, workspace_id: str) -> None:
         try:
@@ -511,6 +717,7 @@ class RunViewModel(QObject):
         elif operation == "maps.list":
             self._maps = tuple(MapSummary.model_validate(item) for item in _items(payload))
             self.map_catalog_changed.emit(self._maps)
+            self._select_published_scene()
             for item in self._maps:
                 if item.manifest_available:
                     self._rest.get_map_manifest(item.map_id)
@@ -544,7 +751,9 @@ class RunViewModel(QObject):
             map_id = operation.removeprefix("asset.map.network:")
             self.asset_network_changed.emit(map_id, payload)
         elif operation.startswith("map.network:"):
-            self.network_changed.emit(payload)
+            map_id = operation.removeprefix("map.network:")
+            if map_id == self._selected_map_id:
+                self.network_changed.emit(payload)
         elif operation == "map.import.submit" or operation.startswith("map.import:"):
             self._handle_import_job(MapImportJob.model_validate(payload))
         elif operation == "simulation-configuration.save":
@@ -571,6 +780,15 @@ class RunViewModel(QObject):
             self._set_experiment(ExperimentView.model_validate(payload))
 
     def handle_rest_failure(self, operation: str, message: str) -> None:
+        if operation == "maps.list" and self._pending_generated_map_id is not None:
+            self._publication_failed(
+                self._scene_text(
+                    "场景已保存，但刷新系统列表失败：",
+                    "Scene saved, but the library could not refresh: ",
+                )
+                + message
+                + self._scene_text("。可稍后刷新列表。", ". Please refresh it later.")
+            )
         if operation.startswith("map.import"):
             self._import_timer.stop()
         if operation == "experiment.create":

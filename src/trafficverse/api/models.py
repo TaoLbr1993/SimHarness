@@ -61,6 +61,51 @@ class ReadinessResponse(StrictModel):
     components: tuple[ReadinessComponent, ...]
 
 
+class GeneratedAutomationShare(StrictModel):
+    """Actual departure allocation, rather than requested fractional percentages."""
+
+    level: Literal["L0", "L1", "L2", "L3", "L4", "L5"]
+    vehicle_count: int = Field(ge=0, le=20000)
+    share_percent: float = Field(ge=0, le=100, allow_inf_nan=False)
+
+
+class GeneratedScenarioSummary(StrictModel):
+    """Declared NL2MAP scene inputs; these fields contain no simulation observations."""
+
+    task_id: str = Field(pattern=r"^\d{8}_\d{6}_[0-9a-f]{6}$")
+    description: str = Field(min_length=1, max_length=8000)
+    traffic_state: Literal["free_flow", "moderate", "congested"]
+    desired_density_veh_per_km_lane: float = Field(gt=0, le=120, allow_inf_nan=False)
+    planned_vehicles: int = Field(ge=1, le=20000)
+    duration_s: int = Field(ge=60, le=3600)
+    warmup_s: int = Field(ge=0, le=3500)
+    seed: int = Field(ge=0, le=2147483647)
+    inflow_veh_per_hour_per_lane: float | None = Field(
+        default=None, gt=0, le=10000, allow_inf_nan=False
+    )
+    unverified_requirements: list[Annotated[str, Field(min_length=1, max_length=8000)]] = Field(
+        default_factory=list, max_length=32
+    )
+    simulation_mode: Literal["traffic", "autonomy"] = "traffic"
+    automation_mix: list[GeneratedAutomationShare] = Field(default_factory=list, max_length=6)
+
+    @model_validator(mode="after")
+    def warmup_precedes_end(self) -> GeneratedScenarioSummary:
+        if self.warmup_s >= self.duration_s:
+            raise ValueError("scenario warmup must be shorter than duration")
+        if self.automation_mix:
+            if len({item.level for item in self.automation_mix}) != len(self.automation_mix):
+                raise ValueError("scenario automation levels must be unique")
+            if sum(item.vehicle_count for item in self.automation_mix) != self.planned_vehicles:
+                raise ValueError("scenario automation counts must equal planned vehicles")
+            if any(
+                abs(item.share_percent - 100 * item.vehicle_count / self.planned_vehicles) > 1e-6
+                for item in self.automation_mix
+            ):
+                raise ValueError("scenario automation percentages must match vehicle counts")
+        return self
+
+
 class MapSummary(StrictModel):
     map_id: str = Field(min_length=1)
     kind: Literal["core_run", "sumo"] = "core_run"
@@ -76,6 +121,7 @@ class MapSummary(StrictModel):
     sumo_end_time_ms: int | None = Field(default=None, ge=0)
     files: tuple[str, ...] = ()
     validation_errors: tuple[str, ...] = ()
+    generated_scenario: GeneratedScenarioSummary | None = None
 
 
 class MapImportJob(StrictModel):

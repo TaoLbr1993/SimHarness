@@ -29,6 +29,7 @@ from ui.models import (
     WorkspaceOverview,
     WorkspaceSummary,
 )
+from ui.scene_language import Language, text
 from ui.viewmodels import ReplayPlaybackViewModel, RunViewModel
 from ui.views.agent_asset_page import AgentAssetPage
 from ui.views.data_replay_page import DataReplayPage
@@ -38,6 +39,7 @@ from ui.views.map_asset_page import MapAssetPage
 from ui.views.navigation import NavigationRail, WorkspaceNavigationRail
 from ui.views.project_detail_page import ProjectDetailPage
 from ui.views.scene_configuration_page import SceneConfigurationPage
+from ui.views.scene_generation_page import SceneGenerationPage
 from ui.views.system_settings_page import SystemSettingsPage
 from ui.views.theme import DEFAULT_THEME, ThemeMode, configure_application_font, load_stylesheet
 from ui.views.traffic_scene_page import TrafficScenePage
@@ -59,7 +61,12 @@ class MainWindow(QMainWindow):
     """Compose the navigation shell and route view-model state into pages."""
 
     def __init__(
-        self, viewmodel: RunViewModel, *, load_web_map: bool = True, traffic_mode: bool = False
+        self,
+        viewmodel: RunViewModel,
+        *,
+        load_web_map: bool = True,
+        traffic_mode: bool = False,
+        scene_language: Language = "en",
     ) -> None:
         configure_application_font()
         super().__init__()
@@ -92,6 +99,10 @@ class MainWindow(QMainWindow):
         self.scene_page = SceneConfigurationPage(
             load_web_map=load_web_map, traffic_mode=traffic_mode
         )
+        self.generation_page = SceneGenerationPage(
+            traffic_mode=traffic_mode, language=scene_language
+        )
+        self._generation_mode = "traffic" if traffic_mode else "autonomy"
         self.experiments_page = ExperimentManagementPage()
         self.replay_page = DataReplayPage()
         self.traffic_scenes_page = TrafficScenePage(load_web_map=load_web_map)
@@ -107,6 +118,7 @@ class MainWindow(QMainWindow):
             "project": self.project_detail_page,
             "live": self.live_page,
             "scene": self.scene_page,
+            "generate": self.generation_page,
             "experiments": self.experiments_page,
             "replay": self.replay_page,
             "traffic_scenes": self.traffic_scenes_page,
@@ -126,6 +138,8 @@ class MainWindow(QMainWindow):
                 for map_widget in page.findChildren(MapLibreDeckMapWidget):
                     map_widget.set_traffic_presentation(True)
 
+        self._normal_window_title = self.windowTitle()
+        self._viewmodel.set_scene_language(scene_language)
         content = QWidget()
         content_layout = QVBoxLayout(content)
         content_layout.setContentsMargins(0, 0, 0, 0)
@@ -182,6 +196,18 @@ class MainWindow(QMainWindow):
         self.live_page.speed_changed.connect(self._set_live_or_replay_speed)
         self.scene_page.map_selected.connect(vm.select_map)
         self.scene_page.configuration_save_requested.connect(vm.save_configuration)
+        self.scene_page.generation_page_requested.connect(self._open_scene_generator)
+        self.generation_page.generation_requested.connect(
+            lambda description: vm.generate_scene(
+                description, simulation_mode=self._generation_mode
+            )
+        )
+        self.generation_page.publish_requested.connect(vm.publish_scene)
+        self.generation_page.revision_requested.connect(vm.revise_scene)
+        self.generation_page.preview_retry_requested.connect(vm.retry_scene_preview)
+        self.generation_page.configure_requested.connect(self._configure_generated_scene)
+        self.generation_page.language_changed.connect(self._apply_scene_language)
+        self.scene_page.refresh_requested.connect(vm.refresh_maps)
         self.scene_page.launch_requested.connect(self._launch_scene_configuration)
         self.scene_page.test_requested.connect(self._test_scene_configuration)
         self.traffic_scenes_page.scene_selected.connect(self._launch_traffic_scenario)
@@ -201,6 +227,15 @@ class MainWindow(QMainWindow):
         vm.workspace_context_changed.connect(self._set_workspace_context)
         vm.agent_catalog_changed.connect(self.agents_page.set_agents)
         vm.map_catalog_changed.connect(self._set_maps)
+        vm.generation_state_changed.connect(self.generation_page.set_generation_state)
+        vm.scene_generation_failed.connect(self.generation_page.set_generation_error)
+        vm.scene_draft_ready.connect(self.generation_page.set_draft)
+        vm.scene_preview_ready.connect(self.generation_page.set_preview_image)
+        vm.scene_preview_failed.connect(self.generation_page.set_preview_error)
+        vm.publication_state_changed.connect(self.generation_page.set_publication_state)
+        vm.revision_state_changed.connect(self.generation_page.set_revision_state)
+        vm.scene_published.connect(self.generation_page.set_published)
+        vm.generated_scene_selected.connect(self.scene_page.select_generated_scene)
         vm.map_manifest_changed.connect(self.maps_page.set_manifest)
         vm.asset_network_changed.connect(self.maps_page.set_preview_network)
         vm.asset_network_changed.connect(self.traffic_scenes_page.set_preview_network)
@@ -237,6 +272,7 @@ class MainWindow(QMainWindow):
         if page is None:
             return
         self.page_stack.setCurrentWidget(page)
+        self._apply_scene_language(self.generation_page.language)
         self.navigation.set_active(key)
         if key != "replay":
             self.navigation.set_history_selection(None)
@@ -246,6 +282,29 @@ class MainWindow(QMainWindow):
             )
         else:
             self.navigation.set_traffic_scene_selection(None)
+
+    def _apply_scene_language(self, language: str) -> None:
+        self._viewmodel.set_scene_language(language)
+        studio_active = self.page_stack.currentWidget() is self.generation_page
+        self.navigation.set_scene_language(language if studio_active else "zh")
+        self.setWindowTitle(
+            text(language, "TrafficVerse · 场景工坊", "TrafficVerse · Scene Studio")
+            if studio_active
+            else self._normal_window_title
+        )
+
+    def _open_scene_generator(self) -> None:
+        if not self.generation_page.description.text().strip():
+            self.generation_page.description.setText(self.scene_page.description.toPlainText())
+        self._show_page("generate")
+
+    def _configure_generated_scene(self, map_id: str) -> None:
+        if self.scene_page.map_combo.findData(map_id) < 0:
+            self._viewmodel.refresh_maps()
+            self._show_notice("warning", "场景列表尚未加载，请稍后再次进入仿真配置。")
+            return
+        self.scene_page.select_generated_scene(map_id)
+        self._show_page("scene")
 
     @Slot(str)
     def _show_replay(self, record_id: str) -> None:
@@ -664,6 +723,7 @@ class MainWindow(QMainWindow):
         self.project_detail_page.refresh_action_icons(theme)
         self.live_page.map_widget.set_theme(theme.value)
         self.scene_page.map_widget.set_theme(theme.value)
+        self.generation_page.set_theme(theme.value)
         self.workspace_page.preview_map.set_theme(theme.value)
         self.maps_page.map_widget.set_theme(theme.value)
         self.traffic_scenes_page.set_theme(theme.value)

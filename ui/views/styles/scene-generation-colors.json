@@ -1,0 +1,15 @@
+{
+  "gradient": ["#6a78ef", "#9480ec", "#49bdb3"],
+  "nodes": ["#6175ed", "#9c7de3", "#24b5a4"],
+  "series": ["#6175ed", "#24b5a4", "#f4ad58", "#b582e5", "#ee7c94", "#5eafdc"],
+  "light": {
+    "marker_fill": "#ffffff",
+    "chart_track": "#edf0f8",
+    "chart_text": "#253149"
+  },
+  "dark": {
+    "marker_fill": "#172235",
+    "chart_track": "#334156",
+    "chart_text": "#ecf2ff"
+  }
+}

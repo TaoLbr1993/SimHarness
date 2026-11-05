@@ -33,6 +33,15 @@ class FontFamilies(TypedDict):
     mono: str
 
 
+class SceneStudioColors(TypedDict):
+    gradient: tuple[str, ...]
+    nodes: tuple[str, ...]
+    series: tuple[str, ...]
+    marker_fill: str
+    chart_track: str
+    chart_text: str
+
+
 def configure_application_font() -> None:
     """Set a concrete platform font before Qt resolves its generic aliases."""
     application = QApplication.instance()
@@ -55,6 +64,20 @@ def load_icon_colors(theme: ThemeMode) -> IconColors:
     payload = json.loads((_STYLE_ROOT / "icon-colors.json").read_text(encoding="utf-8"))
     colors = payload[theme.value]
     return IconColors(normal=str(colors["normal"]), active=str(colors["active"]))
+
+
+def load_scene_studio_colors(theme: ThemeMode) -> SceneStudioColors:
+    """Load painter colors from the studio's external theme resource."""
+    payload = json.loads((_STYLE_ROOT / "scene-generation-colors.json").read_text(encoding="utf-8"))
+    colors = payload[theme.value]
+    return SceneStudioColors(
+        gradient=tuple(str(value) for value in payload["gradient"]),
+        nodes=tuple(str(value) for value in payload["nodes"]),
+        series=tuple(str(value) for value in payload["series"]),
+        marker_fill=str(colors["marker_fill"]),
+        chart_track=str(colors["chart_track"]),
+        chart_text=str(colors["chart_text"]),
+    )
 
 
 def _load_platform_fonts() -> FontFamilies:

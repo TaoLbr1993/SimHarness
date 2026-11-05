@@ -77,6 +77,7 @@ pnpm-debug.log*
 /artifacts/
 /logs/
 /configs/configs/
+/configs/maps/nl2-*/
 *.log
 *.parquet
 *.sqlite

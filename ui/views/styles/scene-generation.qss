@@ -1,0 +1,72 @@
+QWidget#sceneGenerationPage { background: #f7f9fd; color: #253149; }
+QWidget#sceneGenerationPage QWidget { font-family: "Microsoft YaHei UI", "PingFang SC", "Noto Sans CJK SC", "Segoe UI", sans-serif; }
+QWidget#studioExamples, QWidget#studioResults, QWidget#studioComposition, QWidget#studioCompositionChart, QWidget#studioRoadMotif { background: transparent; }
+QWidget#studioContent, QWidget#studioHero, QScrollArea#studioScroll { background: transparent; border: none; }
+QWidget#sceneGenerationPage QLabel { background: transparent; border: none; color: #253149; }
+QWidget#sceneGenerationPage QLabel[studioRole="pageTitle"] { font-size: 19px; font-weight: 700; }
+QWidget#sceneGenerationPage QLabel[studioRole="eyebrow"] { font-size: 10px; color: #8b96ab; padding-left: 8px; }
+QWidget#sceneGenerationPage QLabel[studioRole="heroTitle"] { font-size: 34px; font-weight: 700; color: #36445f; }
+QWidget#sceneGenerationPage QLabel[studioRole="previewTitle"] { font-size: 26px; font-weight: 700; }
+QWidget#sceneGenerationPage QLabel[studioRole="subtitle"] { font-size: 14px; color: #7a879d; }
+QWidget#sceneGenerationPage QLabel[studioRole="caption"] { font-size: 12px; color: #8590a4; }
+QWidget#sceneGenerationPage QLabel[studioRole="body"] { font-size: 13px; color: #56647d; }
+QWidget#sceneGenerationPage QLabel[studioRole="cardTitle"] { font-size: 15px; font-weight: 600; }
+QWidget#sceneGenerationPage QLabel[studioRole="statValue"] { font-size: 23px; font-weight: 600; color: #394a68; }
+QWidget#sceneGenerationPage QLabel[studioRole="searchMark"] { font-size: 26px; color: #8792e3; }
+QFrame#studioSearchCard { background: white; border: 1px solid #d8def1; border-radius: 24px; }
+QLineEdit#studioDescription { background: transparent; border: none; font-size: 15px; padding: 8px 0; color: #34425e; selection-background-color: #d9dfff; }
+QWidget#sceneGenerationPage QPushButton { padding: 9px 18px; border-radius: 13px; font-size: 13px; }
+QPushButton#studioGenerateButton, QPushButton#studioPublishButton { background: qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #6879ee,stop:1 #7d68d6); color: white; border: none; font-weight: 600; }
+QPushButton#studioGenerateButton:hover, QPushButton#studioPublishButton:hover { background: #5869db; }
+QPushButton#studioGenerateButton:disabled, QPushButton#studioPublishButton:disabled { background: #e0e4f0; color: #929bb1; }
+QPushButton#studioConfigureButton { color: #6573d9; border: 1px solid #cdd5f4; background: white; }
+QWidget#sceneGenerationPage QPushButton[studioRole="example"] { background: #eef1f9; color: #7c89a4; border: 1px solid transparent; font-size: 12px; border-radius: 15px; padding: 8px 14px; }
+QWidget#sceneGenerationPage QPushButton[studioRole="example"]:hover { background: #e6eafa; color: #586bc4; border-color: #d5dcf4; }
+QWidget#sceneGenerationPage QFrame[studioRole="card"] { background: white; border: 1px solid #e4e9f3; border-radius: 18px; }
+QWidget#sceneGenerationPage QFrame[studioRole="review"] { background: #eef2fc; border: 1px solid #e2e8f8; border-radius: 14px; }
+QWidget#sceneGenerationPage QLabel[studioRole="tag"] { color: #6e82b0; background: #f0f4fc; border-radius: 8px; padding: 4px 9px; font-size: 11px; }
+QWidget#sceneGenerationPage QLabel[studioRole="state"] { color: #a5773d; background: #fff5e9; border-radius: 8px; padding: 4px 9px; font-size: 11px; }
+QLabel#studioMapImage { background: #f9fafc; border-radius: 10px; color: #8a96aa; }
+QFrame#studioDivider { background: #edf0f7; border: none; }
+QSpinBox#studioVehicleCountInput { background: #f7f9fd; color: #34425e; border: 1px solid #d8def1; border-radius: 9px; padding: 6px 10px; font-size: 15px; selection-background-color: #d9dfff; }
+QSpinBox#studioVehicleCountInput:focus { border-color: #7d83e7; }
+QSpinBox#studioVehicleCountInput:disabled { color: #929bb1; background: #f1f3f8; }
+QPushButton#studioApplyCountButton { background: #e9ecff; color: #596bcc; border: 1px solid #cdd5f4; }
+QPushButton#studioApplyCountButton:hover { background: #dce2fc; }
+QPushButton#studioApplyCountButton:disabled { background: #f1f3f8; color: #a2aabd; border-color: #e4e9f3; }
+QWidget#sceneGenerationPage QProgressBar { background: #e7eaf8; border: none; border-radius: 1px; }
+QWidget#sceneGenerationPage QProgressBar::chunk { background: #8b91df; }
+QFrame#studioGenerationError { background: #fff3f0; border: 1px solid #edb5aa; border-radius: 14px; }
+QWidget#sceneGenerationPage QLabel[studioRole="errorTitle"] { color: #a7372a; font-size: 16px; font-weight: 600; }
+QWidget#sceneGenerationPage QLabel[studioRole="errorBody"] { color: #8b382e; font-size: 14px; }
+QWidget#sceneGenerationPage QLabel[studioRole="errorHint"] { color: #986359; font-size: 12px; }
+QWidget#studioSettingsEditor, QWidget#studioAdvancedSettings, QWidget#studioAutomationEditor { background: transparent; }
+QWidget#studioSettingsEditor QSpinBox, QWidget#studioSettingsEditor QDoubleSpinBox, QWidget#studioSettingsEditor QComboBox { background: #f7f9fd; color: #34425e; border: 1px solid #d8def1; border-radius: 8px; padding: 5px 8px; font-size: 14px; selection-background-color: #d9dfff; }
+QWidget#studioSettingsEditor QSpinBox:focus, QWidget#studioSettingsEditor QDoubleSpinBox:focus, QWidget#studioSettingsEditor QComboBox:focus { border-color: #7d83e7; }
+QWidget#studioSettingsEditor QSpinBox:disabled, QWidget#studioSettingsEditor QDoubleSpinBox:disabled { color: #929bb1; background: #f1f3f8; }
+
+QWidget#sceneGenerationPage[studioTheme="dark"] { background: #111a2b; color: #e0e7f5; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QLabel { color: #dce5f6; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QLabel[studioRole="caption"], QWidget#sceneGenerationPage[studioTheme="dark"] QLabel[studioRole="subtitle"], QWidget#sceneGenerationPage[studioTheme="dark"] QLabel[studioRole="eyebrow"] { color: #8b9bb5; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QLabel[studioRole="body"] { color: #b0bfd7; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QFrame#studioSearchCard { background: #1b2941; border-color: #3c4c70; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QLineEdit#studioDescription { color: #e2eaff; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QFrame[studioRole="card"] { background: #18253a; border-color: #2b3b54; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QFrame[studioRole="review"] { background: #1c2b46; border-color: #2c4165; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QPushButton[studioRole="example"] { background: #1b2a43; color: #a0afd2; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QPushButton[studioRole="example"]:hover { background: #2b3d5e; color: #d1dcff; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QPushButton#studioConfigureButton { background: #263553; color: #bccbff; border-color: #3a5080; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QPushButton#studioGenerateButton:disabled, QWidget#sceneGenerationPage[studioTheme="dark"] QPushButton#studioPublishButton:disabled { background: #303b56; color: #7f8eab; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QLabel#studioMapImage { background: #142035; color: #94a4bf; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QLabel[studioRole="tag"] { background: #293b59; color: #adc2ed; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QLabel[studioRole="state"] { background: #453b30; color: #e3bf8c; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QFrame#studioDivider { background: #30405a; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QSpinBox#studioVehicleCountInput { background: #142035; color: #e2eaff; border-color: #3a5080; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QSpinBox#studioVehicleCountInput:disabled { color: #7f8eab; background: #1b2941; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QPushButton#studioApplyCountButton { background: #263553; color: #bccbff; border-color: #3a5080; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QPushButton#studioApplyCountButton:disabled { background: #1b2941; color: #7f8eab; border-color: #2b3b54; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QFrame#studioGenerationError { background: #38282b; border-color: #84534e; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QLabel[studioRole="errorTitle"], QWidget#sceneGenerationPage[studioTheme="dark"] QLabel[studioRole="errorBody"] { color: #ffb9ab; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QLabel[studioRole="errorHint"] { color: #d8aaa2; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QWidget#studioSettingsEditor QSpinBox, QWidget#sceneGenerationPage[studioTheme="dark"] QWidget#studioSettingsEditor QDoubleSpinBox, QWidget#sceneGenerationPage[studioTheme="dark"] QWidget#studioSettingsEditor QComboBox { background: #142035; color: #e2eaff; border-color: #3a5080; }
+QWidget#sceneGenerationPage[studioTheme="dark"] QWidget#studioSettingsEditor QSpinBox:disabled, QWidget#sceneGenerationPage[studioTheme="dark"] QWidget#studioSettingsEditor QDoubleSpinBox:disabled { color: #7f8eab; background: #1b2941; }

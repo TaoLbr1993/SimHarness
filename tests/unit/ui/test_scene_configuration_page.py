@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from ui.models import TRAFFIC_SCENARIO_PRESETS, MapSummary, SimulationConfigurationDraft
+from ui.models.protocol import GeneratedScenarioSummary
 from ui.views.scene_configuration_page import SceneConfigurationPage
 from ui.views.theme import ThemeMode, load_stylesheet
 
@@ -21,6 +22,104 @@ from ui.views.theme import ThemeMode, load_stylesheet
 def _application() -> QApplication:
     existing = QApplication.instance()
     return existing if isinstance(existing, QApplication) else QApplication([])
+
+
+def test_generated_scene_shows_settings_preserves_routes_and_waits_for_manual_launch() -> None:
+    _application()
+    page = SceneConfigurationPage(load_web_map=False)
+    launched: list[object] = []
+    opened: list[bool] = []
+    page.launch_requested.connect(launched.append)
+    page.generation_page_requested.connect(lambda: opened.append(True))
+    page.description.setPlainText("希望测试拥堵场景下车辆速度")
+    page.generate_button.click()
+    assert opened == [True]
+    assert not launched
+    page.add_automation_button.click()
+    page.automation_rows[0].count_input.setValue(999)
+    scene = GeneratedScenarioSummary(
+        task_id="20261104_100000_aabbcc",
+        description="希望测试拥堵场景下车辆速度",
+        traffic_state="congested",
+        desired_density_veh_per_km_lane=65,
+        planned_vehicles=1300,
+        duration_s=600,
+        warmup_s=120,
+        seed=42,
+        inflow_veh_per_hour_per_lane=1950,
+        unverified_requirements=("雨天",),
+    )
+    summary = MapSummary(
+        map_id="nl2-20261104_100000_aabbcc",
+        kind="sumo",
+        display_name="拥堵车速测试",
+        validated=True,
+        network_schema_version="sumo-net/display-1.0",
+        manifest_available=False,
+        generated_scenario=scene,
+    )
+    page.set_maps((summary,))
+    assert page.scene_name.text() == "拥堵车速测试"
+    assert page.duration_time.time() == QTime(0, 10)
+    assert page.current_configuration().automation_demands == ()
+    assert page.automation_section.isHidden()
+    assert "65 辆/公里/车道" in page.generated_summary.text()
+    assert "1300 辆" in page.generated_summary.text()
+    assert "非实测" in page.generated_summary.text()
+    assert "雨天" in page.generated_summary.text()
+    assert not launched
+    assert not page.duration_time.isEnabled()
+    assert "重新生成" in page.duration_time.toolTip()
+    page.set_maps((summary,))
+    assert page.duration_time.time() == QTime(0, 10)
+    page.set_generation_state(True, "正在生成")
+    assert not page.generate_button.isEnabled()
+    assert not page.create_button.isEnabled()
+    page.set_generation_state(False, "场景已保存")
+    page.create_button.click()
+    assert len(launched) == 1
+    assert cast(SimulationConfigurationDraft, launched[0]).automation_demands == ()
+    assert cast(SimulationConfigurationDraft, launched[0]).duration_ms == 600_000
+    plain = summary.model_copy(update={"map_id": "plain", "generated_scenario": None})
+    page.set_maps((summary, plain))
+    page.map_combo.setCurrentIndex(page.map_combo.findData("plain"))
+    assert page.duration_time.isEnabled()
+    page.duration_time.setTime(QTime(0, 8))
+    assert page.current_configuration().duration_ms == 480_000
+    page.close()
+
+
+@pytest.mark.parametrize(
+    "button_name", ["save_configuration_button", "create_button", "test_button"]
+)
+@pytest.mark.parametrize("invalid_field", ["description", "scene_name"])
+def test_invalid_saved_text_is_visible_and_retained_until_user_corrects_it(
+    button_name: str,
+    invalid_field: str,
+) -> None:
+    _application()
+    page = SceneConfigurationPage(load_web_map=False)
+    sent: list[object] = []
+    page.configuration_save_requested.connect(sent.append)
+    page.launch_requested.connect(sent.append)
+    page.test_requested.connect(sent.append)
+    description = "完整的生成需求" * 200 if invalid_field == "description" else "测试拥堵"
+    name = "名" * 201 if invalid_field == "scene_name" else "拥堵车速测试"
+    page.scene_name.setText(name)
+    page.description.setPlainText(description)
+    button = cast(QPushButton, getattr(page, button_name))
+    button.click()
+    assert not sent
+    assert "无法保存或启动" in page.generation_status.text()
+    assert ("1000" if invalid_field == "description" else "200") in page.generation_status.text()
+    assert page.scene_name.text() == name
+    assert page.description.toPlainText() == description
+    page.scene_name.setText("名" * 200)
+    page.description.setPlainText("需" * 1000)
+    button.click()
+    assert len(sent) == 1
+    assert cast(SimulationConfigurationDraft, sent[0]).description == "需" * 1000
+    page.close()
 
 
 def test_scene_configuration_only_lists_direct_sumo_packages() -> None:

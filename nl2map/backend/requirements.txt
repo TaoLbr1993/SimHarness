@@ -3,3 +3,7 @@ uvicorn>=0.29
 openai>=1.30
 python-dotenv>=1.0
 pydantic>=2.5
+roadgen==0.42.0
+Pillow==11.3.0
+pyproj==3.7.1
+pypinyin==0.55.0

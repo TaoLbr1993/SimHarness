@@ -21,6 +21,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+nl2map-preview = [
+  "pypinyin==0.55.0",
+]
 carla = [
   "carla==0.9.16; (sys_platform == 'linux' and platform_machine == 'x86_64') or (sys_platform == 'win32' and platform_machine == 'AMD64')",
 ]

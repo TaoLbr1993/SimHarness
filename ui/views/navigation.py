@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from ui.models import TRAFFIC_SCENARIO_PRESETS, ReplaySummary, WorkspaceSummary
+from ui.scene_language import normalize_language
 from ui.views.element_plus_icons import ICON_SIZE, render_element_plus_icon, render_svg_pixmap
 from ui.views.theme import DEFAULT_THEME, ThemeMode, load_icon_colors
 
@@ -29,6 +30,7 @@ _NAVIGATION_GROUPS = (
     (
         "交通仿真",
         (
+            ("generate", "../scene-spark.svg", "场景生成", None),
             ("scene", "set-up.svg", "仿真配置", None),
             ("experiments", "data-board.svg", "历史仿真", "仿真记录"),
             ("traffic_scenes", "monitor.svg", "交通场景", "场景列表"),
@@ -48,6 +50,26 @@ _BRAND_LOGO = Path(__file__).resolve().parents[1] / "assets/icons/logo.svg"
 _NAVIGATION_RAIL_WIDTH = 260
 _HISTORY_ENTRY_HEIGHT = 32
 _SCENARIO_ENTRY_HEIGHT = 32
+_SCENE_NAV_TEXT = {
+    "交通仿真系统": "Traffic simulation",
+    "TrafficVerse  ·  v0.1\n核心运行控制台": "TrafficVerse  ·  v0.1\nSimulation console",
+    "←  返回工作区": "←  Back to workspaces",
+    "尚未选择工作区": "No workspace selected",
+    "控制中心": "CONTROL CENTER",
+    "交通仿真": "SIMULATION",
+    "资产中心": "ASSETS",
+    "场景生成": "Scene Studio",
+    "仿真配置": "Simulation setup",
+    "历史仿真": "Simulation history",
+    "仿真记录": "Run history",
+    "交通场景": "Traffic scenes",
+    "场景列表": "Scene library",
+    "地图": "Maps",
+    "地图资产": "Map assets",
+    "智能体": "Agents",
+    "API 配置": "API settings",
+    "系统设置": "Settings",
+}
 
 
 class _ExpandableNavigationRow(QWidget):
@@ -173,6 +195,31 @@ class NavigationRail(QWidget):
     def set_workspace(self, name: str) -> None:
         self.workspace_name.setText(name)
         self.workspace_name.setToolTip(name)
+
+    def set_scene_language(self, language: str) -> None:
+        """Localize the studio shell without translating user workspace or scene names."""
+        selected = normalize_language(language)
+        widgets: list[QLabel | QPushButton] = [
+            *self.findChildren(QLabel),
+            *self.findChildren(QPushButton),
+        ]
+        for widget in widgets:
+            if widget is self.workspace_name:
+                continue
+            source = widget.property("studioSourceText") or widget.text()
+            if not isinstance(source, str) or source not in _SCENE_NAV_TEXT:
+                continue
+            widget.setProperty("studioSourceText", source)
+            translated = _SCENE_NAV_TEXT[source] if selected == "en" else source
+            widget.setText(translated)
+            if isinstance(widget, QPushButton):
+                widget.setAccessibleName(translated)
+        self.workspace_name.setAccessibleName(
+            "Open workspace details" if selected == "en" else "打开项目详情"
+        )
+        for key, button in self._expand_buttons.items():
+            label = self._buttons[key].text()
+            button.setAccessibleName(f"Expand {label}" if selected == "en" else f"展开{label}")
 
     def set_active(self, key: str) -> None:
         for button_key, button in self._buttons.items():

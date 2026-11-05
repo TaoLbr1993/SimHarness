@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import platform
 
+from pydantic import ValidationError
 from PySide6.QtCore import Property, QPoint, Qt, QTime, Signal, Slot
 from PySide6.QtGui import QColor, QPainter, QPaintEvent, QPalette, QPen, QPolygon
 from PySide6.QtWidgets import (
@@ -157,6 +158,8 @@ class SceneConfigurationPage(QWidget):
     launch_requested = Signal(object)
     test_requested = Signal(object)
     configuration_save_requested = Signal(object)
+    generation_page_requested = Signal()
+    refresh_requested = Signal()
 
     def __init__(
         self,
@@ -169,6 +172,10 @@ class SceneConfigurationPage(QWidget):
         self.setObjectName("sceneConfigurationPage")
         self._load_web_map = load_web_map
         self._traffic_mode = traffic_mode
+        self._maps: dict[str, MapSummary] = {}
+        self._applied_generated_id: str | None = None
+        self._generation_busy = False
+        self._create_allowed = True
         self.automation_rows: list[_AutomationConfigurationRow] = []
 
         root = QVBoxLayout(self)
@@ -228,6 +235,23 @@ class SceneConfigurationPage(QWidget):
         self.description.setFixedHeight(88)
         layout.addWidget(description_label)
         layout.addWidget(self.description)
+        actions = QHBoxLayout()
+        self.generate_button = QPushButton("打开场景生成  →")
+        self.generate_button.setObjectName("generateLanguageScenarioButton")
+        self.generate_button.clicked.connect(self.generation_page_requested)
+        actions.addWidget(self.generate_button)
+        self.refresh_scenes_button = QPushButton("刷新场景列表")
+        self.refresh_scenes_button.clicked.connect(self.refresh_requested.emit)
+        actions.addWidget(self.refresh_scenes_button)
+        actions.addStretch(1)
+        layout.addLayout(actions)
+        self.generation_status = QLabel(
+            "通过“场景生成”创建预览并确认添加，再在这里配置或启动仿真。"
+        )
+        self.generation_status.setObjectName("scenarioGenerationStatus")
+        self.generation_status.setWordWrap(True)
+        self.generation_status.setTextFormat(Qt.TextFormat.PlainText)
+        layout.addWidget(self.generation_status)
         return section
 
     def _configuration_columns(self) -> QGridLayout:
@@ -266,9 +290,16 @@ class SceneConfigurationPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(16)
         automation = self._automation_configuration()
+        self.automation_section = automation
         if self._traffic_mode:
             automation.hide()
         layout.addWidget(automation)
+        self.generated_summary = QLabel()
+        self.generated_summary.setObjectName("generatedScenarioSummary")
+        self.generated_summary.setWordWrap(True)
+        self.generated_summary.setTextFormat(Qt.TextFormat.PlainText)
+        self.generated_summary.hide()
+        layout.addWidget(self.generated_summary)
         layout.addStretch(1)
         layout.addWidget(self._simulation_parameters())
         layout.addLayout(self._footer_actions())
@@ -342,6 +373,8 @@ class SceneConfigurationPage(QWidget):
         return label
 
     def set_maps(self, maps: tuple[MapSummary, ...]) -> None:
+        current_id = self.map_combo.currentData()
+        self._maps = {item.map_id: item for item in maps if item.kind == "sumo"}
         self.map_combo.blockSignals(True)
         self.map_combo.clear()
         for item in maps:
@@ -351,9 +384,14 @@ class SceneConfigurationPage(QWidget):
             self.map_combo.addItem(name, item.map_id)
         self.map_combo.blockSignals(False)
         if self.map_combo.count():
-            self.map_combo.setCurrentIndex(0)
-            self._select_map(0)
+            preserved_index = self.map_combo.findData(current_id)
+            index = preserved_index if preserved_index >= 0 else 0
+            self.map_combo.blockSignals(True)
+            self.map_combo.setCurrentIndex(index)
+            self.map_combo.blockSignals(False)
+            self._select_map(index)
         else:
+            self._show_generated_scene("")
             self.map_preview_status.setText("暂无可运行的 SUMO 地图资源")
 
     @Slot(object)
@@ -362,8 +400,28 @@ class SceneConfigurationPage(QWidget):
         self.map_preview_status.setText("已加载标准路网预览")
 
     def set_create_enabled(self, enabled: bool) -> None:
-        self.create_button.setEnabled(enabled)
-        self.test_button.setEnabled(enabled)
+        self._create_allowed = enabled
+        self.create_button.setEnabled(enabled and not self._generation_busy)
+        self.test_button.setEnabled(enabled and not self._generation_busy)
+
+    @Slot(bool, str)
+    def set_generation_state(self, busy: bool, message: str) -> None:
+        """Show generation progress separately from all observed simulation results."""
+        self._generation_busy = busy
+        self.generate_button.setEnabled(not busy)
+        self.generation_status.setText(message)
+        self.save_configuration_button.setEnabled(not busy)
+        self.set_create_enabled(self._create_allowed)
+
+    @Slot(str)
+    def select_generated_scene(self, map_id: str) -> None:
+        """Select a published draft after the refreshed catalog has arrived."""
+        index = self.map_combo.findData(map_id)
+        if index >= 0:
+            self.map_combo.blockSignals(True)
+            self.map_combo.setCurrentIndex(index)
+            self.map_combo.blockSignals(False)
+            self._select_map(index)
 
     def current_configuration(self) -> SimulationConfigurationDraft:
         """Return the current editable values as a typed local protocol model."""
@@ -373,7 +431,7 @@ class SceneConfigurationPage(QWidget):
             map_id=str(self.map_combo.currentData() or ""),
             duration_ms=self.duration_time.time().msecsSinceStartOfDay(),
             automation_demands=()
-            if self._traffic_mode
+            if self._traffic_mode or self._selected_generated_scene()
             else tuple(
                 AutomationDemand(level=row.level, vehicle_count=row.vehicle_count)
                 for row in self.automation_rows
@@ -382,15 +440,44 @@ class SceneConfigurationPage(QWidget):
 
     @Slot()
     def _request_configuration_save(self) -> None:
-        self.configuration_save_requested.emit(self.current_configuration())
+        configuration = self._validated_configuration()
+        if configuration is not None:
+            self.configuration_save_requested.emit(configuration)
 
     @Slot()
     def _request_launch(self) -> None:
-        self.launch_requested.emit(self.current_configuration())
+        configuration = self._validated_configuration()
+        if configuration is not None:
+            self.launch_requested.emit(configuration)
 
     @Slot()
     def _request_test(self) -> None:
-        self.test_requested.emit(self.current_configuration())
+        configuration = self._validated_configuration()
+        if configuration is not None:
+            self.test_requested.emit(configuration)
+
+    def _validated_configuration(self) -> SimulationConfigurationDraft | None:
+        """Keep the user's text intact and surface save-boundary errors in the page."""
+        name = self.scene_name.text().strip()
+        description = self.description.toPlainText().strip()
+        if not name or len(name) > 200:
+            self.generation_status.setText(
+                "无法保存或启动：场景名称需为 1–200 个字符，请修改名称。"
+            )
+            return None
+        if len(description) > 1000:
+            self.generation_status.setText(
+                "无法保存或启动：配置描述最多 1000 个字符，请编辑描述后重试。"
+                "完整生成需求仍保留在已保存场景中；当前文本没有被截断。"
+            )
+            return None
+        try:
+            return self.current_configuration()
+        except ValidationError:
+            self.generation_status.setText(
+                "无法保存或启动：配置参数格式不正确，请检查填写内容后重试。"
+            )
+            return None
 
     def apply_simulation_copy(self, simulation_name: str, parameter_summary: str) -> None:
         """Prefill editable fields from a simulation record."""
@@ -422,8 +509,59 @@ class SceneConfigurationPage(QWidget):
     def _select_map(self, index: int) -> None:
         map_id = self.map_combo.itemData(index)
         if isinstance(map_id, str):
+            self._show_generated_scene(map_id)
             self.map_preview_status.setText("正在加载地图路网预览……")
             self.map_selected.emit(map_id)
+
+    def _selected_generated_scene(self) -> bool:
+        selected = self._maps.get(str(self.map_combo.currentData()))
+        return selected is not None and selected.generated_scenario is not None
+
+    def _show_generated_scene(self, map_id: str) -> None:
+        selected = self._maps.get(map_id)
+        scene = selected.generated_scenario if selected is not None else None
+        self.duration_time.setEnabled(scene is None)
+        self.duration_time.setToolTip(
+            "生成场景的时长与发车计划一起保存；修改时长请在描述中指定后重新生成。"
+            if scene is not None
+            else ""
+        )
+        self.automation_section.setVisible(not self._traffic_mode and scene is None)
+        self.generated_summary.setVisible(scene is not None)
+        if scene is None or selected is None:
+            self._applied_generated_id = None
+            return
+        states = {"free_flow": "低流量", "moderate": "中等流量", "congested": "拥堵"}
+        flow = (
+            f"{scene.inflow_veh_per_hour_per_lane:g} 辆/小时/入口车道"
+            if scene.inflow_veh_per_hour_per_lane is not None
+            else "按计划总车辆数调度"
+        )
+        details = [
+            "场景设定（非实测）· 生成时未启动仿真",
+            f"目标交通状态：{states[scene.traffic_state]}",
+            f"目标密度参考值：{scene.desired_density_veh_per_km_lane:g} 辆/公里/车道",
+            f"计划发车：{scene.planned_vehicles} 辆；发车强度：{flow}",
+            f"预热：{scene.warmup_s} 秒；随机种子：{scene.seed}",
+            "时长与车流计划保持一致；修改时长请在描述中指定后重新生成。",
+            "保留原场景的车辆路线与发车计划。实际车速、密度和拥堵程度在运行后观测。",
+        ]
+        if not self._traffic_mode and scene.automation_mix:
+            details.append(
+                "自动驾驶等级发车计划："
+                + "；".join(
+                    f"{item.level} {item.share_percent:g}%（{item.vehicle_count} 辆）"
+                    for item in scene.automation_mix
+                )
+            )
+        if scene.unverified_requirements:
+            details.append("待核对要求：" + "；".join(scene.unverified_requirements))
+        self.generated_summary.setText("\n".join(details))
+        if self._applied_generated_id != map_id:
+            self.scene_name.setText(selected.display_name or map_id)
+            self.description.setPlainText(scene.description)
+            self.duration_time.setTime(QTime(0, 0).addSecs(scene.duration_s))
+            self._applied_generated_id = map_id
 
     def _add_automation_row(self) -> None:
         used_levels = {row.level for row in self.automation_rows}
