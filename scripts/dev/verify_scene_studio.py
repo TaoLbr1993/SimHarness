@@ -101,9 +101,11 @@ def main() -> int:
             maps = get_json("http://127.0.0.1:8000/api/v1/maps")
             assert isinstance(scenarios, list) and not any(s["map_id"] == map_id for s in scenarios)
             assert isinstance(maps, list) and not any(m["map_id"] == map_id for m in maps)
-            route_path = repo / "nl2map/workspaces" / task_id / "output/traffic.rou.xml"
+            route_path = repo / "trafficforge/workspaces" / task_id / "output/traffic.rou.xml"
             if not route_path.exists():
-                route_path = repo / "nl2map/backend/workspaces" / task_id / "output/traffic.rou.xml"
+                route_path = (
+                    repo / "trafficforge/backend/workspaces" / task_id / "output/traffic.rou.xml"
+                )
             root = ET.parse(route_path).getroot()
             vehicles = root.findall("vehicle")
             assert len(vehicles) == state["planned_vehicles"]

@@ -142,16 +142,27 @@ def _generated_metadata() -> dict[str, object]:
     }
 
 
-def _write_generated_manifest(directory: Path, metadata: dict[str, object]) -> None:
+def _write_generated_manifest(
+    directory: Path, metadata: dict[str, object], *, metadata_key: str = "trafficforge"
+) -> None:
     (directory / "scenario.manifest.json").write_text(
         json.dumps(
-            {"spec": {"name": "拥堵车速场景", "trafficDemandMode": "scripted", "nl2map": metadata}}
+            {
+                "spec": {
+                    "name": "拥堵车速场景",
+                    "trafficDemandMode": "scripted",
+                    metadata_key: metadata,
+                }
+            }
         ),
         encoding="utf-8",
     )
 
 
-def test_maps_api_discovers_new_published_scene_without_restarting(tmp_path: Path) -> None:
+@pytest.mark.parametrize("metadata_key", ["trafficforge", "nl2map"])
+def test_maps_api_discovers_new_published_scene_without_restarting(
+    tmp_path: Path, metadata_key: str
+) -> None:
     root = tmp_path / "maps"
     root.mkdir()
     existing = root / "existing"
@@ -174,7 +185,7 @@ def test_maps_api_discovers_new_published_scene_without_restarting(tmp_path: Pat
         assert len(client.get("/api/v1/maps").json()) == 1
         published = root / "nl2-20261104_000000_aabbcc"
         _sumo_package(published)
-        _write_generated_manifest(published, _generated_metadata())
+        _write_generated_manifest(published, _generated_metadata(), metadata_key=metadata_key)
         with patch(
             "trafficverse.api.map_catalog.load_sumo_package", wraps=load_sumo_package
         ) as load:
@@ -187,7 +198,11 @@ def test_maps_api_discovers_new_published_scene_without_restarting(tmp_path: Pat
         scene = rows[published.name]
         assert scene["validated"]
         assert scene["display_name"] == "拥堵车速场景"
-        assert scene["generated_scenario"] == _generated_metadata()
+        assert scene["generated_scenario"] == {
+            **_generated_metadata(),
+            "simulation_mode": "traffic",
+            "automation_mix": [],
+        }
         assert rows[existing.name]["generated_scenario"] is None
         assert "metrics" not in scene["generated_scenario"]
 
@@ -228,7 +243,29 @@ def test_invalid_generated_metadata_is_visible_and_blocks_run(
 
     assert not summary.validated
     assert summary.generated_scenario is None
-    assert "invalid NL2MAP scenario metadata" in summary.validation_errors[0]
+    assert "invalid TrafficForge scenario metadata" in summary.validation_errors[0]
     with pytest.raises(TrafficVerseError) as captured:
         catalog.sumo_package(directory.name)
     assert captured.value.code is ErrorCode.MAP_ASSET_INVALID
+
+
+def test_trafficforge_metadata_takes_precedence_and_cannot_fall_back_when_invalid(
+    tmp_path: Path,
+) -> None:
+    directory = tmp_path / "renamed-scene"
+    _sumo_package(directory)
+    metadata = _generated_metadata()
+    manifest = directory / "scenario.manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {"spec": {"trafficforge": {**metadata, "planned_vehicles": 25}, "nl2map": metadata}}
+        ),
+        encoding="utf-8",
+    )
+    summary = MapCatalog._generated_scenario(directory)
+    assert summary is not None and summary.planned_vehicles == 25
+    manifest.write_text(
+        json.dumps({"spec": {"trafficforge": None, "nl2map": metadata}}), encoding="utf-8"
+    )
+    catalog = MapCatalog((), artifact_root=tmp_path / "artifacts", package_root=tmp_path)
+    assert not catalog.list_maps()[0].validated

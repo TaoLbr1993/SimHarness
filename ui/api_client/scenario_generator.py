@@ -85,7 +85,10 @@ class ScenarioGeneratorClient(QObject):
         super().__init__(parent)
         self._language = normalize_language(language)
         self._base_url = (
-            base_url or os.getenv("NL2MAP_API_URL") or "http://127.0.0.1:8001"
+            base_url
+            or os.getenv("TRAFFICFORGE_API_URL", "").strip()
+            or os.getenv("NL2MAP_API_URL", "").strip()
+            or "http://127.0.0.1:8001"
         ).rstrip("/")
         self._network = QNetworkAccessManager(self)
         self._pending: QNetworkReply | None = None

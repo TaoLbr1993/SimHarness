@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from uuid import UUID
 
 from PySide6.QtWidgets import QApplication, QWidget
 from ui.api_client import RealtimeClient, RestApiClient
+from ui.models import WorkspaceSummary
 from ui.viewmodels import RunViewModel
 from ui.views.main_window import MainWindow
 
@@ -33,5 +35,21 @@ def test_general_window_sets_map_presentation_and_hides_scripted_scenarios() -> 
     assert navigation is not None and navigation.isHidden()
     assert window.live_page.map_widget._pending["setTrafficPresentation"] is True
     assert window.scene_page.map_widget._pending["setTrafficPresentation"] is True
+    normal_title = window.windowTitle()
+    workspace = WorkspaceSummary(
+        workspace_id=UUID(int=1),
+        name="TrafficForge tests",
+        created_at=datetime(2026, 11, 5, tzinfo=timezone.utc),
+        updated_at=datetime(2026, 11, 5, tzinfo=timezone.utc),
+    )
+    viewmodel._workspaces = (workspace,)
+    viewmodel._active_workspace_id = workspace.workspace_id
+    window._show_page("generate")
+    assert window.windowTitle() == "SimHarness · TrafficForge"
+    window.generation_page.set_language("zh")
+    assert window.windowTitle() == "SimHarness · TrafficForge"
+    assert window.navigation._buttons["generate"].text() == "TrafficForge"
+    window._show_page("scene")
+    assert window.windowTitle() == normal_title
     window.close()
     assert application is not None

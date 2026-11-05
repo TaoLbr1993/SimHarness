@@ -1,4 +1,4 @@
-"""Language selection for the NL2MAP scene studio, independent of scenario data."""
+"""Language selection for TrafficForge, independent of scenario data."""
 
 from typing import Literal
 
@@ -12,7 +12,7 @@ def normalize_language(value: str) -> Language:
         return "en"
     if code == "zh":
         return "zh"
-    raise ValueError("Scene Studio supports English (en) and Simplified Chinese (zh).")
+    raise ValueError("TrafficForge supports English (en) and Simplified Chinese (zh).")
 
 
 def text(language: str, zh: str, en: str) -> str:

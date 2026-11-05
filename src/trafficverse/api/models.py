@@ -70,7 +70,7 @@ class GeneratedAutomationShare(StrictModel):
 
 
 class GeneratedScenarioSummary(StrictModel):
-    """Declared NL2MAP scene inputs; these fields contain no simulation observations."""
+    """Declared TrafficForge scene inputs; these fields contain no simulation observations."""
 
     task_id: str = Field(pattern=r"^\d{8}_\d{6}_[0-9a-f]{6}$")
     description: str = Field(min_length=1, max_length=8000)

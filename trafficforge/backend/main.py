@@ -33,7 +33,7 @@ from pydantic import BaseModel, Field
 from scenario_models import ScenarioDraft, ScenarioResult, ScenarioRevision
 
 app = FastAPI(
-    title="路网与仿真场景生成 Demo",
+    title="TrafficForge",
     description="自然语言 → 路网与车流预览 → 用户确认添加 SUMO 场景",
     version="1.2.0",
     docs_url=None,  # 关掉默认文档页，下面用国内 CDN 自定义
@@ -53,7 +53,7 @@ def custom_docs():
     """自定义文档页：Swagger UI 资源走国内镜像，避免默认 CDN 白屏。"""
     return get_swagger_ui_html(
         openapi_url="/openapi.json",
-        title="路网生成 Demo - 接口文档",
+        title="TrafficForge - API Documentation",
         swagger_js_url="https://registry.npmmirror.com/swagger-ui-dist/5.20.0/files/swagger-ui-bundle.js",
         swagger_css_url="https://registry.npmmirror.com/swagger-ui-dist/5.20.0/files/swagger-ui.css",
     )
@@ -91,7 +91,7 @@ class GenerateRequest(BaseModel):
 
 @app.get("/")
 def root():
-    return {"msg": "路网生成 Demo 后端运行中，接口文档见 /docs"}
+    return {"msg": "TrafficForge is running. API documentation: /docs"}
 
 
 @app.get("/health")

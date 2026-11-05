@@ -1,4 +1,4 @@
-"""TrafficVerse desktop application shell."""
+"""SimHarness desktop application shell."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ from ui.models import (
     WorkspaceOverview,
     WorkspaceSummary,
 )
-from ui.scene_language import Language, text
+from ui.scene_language import Language
 from ui.viewmodels import ReplayPlaybackViewModel, RunViewModel
 from ui.views.agent_asset_page import AgentAssetPage
 from ui.views.data_replay_page import DataReplayPage
@@ -74,7 +74,7 @@ class MainWindow(QMainWindow):
         self._replay_viewmodel = ReplayPlaybackViewModel(self)
         self._replay_networks: dict[str, object] = {}
         self.setWindowIcon(QIcon(str(_WINDOW_ICON_PATH)))
-        self.setWindowTitle("TrafficVerse · 交互式交通仿真系统")
+        self.setWindowTitle("SimHarness · 交互式交通仿真系统")
         self.resize(1600, 960)
         self.setMinimumSize(1180, 720)
 
@@ -130,7 +130,7 @@ class MainWindow(QMainWindow):
             self.page_stack.addWidget(page)
 
         if traffic_mode:
-            self.setWindowTitle("TrafficVerse · 普通交通仿真")
+            self.setWindowTitle("SimHarness · 普通交通仿真")
             scripted_navigation = self.navigation.findChild(QWidget, "navContainer_traffic_scenes")
             if scripted_navigation is not None:
                 scripted_navigation.hide()
@@ -288,9 +288,7 @@ class MainWindow(QMainWindow):
         studio_active = self.page_stack.currentWidget() is self.generation_page
         self.navigation.set_scene_language(language if studio_active else "zh")
         self.setWindowTitle(
-            text(language, "TrafficVerse · 场景工坊", "TrafficVerse · Scene Studio")
-            if studio_active
-            else self._normal_window_title
+            "SimHarness · TrafficForge" if studio_active else self._normal_window_title
         )
 
     def _open_scene_generator(self) -> None:
@@ -371,7 +369,7 @@ class MainWindow(QMainWindow):
 
     @Slot(str)
     def _export_replay(self, run_id: str) -> None:
-        default_name = str(Path.home() / f"trafficverse-simulation-{run_id}.zip")
+        default_name = str(Path.home() / f"simharness-simulation-{run_id}.zip")
         target, _ = QFileDialog.getSaveFileName(
             self,
             "导出仿真结果",

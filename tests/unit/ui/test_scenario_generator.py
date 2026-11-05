@@ -29,6 +29,42 @@ def _draft() -> dict[str, Any]:
     }
 
 
+@pytest.mark.parametrize(
+    ("preferred", "legacy", "explicit", "expected"),
+    [
+        ("http://localhost:8101/", "http://localhost:8102", None, "http://localhost:8101"),
+        (None, "http://localhost:8102/", None, "http://localhost:8102"),
+        ("  ", "http://localhost:8102", None, "http://localhost:8102"),
+        (None, None, None, "http://127.0.0.1:8001"),
+        (
+            "http://localhost:8101",
+            "http://localhost:8102",
+            "http://localhost:8103/",
+            "http://localhost:8103",
+        ),
+    ],
+)
+def test_trafficforge_endpoint_preserves_legacy_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+    preferred: str | None,
+    legacy: str | None,
+    explicit: str | None,
+    expected: str,
+) -> None:
+    app = QApplication.instance() or QApplication([])
+    assert app is not None
+    for name, value in (("TRAFFICFORGE_API_URL", preferred), ("NL2MAP_API_URL", legacy)):
+        if value is None:
+            monkeypatch.delenv(name, raising=False)
+        else:
+            monkeypatch.setenv(name, value)
+    with patch("ui.api_client.scenario_generator.QNetworkAccessManager") as manager:
+        client = ScenarioGeneratorClient(base_url=explicit)
+        client.generate("Generate a junction")
+        request = manager.return_value.post.call_args.args[0]
+        assert request.url().toString() == expected + "/generate"
+
+
 def test_client_previews_without_publication_and_confirms_exact_draft() -> None:
     app = QApplication.instance() or QApplication([])
     assert app is not None

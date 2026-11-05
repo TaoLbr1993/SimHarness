@@ -1,1 +1,1 @@
-"""TrafficVerse desktop application entry points."""
+"""SimHarness desktop application entry points."""

@@ -59,6 +59,10 @@
 | ADR-026 | 左侧地图迁移到 MapLibre + deck.gl | Accepted |
 | ADR-027 | 原生 SUMO 二维场景包自动发现并使用主机 SUMO 托管运行 | Accepted |
 | ADR-036 | NL2MAP 按原始地点语言选择地名服务 | Accepted |
+| ADR-037 | NL2MAP 更名为 TrafficForge，迁移模块目录并兼容既有场景 | Accepted |
+
+命名说明：ADR-037 起，场景创作模块统一称为 **TrafficForge**，当前目录为 `trafficforge/`。
+此前 ADR 中的 NL2MAP 与 `nl2map/` 保留为当时的历史名称；既有功能和权限边界继续适用。
 
 ---
 
@@ -1451,6 +1455,49 @@ WGS84 坐标，经编译网络的投影和 netOffset 对齐。标记只影响预
 单独报告高德凭证是否存在。具体查询使用的供应商由候选 `provider` 及来源记录体现。
 旧部署若希望保持单一供应商，可显式配置该供应商并重启生成服务。迁移无需改动既有草稿，
 两种地点检索都继续通过 Overpass/OSM 获取道路，并使用现有 SUMO 编译与场景预览流程。
+
+---
+
+## ADR-037 — NL2MAP 更名为 TrafficForge
+
+- 状态：Accepted（用户明确选择 TrafficForge，要求统一名称及模块 README）
+- 日期：2026-11-05
+- 范围：场景创作模块的目录、界面品牌、生成服务、CLI、启动入口和使用文档
+- 替代此前 ADR 中该模块的名称及源码路径约定；其他已接受行为继续适用
+
+场景创作模块统一使用 **TrafficForge**，源码及未发布任务工作区由 `nl2map/` 迁移到
+`trafficforge/`，保留完整任务内容。模块 README 放在 `trafficforge/README.md`，包含功能、
+生成与确认流程、模型/地图配置、启动方法及接口细节；主仓库中英文 README 提供入口。
+SimHarness 项目名和 TrafficVerse 核心运行系统不随模块改名。
+
+正式启动入口为 `scripts/dev/start_trafficforge.ps1` 和 `scripts/dev/open_trafficforge.py`。
+原 `start_scene_workspace.ps1`、`open_scene_studio.py` 保持兼容。客户端优先读取
+`TRAFFICFORGE_API_URL`，未配置时回退旧 `NL2MAP_API_URL`，显式传入地址仍优先于环境。
+主项目新增 `trafficforge-preview` 可选依赖组，保留 `nl2map-preview` 作为旧配置兼容别名。
+
+生成服务发布的新清单将 `schema_version` 提升为 `2.0`，场景摘要使用 `spec.trafficforge`；
+生成服务与 Core 目录读取器优先读取新键，并在新键缺失时兼容旧版 `1.0` 清单的
+`spec.nl2map`。历史清单不重写。先部署双键读取，再启用新版本和新键写入；旧消费者
+不具备双键读取能力时，不应混用新发布格式。回滚时保留双键读取能力，或仅对新增场景的
+摘要键做明确转换，不改路网、车流或参数内容。
+
+已生成的任务 ID、`nl2-<任务ID>` 地图 ID 和场景目录不重命名，不重写旧发布包或实验引用。
+源图、模型反馈、来源记录和用户设置保持原样，目录迁移不触发生成、发布或仿真。
+本机既有 WSL 用户 `nl2map` 和虚拟环境 `/opt/nl2map-venv` 是部署资源，继续复用；
+它们不再用于界面品牌。历史 ADR 和兼容字段可保留旧名，新的可见模块名称统一为 TrafficForge。
+
+---
+
+## ADR-038 — 统一 SimHarness 项目展示名称
+
+状态：Accepted
+
+日期：2026-11-05
+
+桌面界面、API 文档和使用指南统一使用 SimHarness 名称，场景创作模块继续称为 TrafficForge。
+本决策更新 ADR-037 中核心运行系统的展示名称。新增 `simharness` 命令作为首选入口；
+既有 `trafficverse` 命令、Python 包名、配置路径、环境变量和协议字段保持兼容，
+已保存的实验与场景无需迁移。历史决策和备份文档保留当时的名称。
 
 ---
 

@@ -686,6 +686,9 @@ sumo = [
     { name = "sumolib" },
     { name = "traci" },
 ]
+trafficforge-preview = [
+    { name = "pypinyin" },
+]
 ui = [
     { name = "pyside6" },
 ]
@@ -709,6 +712,7 @@ requires-dist = [
     { name = "pyarrow", specifier = ">=18,<19" },
     { name = "pydantic", specifier = ">=2.10,<3" },
     { name = "pypinyin", marker = "extra == 'nl2map-preview'", specifier = "==0.55.0" },
+    { name = "pypinyin", marker = "extra == 'trafficforge-preview'", specifier = "==0.55.0" },
     { name = "pyside6", marker = "extra == 'ui'", specifier = "==6.11.1" },
     { name = "python-multipart", specifier = ">=0.0.20,<1" },
     { name = "pyyaml", specifier = ">=6.0.2,<7" },
@@ -717,7 +721,7 @@ requires-dist = [
     { name = "traci", marker = "extra == 'sumo'", specifier = ">=1.18,<2" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34,<1" },
 ]
-provides-extras = ["nl2map-preview", "carla", "sumo", "ui"]
+provides-extras = ["trafficforge-preview", "nl2map-preview", "carla", "sumo", "ui"]
 
 [package.metadata.requires-dev]
 dev = [

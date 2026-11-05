@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "trafficverse"
 version = "0.1.0"
-description = "SUMO traffic truth with TrafficVerse 2D UI and local CARLA 3D mirroring"
+description = "An agent harness for traffic simulation"
 readme = "README.md"
 requires-python = ">=3.10,<3.11"
 dependencies = [
@@ -21,6 +21,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+trafficforge-preview = [
+  "pypinyin==0.55.0",
+]
+# Compatibility for existing environment setup commands.
 nl2map-preview = [
   "pypinyin==0.55.0",
 ]
@@ -36,6 +40,7 @@ ui = [
 ]
 
 [project.scripts]
+simharness = "trafficverse.cli:main"
 trafficverse = "trafficverse.cli:main"
 
 [dependency-groups]

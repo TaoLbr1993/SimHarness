@@ -36,13 +36,13 @@ uv sync --frozen --extra sumo --extra ui
 在项目根目录打开两个终端。第一个终端运行后端：
 
 ```bash
-uv run trafficverse serve --host 127.0.0.1 --port 8000
+uv run simharness serve --host 127.0.0.1 --port 8000
 ```
 
 保持后端运行，在第二个终端启动普通交通界面：
 
 ```bash
-uv run trafficverse traffic-ui --api-url http://127.0.0.1:8000
+uv run simharness traffic-ui --api-url http://127.0.0.1:8000
 ```
 
 若更改了后端端口，界面的 `--api-url` 和 Agent 配置中的 `api_url` 也要使用相同地址。桌面界面是 API 客户端，需要先启动后端。

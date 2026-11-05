@@ -1,4 +1,4 @@
-"""Typed intent, provider evidence and local-import settings for the NL2MAP demo."""
+"""Typed intent, provider evidence and local-import settings for TrafficForge."""
 
 from dataclasses import dataclass, field
 from typing import Literal
@@ -99,7 +99,7 @@ class RealMapSettings(BaseModel):
     amap_city: str = Field(default="", max_length=80)
     photon_url: str = "https://photon.komoot.io/api/"
     overpass_url: str = "https://overpass-api.de/api/interpreter"
-    user_agent: str = "SimHarness-NL2MAP/0.3 (local research demo)"
+    user_agent: str = "SimHarness-TrafficForge/0.3 (local research demo)"
     default_radius_m: float = Field(default=1000, ge=100, le=3000)
     max_radius_m: float = Field(default=3000, ge=100, le=3000)
     request_timeout_sec: int = Field(default=75, ge=10, le=180)

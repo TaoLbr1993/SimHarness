@@ -451,7 +451,7 @@ class ScenarioResult(BaseModel):
 
 
 class ScenarioDraftSettings(BaseModel):
-    """Settings published to TrafficVerse; none of these are observations."""
+    """Settings published to SimHarness; none of these are observations."""
 
     model_config = ConfigDict(extra="forbid")
     task_id: str = Field(pattern=r"^\d{8}_\d{6}_[0-9a-f]{6}$")

@@ -370,7 +370,10 @@ class ScenarioTest(unittest.TestCase):
         self.assertEqual(len(scenario_catalog.list_scenarios()), 1)
         self.assertEqual(scenario_catalog.get_scenario(result.task_id).map_id, published.map_id)
         metadata = json.loads((saved / "scenario.manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(metadata["schema_version"], "2.0")
         self.assertEqual(metadata["spec"]["trafficDemandMode"], "scripted")
+        self.assertIn("trafficforge", metadata["spec"])
+        self.assertNotIn("nl2map", metadata["spec"])
         self.assertEqual(
             metadata["spec"]["definition"]["plan"]["defaults_used"], result.plan.defaults_used
         )
@@ -380,6 +383,31 @@ class ScenarioTest(unittest.TestCase):
         self.assertEqual((saved / "traffic.rou.xml").read_bytes(), original)
         with self.assertRaises((ValueError, FileNotFoundError)):
             scenario_catalog.scenario_file(result.task_id, "../../.env")
+
+    def test_legacy_catalog_remains_readable_and_immutable_after_rename(self):
+        task = self.source_task()
+        intent = MapIntent(source_mode="synthetic", reason="test", scenario=self.intent)
+        with patch.object(config, "WORKSPACES_DIR", str(self.output)):
+            result = scenario_pipeline.generate_scenario("测试拥堵车速", intent, map_task_id=task)
+            published = scenario_catalog.publish_existing(result.task_id)
+            manifest = (
+                Path(config.SCENARIO_CATALOG_DIR) / published.map_id / "scenario.manifest.json"
+            )
+            metadata = json.loads(manifest.read_text(encoding="utf-8"))
+            metadata["schema_version"] = "1.0"
+            metadata["spec"]["nl2map"] = metadata["spec"].pop("trafficforge")
+            manifest.write_text(json.dumps(metadata), encoding="utf-8")
+            legacy_bytes = manifest.read_bytes()
+            self.assertEqual(scenario_catalog.get_scenario(result.task_id), published)
+            self.assertEqual(scenario_catalog.list_scenarios(), [published])
+            self.assertEqual(scenario_catalog.publish_existing(result.task_id), published)
+            self.assertEqual(manifest.read_bytes(), legacy_bytes)
+
+            # New metadata takes precedence, including when it is invalid.
+            metadata["spec"]["trafficforge"] = None
+            manifest.write_text(json.dumps(metadata), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                scenario_catalog.get_scenario(result.task_id)
 
     def test_failed_publication_leaves_no_discoverable_package_or_staging_directory(self):
         task = self.source_task()

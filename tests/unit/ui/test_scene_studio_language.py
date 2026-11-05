@@ -13,11 +13,13 @@ def test_studio_navigation_switch_preserves_workspace_name_and_active_page() -> 
     navigation.set_workspace("北京真实路网测试")
     navigation.set_active("generate")
     navigation.set_scene_language("en")
-    assert navigation._buttons["generate"].text() == "Scene Studio"
+    assert navigation._buttons["generate"].text() == "TrafficForge"
+    assert navigation._buttons["generate"].accessibleName() == "TrafficForge"
     assert navigation._buttons["generate"].property("active")
     assert navigation.workspace_name.text() == "北京真实路网测试"
     navigation.set_scene_language("zh-CN")
-    assert navigation._buttons["generate"].text() == "场景生成"
+    assert navigation._buttons["generate"].text() == "TrafficForge"
+    assert navigation._buttons["generate"].accessibleName() == "TrafficForge"
     assert navigation.workspace_name.text() == "北京真实路网测试"
     assert navigation._buttons["generate"].property("active")
 

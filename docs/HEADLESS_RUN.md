@@ -5,7 +5,7 @@
 无需启动桌面或单独启动后端，通过一个命令运行 SUMO 场景和可选的车辆 Agent：
 
 ```bash
-uv run trafficverse run --config configs/headless.example.yaml --scenario image2road
+uv run simharness run --config configs/headless.example.yaml --scenario image2road
 ```
 
 需要提前安装 Python 依赖和 SUMO。程序优先使用 `PATH` 中的 `sumo`，找不到时会尝试使用当前 Python 环境中已安装的 `sumo` 包内的可执行文件。`--scenario` 是 `configs/maps/` 中已发现的 SUMO 场景 ID，不是任意 `.sumocfg` 文件路径；省略时使用配置文件的 `map_id`。

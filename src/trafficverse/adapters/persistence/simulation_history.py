@@ -161,7 +161,7 @@ class FileSimulationHistoryStore:
             archive.writestr("export/trends.csv", self._trends_csv(detail.trends))
             archive.writestr("export/road_results.csv", self._roads_csv(detail.road_results))
         return SimulationResultExport(
-            filename=f"trafficverse-simulation-{run_id}.zip",
+            filename=f"simharness-simulation-{run_id}.zip",
             media_type="application/zip",
             payload=payload.getvalue(),
         )

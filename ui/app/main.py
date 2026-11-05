@@ -20,7 +20,7 @@ def run(
     api_url: str, scenario_id: UUID = DEFAULT_SCENARIO_ID, *, traffic_mode: bool = False
 ) -> int:
     app = QApplication.instance() or QApplication(sys.argv)
-    app.setApplicationName("TrafficVerse")
+    app.setApplicationName("SimHarness")
     rest = RestApiClient(api_url)
     realtime = RealtimeClient(api_url)
     viewmodel = RunViewModel(rest, realtime, scenario_id)
@@ -31,7 +31,7 @@ def run(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="trafficverse-ui")
+    parser = argparse.ArgumentParser(prog="simharness-ui")
     parser.add_argument("--api-url", default="http://127.0.0.1:8000")
     parser.add_argument("--scenario-id", type=UUID, default=DEFAULT_SCENARIO_ID)
     args = parser.parse_args()

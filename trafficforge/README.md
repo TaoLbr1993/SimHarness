@@ -1,8 +1,138 @@
-# 路网生成 Demo（Road Network Generation Demo）
+# TrafficForge
 
-基于大语言模型 Agent 自动生成路网，并导出为 SUMO 格式的后端 Demo。
+**Natural-language authoring for traffic simulation scenarios.**
 
-## 整体流程
+TrafficForge 是 SimHarness 的交通场景创作模块，原名 NL2MAP。输入自然语言需求后，它可以
+生成合成路网或导入真实地点周边道路，配置车辆数量、交通状态目标和发车计划，并提供可编辑的
+场景预览。用户确认添加后，再进入系统启动仿真。
+
+```text
+描述需求 → 生成路网与车流草稿 → 预览 / 修改 → 确认添加 → 用户启动仿真
+```
+
+生成预览不运行车辆仿真，也不自动加入场景目录。预览中的拥堵、密度和车辆数量是场景设定，
+实际速度、排队和拥堵情况需要运行后验证。
+
+## 可以生成什么
+
+| 输入示例 | 处理方式 |
+|---|---|
+| `生成一个四向十字路口，四个方向都要有信号灯` | 模型编写 roadgen 代码，编译 SUMO 路网，执行 XML 规则与图像辅助检查，按问题原因反馈修复 |
+| `生成北航学院路校区附近 1 公里路网，测试拥堵场景` | 高德定位中文地点，OSM 提供道路，SUMO 编译路网，再生成交通需求 |
+| `Generate roads within 1 km of Times Square, Manhattan, New York, USA` | Photon 定位英文地点，OSM 提供道路，SUMO 编译路网 |
+| `希望测试拥堵场景下车辆速度，计划发出120辆车，仿真10分钟` | 未指定地图时创建默认信号十字路口，并生成车辆需求、时长与待验证目标 |
+
+- 地图默认展示主要道路；明确要求支路、车道或信号细节时生成详细版。
+- 普通交通模式显示车辆总数和发车强度；自动驾驶模式还支持 L0–L5 请求比例。
+- 预览支持图片放大，以及车辆数、密度、时长、预热、种子、流量、参考速度和等级比例修改。
+- 界面默认 **English**，可切换 **简体中文**，保留输入、当前草稿和未应用修改。
+- 地点检索按地址原文分流：英文使用 Photon，中文使用高德；界面语言不影响供应商选择。
+- 确认后的场景输出 SUMO 路网、车辆路线和 `.sumocfg`，可由 SimHarness 加载。
+
+## 快速开始
+
+以下命令均从 **SimHarness 仓库根目录**执行。桌面入口依赖已配置的 Windows `.venv`、
+SUMO 和 WSL 生成环境；启动脚本负责启动或复用服务，不会安装这些依赖。
+
+```powershell
+# 默认英文入口；生成服务为 8001，Core API 为 8000
+./scripts/dev/start_trafficforge.ps1
+
+# 中文入口
+./scripts/dev/start_trafficforge.ps1 -Language zh
+
+# 只启动后台服务
+./scripts/dev/start_trafficforge.ps1 -NoUi
+
+# 后台就绪后，单独打开自动驾驶场景创作入口
+.venv/Scripts/python.exe scripts/dev/open_trafficforge.py --mode autonomy
+```
+
+在 TrafficForge 输入框描述需求，生成后查看地图和场景设定。点击“应用修改”保存参数修改，
+点击“确认，添加到场景”才入库；进入仿真配置后，由用户决定何时开始。
+
+也可以使用命令行。`generate` 默认只创建草稿，`publish` 显式确认添加：
+
+```powershell
+.venv/Scripts/python.exe trafficforge/scene_cli.py generate "生成北航学院路校区附近1公里路网，计划发出120辆车"
+.venv/Scripts/python.exe trafficforge/scene_cli.py publish <任务ID>
+.venv/Scripts/python.exe trafficforge/scene_cli.py list
+.venv/Scripts/python.exe trafficforge/scene_cli.py show <任务ID>
+```
+
+接口文档：[http://127.0.0.1:8001/docs](http://127.0.0.1:8001/docs)；
+健康检查：[http://127.0.0.1:8001/health](http://127.0.0.1:8001/health)。
+
+## 依赖和配置
+
+主桌面与 Core 使用仓库配置的 Python 3.10 环境；生成服务使用独立 Python 环境。
+当前 Windows 启动器复用 WSL 发行版 `SimHarness-Ubuntu`、既有用户 `nl2map` 和
+`/opt/nl2map-venv/bin/python`。这些是历史运行资源名称，改名时保留，避免重装环境。
+
+生成服务依赖见 [backend/requirements.txt](backend/requirements.txt)，包括 FastAPI、
+OpenAI 兼容客户端、roadgen、Pillow、pyproj 和 pypinyin。roadgen 提供 Linux wheel，
+Windows 使用 WSL；`sumo` 和 `netconvert` 均需在生成环境的 PATH 中。
+真实地点解析需要 OpenAI 兼容文本模型；合成路网的默认图像辅助审核还要求模型支持图像输入。
+roadgen 源码见 [hdmap_generator](https://github.com/hakuturu583/hdmap_generator)。
+
+| 配置 | 用途 |
+|---|---|
+| `MODEL_BASE_URL` / `MODEL_API_KEY` / `MODEL_NAME` | 生成服务使用的模型连接配置 |
+| `OPENAI_API_KEY` | 本机 Windows 启动器读取的模型 Key，转交给 WSL 子进程的 `MODEL_API_KEY` |
+| `AMAP_WEB_API_KEY` | 中文地点查询所需的高德 Web 服务 Key；Photon 公共接口无需 Key |
+| `MAP_GEOCODER_PROVIDER=auto` | 根据原始地点文字选择供应商；也可显式设为 `amap` 或 `photon` |
+| `MAP_PHOTON_URL` / `MAP_OVERPASS_URL` | 地点服务与道路服务地址，可配置自建实例 |
+| `TRAFFICFORGE_API_URL` | 桌面及 CLI 的生成服务地址，默认 `http://127.0.0.1:8001` |
+
+完整后端配置模板见 [backend/.env.example](backend/.env.example)。真实 Key 只保存在本机
+环境或未跟踪的 `.env` 中。`TRAFFICFORGE_API_URL` 设置在桌面或 CLI 的进程环境中；
+未设置时仍兼容旧的 `NL2MAP_API_URL`，新变量优先。
+`trafficforge-preview` 是主项目的预览附加依赖组，不能代替完整后端 requirements。
+
+如需在独立 Linux 环境启动生成服务，先准备 SUMO，再安装依赖和配置模型：
+
+```bash
+cd trafficforge/backend
+python -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+cp .env.example .env
+# 编辑本机 .env，填写 MODEL_BASE_URL / MODEL_API_KEY / MODEL_NAME；中文查询配置高德 Key
+.venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8001
+```
+
+## 目录结构
+
+```text
+trafficforge/
+├── README.md                 # 本模块的使用说明与接口细节
+├── scene_cli.py              # 草稿生成、确认发布及场景查询
+└── backend/
+    ├── main.py               # 独立 FastAPI 生成服务
+    ├── agent.py              # 需求解析、候选选择、roadgen 代码及审核
+    ├── realmap.py            # 真实地点道路导入与检查
+    ├── map_sources.py        # 中英文地点分流与 OSM 道路获取
+    ├── amap_source.py        # 高德查询及坐标转换
+    ├── runner.py             # 执行 roadgen 代码并编译路网
+    ├── review_pipeline.py    # XML 规则、图像证据及反馈修复
+    ├── scenario_pipeline.py  # 场景需求与草稿编排
+    ├── scenario_revision.py  # 修改草稿，复用路网并重建车流
+    ├── scenario_catalog.py   # 确认发布及既有场景兼容读取
+    ├── renderer.py           # 预览绘图；双语名称及旧图刷新见 preview_*.py
+    ├── tests/                # 离线回归测试
+    ├── requirements.txt      # 独立后端依赖
+    ├── .env.example          # 无真实密钥的配置示例
+    └── workspaces/           # 草稿、来源、预览和日志；不提交
+```
+
+桌面控件位于主项目 `ui/`；正式启动入口位于 `scripts/dev/`；确认后的场景位于
+`configs/maps/nl2-<任务ID>/`。保留既有 `nl2-` 场景 ID，避免影响历史配置和实验引用。
+新发布清单使用 `schema_version: "2.0"`，场景摘要写入 `spec.trafficforge`；读取时兼容
+旧版 `schema_version: "1.0"` / `spec.nl2map`，不重写已有发布包。旧启动脚本和
+`nl2map-preview` 依赖组继续作为兼容入口，当前代码与草稿目录统一为 `trafficforge/`。
+
+下文保留路网检查、真实地图来源和场景接口的详细说明。
+
+## 合成路网生成与校验
 
 ```
 用户自然语言描述（"我要一个十字路口"）
@@ -27,50 +157,6 @@
         ↓
   返回每次尝试、检查结果与生成文件列表
 ```
-
-## 目录结构
-
-```
-backend/
-├── main.py            # FastAPI 入口：路由、CORS、异常处理
-├── agent.py           # Agent：自然语言 → 可执行的 Python 代码
-├── runner.py          # 执行生成代码，隔离每次任务并收集产物
-├── renderer.py        # 从编译后的 SUMO 路网渲染检查图片
-├── review_models.py   # 有限的验收规则和证据模型（不是 V2 RoadSpec）
-├── xml_checks.py      # 对编译后的 XML 执行确定性规则
-├── review_pipeline.py # 汇总证据、处理冲突并驱动自动修复
-├── config.py          # 配置读取（从 .env 读取，不写死敏感信息）
-├── requirements.txt   # Python 依赖
-└── .env.example       # 环境变量模板（复制为 .env 后填写）
-```
-
-## 环境要求
-
-- Python 3.10+
-- 依赖：FastAPI、Uvicorn、OpenAI 兼容客户端、python-dotenv
-- roadgen：Linux 提供预编译 wheel，Windows 请使用 WSL 或自行准备编译环境
-- SUMO 的 `netconvert` 必须位于 PATH；其版本应与目标仿真环境匹配
-- 配置的模型必须支持 OpenAI 兼容的图像输入；Pillow 用于生成 PNG
-
-roadgen 项目地址：https://github.com/hakuturu583/hdmap_generator
-
-## 快速开始
-
-```bash
-cd backend
-pip install -r requirements.txt
-
-# 复制配置模板，填写模型服务信息
-cp .env.example .env
-#   编辑 .env，填入 MODEL_BASE_URL / MODEL_API_KEY / MODEL_NAME
-
-python -m uvicorn main:app --reload --port 8000
-```
-
-启动后访问：
-
-- 接口文档（Swagger）：http://127.0.0.1:8000/docs
-- 健康检查：http://127.0.0.1:8000/health
 
 ## 接口说明
 
@@ -192,7 +278,7 @@ python -m uvicorn main:app --reload --port 8000
 }
 ```
 
-真实地点流程：语言提取地名和范围 → Photon 查询实际候选 → 模型按名称、城市和校区选择
+真实地点流程：语言提取地名和范围 → 按原始地点文字选择高德 / Photon 并查询实际候选 → 模型按名称、城市和校区选择
 候选 ID → Overpass 获取 OpenStreetMap 道路和转向限制 → `netconvert` → 全量 XML 检查
 → SUMO 空车流加载检查 → 简化预览 → 用户判断是否符合需求。模型不生成经纬度和真实道路几何。
 模糊地点或无候选返回 `needs_clarification`，附 `candidates` 和原因。调用方可补充描述，或在
@@ -202,7 +288,7 @@ python -m uvicorn main:app --reload --port 8000
 真实地点。旧 `review_mode` 仅用于合成分支，真实分支固定为 XML/加载检查和用户判断，响应中记录
 `review_mode="xml_and_user"`。语言意图与候选选择仍可能误解，响应公开 `intent`、
 `place_choice.reason`、`place`、坐标和候选供核对，不以模型置信度替代地名证据。
-Photon 地名检索优先使用已知全称，并合并主查询与英文备选查询的候选（最多两次查询、每次五个，
+Photon 地名检索优先使用原文语言的已知全称，并合并主查询与备选名称的候选（最多两次查询、每次五个，
 按 OSM ID 去重）。首批搜到大厦、科技园等无关对象不会阻止备用检索。查询来源与失败诊断
 保留；多城市或多校区仍无法确定时要求补充信息，不固定坐标或默认选择第一项。
 
@@ -253,7 +339,7 @@ Overpass 按中心周边圆形选取道路，原始文件保留完整 OSM way �
 `validation.passed` 仅表示 XML 和 SUMO 加载通过，`visual_review=null` 表示未调用视觉审核。
 工具超时保留部分输出；格式/引用/转换/加载错误仍返回失败。
 
-无需新增 Python 依赖。需要 `netconvert`、`sumo` 和可联网的模型/地图服务；自动查找安装目录的
+真实地图分支使用上述后端依赖。需要 `netconvert`、`sumo` 和可联网的模型/地图服务；自动查找安装目录的
 SUMO XSD 数据，也可设置 `SUMO_HOME`。`.env.example` 列出地图服务地址、半径、超时、大小和缓存设置。
 单进程内串行请求公共地图服务，缓存 24 小时；遇到限流不立即重试。不把公共演示服务当成生产 SLA。
 地名与检索内容发送给配置的地名服务，坐标/半径发送给地图服务；真实分支仅将描述、候选发送给模型。
@@ -263,7 +349,8 @@ SUMO XSD 数据，也可设置 `SUMO_HOME`。`.env.example` 列出地图服务�
 [SUMO OSM 导入](https://sumo.dlr.de/docs/Networks/Import/OpenStreetMap.html)、
 [Nominatim 公共服务政策](https://operations.osmfoundation.org/policies/nominatim/)。
 地图及图片保留 [© OpenStreetMap contributors / ODbL](https://www.openstreetmap.org/copyright) 署名。
-本实验入口依据 ADR-029，尚未注册到 Core 地图目录或提供 CARLA 镜像。
+只生成地图时保留独立任务；生成场景后按 ADR-032 由用户确认添加到 Core 场景目录。
+当前输出原生 SUMO 场景，尚不提供 CARLA 镜像。
 
 ### 中英文地址定位
 
@@ -298,27 +385,27 @@ SUMO XSD 数据，也可设置 `SUMO_HOME`。`.env.example` 列出地图服务�
 
 ## 场景工作界面（v1.2）
 
-NL2MAP 场景工坊默认使用 **English**。右上角可随时切换为 **简体中文**，保留输入、当前草稿、
+TrafficForge 场景工坊默认使用 **English**。右上角可随时切换为 **简体中文**，保留输入、当前草稿、
 地图和未应用的参数修改；语言切换不会重新生成、发布或运行场景。英文图片中的地点、道路名
 优先使用源 OSM 的 `name:en`，没有英文名称时使用拼音及英文道路/地点类型；中文图片保留原名。
 英文名只用于显示，不改动源 OSM、SUMO 路网或地点坐标。用户原文和来源诊断仍保留原始内容。
 已有真实地图的语言图片在读取时按当前规则更新，避免继续使用旧的中文标注缓存。
 离线拼音转换依赖固定版本的 `pypinyin`，已包含在后端 requirements 和主项目可选依赖锁中。
-Windows 启动 `scripts/dev/start_scene_workspace.ps1` 会直接进入英文简洁输入页；
+Windows 启动 `scripts/dev/start_trafficforge.ps1` 会直接进入英文简洁输入页；
 使用 `-Language zh` 可显式以中文打开。普通流量模式和 L0–L5 自动驾驶模式均支持双语。
 
-默认流程是：**独立“场景生成”页填写需求 → 生成预览 → 确认添加到场景 → 进入仿真配置 → 用户启动**。
+默认流程是：**TrafficForge 页填写需求 → 生成预览 → 确认添加到场景 → 进入仿真配置 → 用户启动**。
 生成不会试跑车辆；“拥堵”是目标场景设定，尚未运行时不提供实测车速/密度或拥堵达成结论。
 
 本机 Windows 在项目根目录运行：
 
 ```powershell
-./scripts/dev/start_scene_workspace.ps1
+./scripts/dev/start_trafficforge.ps1
 ```
 
-启动器复用已有 WSL roadgen/NL2MAP 环境、Windows 虚拟环境中的 SUMO 和桌面依赖。
+启动器复用已有 WSL roadgen 生成环境、Windows 虚拟环境中的 SUMO 和桌面依赖。
 生成服务使用 8001，Core API 使用 8000；API Key 仍读取环境变量 `OPENAI_API_KEY`。
-进入工作区左侧“场景生成”，在居中的输入框填写“希望测试拥堵场景下车辆速度”，点击
+进入工作区左侧 TrafficForge，在居中的输入框填写“希望测试拥堵场景下车辆速度”，点击
 “生成预览”或按回车。预览展示真实路网图片、目标交通状态、密度参考值、计划发车数、
 时长、预热与种子。普通交通界面量化车辆总数和发车强度；自动驾驶界面额外显示 L0–L5
 发车比例。计划发车总数不等于同时在网车辆数。待验证要求包含地图和车流两部分，是否适用由用户判断。
@@ -344,26 +431,27 @@ Windows 启动 `scripts/dev/start_scene_workspace.ps1` 会直接进入英文简�
 `inflow_veh_per_hour_per_lane`、`total_flow_veh_per_hour`、`reference_speed_kmh`、
 `automation_mix` 和 `demand_mode`（`count/inflow/density/total_flow`）。原数量单字段请求保持兼容；
 未修改字段省略，不能传 `null`，多种驱动量同时出现时必须明确编排方式。
-启动器默认打开普通交通模式；自动驾驶界面使用
-`.venv/Scripts/python.exe -m trafficverse.cli ui --api-url http://127.0.0.1:8000`。
+启动器默认打开普通交通模式；后台服务就绪后，自动驾驶场景入口使用
+`.venv/Scripts/python.exe scripts/dev/open_trafficforge.py --mode autonomy`。
 
-生成场景时长保持只读；需要改变时长时，修改文字后重新生成，避免仅改截止时间而
-遗留原发车计划。车辆总数可在生成预览内直接编辑。点击“保存配置”仅建立快照；
+生成预览内可以修改时长并应用，程序会同步重建发车计划；进入后续仿真配置时沿用已确认
+场景的时长，避免仅改截止时间而遗留原发车计划。点击“保存配置”仅建立快照；
 点击“开始仿真”才走现有 Core 的正式运行。
 独立模型需求不支持的要求会明确保留，生成成功不表示这些要求已实现。
 
 确认后的场景以输入包保存到 `configs/maps/nl2-<任务ID>/`，系统动态发现，不需要重启。
-`scenario.manifest.json` 保存目标/车流摘要和原始 intent/plan/默认来源；不复制试运行指标。
+`scenario.manifest.json` 保存目标/车流摘要和原始 intent/plan/默认来源；新清单为 2.0 版，
+摘要字段为 `spec.trafficforge`，不复制试运行指标。
 包标为 `scripted`，系统保留生成的路线和发车计划；运行只修改新建副本，源场景不被覆盖。
 原生 SUMO 场景使用二维展示，暂不生成 CARLA 镜像。
 
 也可以在项目根目录使用命令行（服务须启动）：
 
 ```powershell
-.venv/Scripts/python.exe nl2map/scene_cli.py generate "希望测试拥堵场景下车辆速度"
-.venv/Scripts/python.exe nl2map/scene_cli.py publish <生成响应中的任务ID>
-.venv/Scripts/python.exe nl2map/scene_cli.py list
-.venv/Scripts/python.exe nl2map/scene_cli.py show <任务ID>
+.venv/Scripts/python.exe trafficforge/scene_cli.py generate "希望测试拥堵场景下车辆速度"
+.venv/Scripts/python.exe trafficforge/scene_cli.py publish <生成响应中的任务ID>
+.venv/Scripts/python.exe trafficforge/scene_cli.py list
+.venv/Scripts/python.exe trafficforge/scene_cli.py show <任务ID>
 ```
 
 新草稿及历史任务均需显式执行 `publish <任务ID>` 才导入，仅导入输入与设定。

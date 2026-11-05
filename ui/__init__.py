@@ -1,1 +1,1 @@
-"""TrafficVerse desktop client package."""
+"""SimHarness desktop client package."""

@@ -32,6 +32,7 @@ SimHarness 是一个面向交通仿真的 **Agent Native Harness**。通过一�
 - **大模型与自定义控制器**：提供 OpenAI 兼容接口及 Jev 封装，也支持实现自定义 Python 控制器。
 - **Memory 与 Skill**：可选的车辆短期记忆与驾驶风格配置，默认均不启用。
 - **可视化与回放**：通过桌面界面查看交通仿真，支持保存、查看和回放正式仿真结果。
+- **[TrafficForge 场景工坊](trafficforge/README.md)**：用自然语言生成合成或真实地点路网与车辆需求，预览并修改场景草稿，确认添加后再由用户启动仿真。
 
 ### 系统架构
 
@@ -63,12 +64,14 @@ uv sync --frozen --extra sumo
 ### 运行场景
 
 ```bash
-uv run trafficverse run --config configs/headless.example.yaml --scenario image2road
+uv run simharness run --config configs/headless.example.yaml --scenario image2road
 ```
 
 命令会临时启动本地后端，自动创建并运行实验，结束后关闭实验和后端。`--scenario` 指定 `configs/maps/` 中发现的 SUMO 场景 ID。
 
 [示例配置](configs/headless.example.yaml)默认使用空的 `bindings`：不会调用模型，所有车辆由 SUMO 控制。每次运行的摘要和逐步请求、观测保存在 `artifacts/headless/<运行ID>/`；没有绑定时，不记录选定车辆的局部观测。
+
+原有的 `trafficverse` 命令、Python 导入路径和环境变量继续可用。
 
 ### 接入 Agent
 
@@ -96,6 +99,7 @@ bindings:
 SimHarness/
 ├── src/trafficverse/        # 仿真应用、API、SUMO 适配和 Agent Harness
 ├── ui/                      # 桌面界面与地图展示
+├── trafficforge/            # 自然语言场景创作与生成服务
 ├── configs/                 # 场景、地图和 Agent 配置
 ├── contracts/               # API 与消息契约
 ├── docs/                    # 项目文档

@@ -84,7 +84,7 @@ Create an experiment with `external_stepping: true`, then prepare and start it. 
 }
 ```
 
-In external stepping mode, the built-in mixed-automation rule controller and TrafficVerse collision-vehicle freezing do not run. Vehicles without actions use SUMO's native models. SUMO continues to determine actual motion and apply its safety constraints.
+In external stepping mode, the built-in mixed-automation rule controller and SimHarness collision-vehicle freezing do not run. Vehicles without actions use SUMO's native models. SUMO continues to determine actual motion and apply its safety constraints.
 
 ## Action fields and limits
 

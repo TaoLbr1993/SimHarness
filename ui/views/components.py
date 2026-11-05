@@ -1,4 +1,4 @@
-"""Small presentation components shared by TrafficVerse pages."""
+"""Small presentation components shared by SimHarness pages."""
 
 from __future__ import annotations
 

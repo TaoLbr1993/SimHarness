@@ -145,7 +145,7 @@ def test_history_network_and_export_use_selected_run_artifacts(tmp_path: Path) -
     features = network["features"]
     assert isinstance(features, list)
     assert any(feature["properties"].get("sumo_edge_id") == "edge-a" for feature in features)
-    assert exported.filename == f"trafficverse-simulation-{RUN_ID}.zip"
+    assert exported.filename == f"simharness-simulation-{RUN_ID}.zip"
     with zipfile.ZipFile(BytesIO(exported.payload)) as archive:
         names = set(archive.namelist())
         assert "demo/demo.net.xml" in names

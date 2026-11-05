@@ -1,4 +1,4 @@
-"""Natural-language scene studio: describe, inspect a draft, then explicitly add it."""
+"""TrafficForge: describe a traffic scene, inspect a draft, then explicitly add it."""
 
 from __future__ import annotations
 
@@ -47,8 +47,7 @@ _STATE_NAMES = {"free_flow": "自由流", "moderate": "常规交通", "congested
 _STYLE_PATH = Path(__file__).with_name("styles") / "scene-generation.qss"
 
 _COPY = {
-    "场景工坊": "Scene Studio",
-    "SCENE STUDIO": "NL2MAP",
+    "场景工坊": "SCENE AUTHORING",
     "描述需求  /  预览场景  /  确认添加": "Describe  /  Preview  /  Add scene",
     "让每一个交通想法，成为场景": "Turn an idea into a traffic scene",
     "描述路网、交通状态或测试目标，预览满意后再加入你的场景。": (
@@ -414,8 +413,8 @@ class SceneGenerationPage(QWidget):
         layout.setContentsMargins(30, 24, 30, 24)
         layout.setSpacing(16)
         top = QHBoxLayout()
-        top.addWidget(_label("场景工坊", "pageTitle"))
-        top.addWidget(_label("SCENE STUDIO", "eyebrow"))
+        top.addWidget(_label("TrafficForge", "pageTitle"))
+        top.addWidget(_label("场景工坊", "eyebrow"))
         top.addStretch()
         top.addWidget(_label("描述需求  /  预览场景  /  确认添加", "caption"))
         self.language_combo = QComboBox()

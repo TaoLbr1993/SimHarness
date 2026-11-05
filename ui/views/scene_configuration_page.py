@@ -236,7 +236,7 @@ class SceneConfigurationPage(QWidget):
         layout.addWidget(description_label)
         layout.addWidget(self.description)
         actions = QHBoxLayout()
-        self.generate_button = QPushButton("打开场景生成  →")
+        self.generate_button = QPushButton("打开 TrafficForge  →")
         self.generate_button.setObjectName("generateLanguageScenarioButton")
         self.generate_button.clicked.connect(self.generation_page_requested)
         actions.addWidget(self.generate_button)
@@ -246,7 +246,7 @@ class SceneConfigurationPage(QWidget):
         actions.addStretch(1)
         layout.addLayout(actions)
         self.generation_status = QLabel(
-            "通过“场景生成”创建预览并确认添加，再在这里配置或启动仿真。"
+            "通过 TrafficForge 创建预览并确认添加，再在这里配置或启动仿真。"
         )
         self.generation_status.setObjectName("scenarioGenerationStatus")
         self.generation_status.setWordWrap(True)

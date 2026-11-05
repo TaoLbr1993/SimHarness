@@ -1,4 +1,4 @@
-"""Public TrafficVerse domain models."""
+"""Public SimHarness domain models."""
 
 from trafficverse.domain.models.common import StrictModel, Vector3
 from trafficverse.domain.models.history import (

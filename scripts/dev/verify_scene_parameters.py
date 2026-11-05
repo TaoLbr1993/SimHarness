@@ -34,7 +34,7 @@ def main() -> int:
         f"http://127.0.0.1:8001/artifacts/{args.source_task}/scenario.json", timeout=10
     ) as response:
         source = GenerationResponse.model_validate(json.load(response))
-    source_dir = root / "nl2map/backend/workspaces" / source.task_id / "output"
+    source_dir = root / "trafficforge/backend/workspaces" / source.task_id / "output"
     original = {
         name: hashlib.sha256((source_dir / name).read_bytes()).hexdigest()
         for name in ("network.net.xml", "traffic.rou.xml", "scenario.json")
@@ -133,7 +133,7 @@ def main() -> int:
             if index >= 0:
                 task_id = latest["task_id"]
                 plan, demand = latest["plan"], latest["demand"]
-                directory = root / "nl2map/backend/workspaces" / task_id / "output"
+                directory = root / "trafficforge/backend/workspaces" / task_id / "output"
                 cfg = ET.parse(directory / "scenario.sumocfg").getroot()
                 vehicles = ET.parse(directory / "traffic.rou.xml").getroot().findall("vehicle")
                 assert len(vehicles) == demand["planned_vehicles"]

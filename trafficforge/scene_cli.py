@@ -1,4 +1,4 @@
-"""Command-line access to saved scenario definitions; generation never starts a run."""
+"""TrafficForge command-line access; generation never starts a simulation run."""
 
 import argparse
 import json
@@ -10,8 +10,15 @@ import urllib.request
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="生成和查看 TrafficVerse 场景（不启动仿真）")
-    parser.add_argument("--url", default=os.getenv("NL2MAP_API_URL", "http://127.0.0.1:8001"))
+    parser = argparse.ArgumentParser(description="生成和查看 TrafficForge 场景（不启动仿真）")
+    parser.add_argument(
+        "--url",
+        default=(
+            os.getenv("TRAFFICFORGE_API_URL")
+            or os.getenv("NL2MAP_API_URL")  # Compatibility with pre-rename deployments.
+            or "http://127.0.0.1:8001"
+        ),
+    )
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("list", help="列出已保存的场景")
     show = commands.add_parser("show", help="查看交通状态目标、车辆需求和参数")

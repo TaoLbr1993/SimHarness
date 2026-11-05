@@ -275,16 +275,18 @@ class MapCatalog:
             return None
         payload = json.loads(manifest_path.read_text(encoding="utf-8"))
         spec = payload.get("spec") if isinstance(payload, dict) else None
-        if not isinstance(spec, dict) or "nl2map" not in spec:
+        if not isinstance(spec, dict) or not {"trafficforge", "nl2map"}.intersection(spec):
             return None
         try:
-            return GeneratedScenarioSummary.model_validate(spec["nl2map"])
+            # Read legacy packages without rewriting their immutable manifest or map ID.
+            metadata = spec["trafficforge"] if "trafficforge" in spec else spec["nl2map"]
+            return GeneratedScenarioSummary.model_validate(metadata)
         except ValidationError as error:
             details = "; ".join(
                 f"{'.'.join(map(str, item['loc']))}: {item['msg']}"
                 for item in error.errors(include_input=False, include_url=False)
             )
-            raise SumoPackageError(f"invalid NL2MAP scenario metadata: {details}") from error
+            raise SumoPackageError(f"invalid TrafficForge scenario metadata: {details}") from error
 
     def _register_entry(self, map_id: str, entry: _MapEntry) -> None:
         if map_id in self._entries:

@@ -31,19 +31,19 @@ _AUTOMATION_LEVEL_PATTERN = re.compile(r"(?<![A-Z0-9])L([0-5])(?![A-Z0-9])", re.
 def _mock_agent_api_summaries() -> tuple[AgentApiSummary, ...]:
     created_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
     definitions = (
-        ("L0人工驾驶智能体", "trafficverse-l0-driver", "人工驾驶基础行为模型"),
-        ("L1辅助驾驶智能体", "trafficverse-l1-assist", "碰撞预警与紧急制动模型"),
-        ("L2部分自动驾驶智能体", "trafficverse-l2-partial", "组合驾驶辅助模型"),
-        ("L3条件自动驾驶智能体", "trafficverse-l3-conditional", "条件自动驾驶决策模型"),
-        ("L4高度自动驾驶智能体", "trafficverse-l4-high", "限定区域高度自动驾驶模型"),
-        ("L5完全自动驾驶智能体", "trafficverse-l5-full", "完全自动驾驶决策模型"),
+        ("L0人工驾驶智能体", "simharness-l0-driver", "人工驾驶基础行为模型"),
+        ("L1辅助驾驶智能体", "simharness-l1-assist", "碰撞预警与紧急制动模型"),
+        ("L2部分自动驾驶智能体", "simharness-l2-partial", "组合驾驶辅助模型"),
+        ("L3条件自动驾驶智能体", "simharness-l3-conditional", "条件自动驾驶决策模型"),
+        ("L4高度自动驾驶智能体", "simharness-l4-high", "限定区域高度自动驾驶模型"),
+        ("L5完全自动驾驶智能体", "simharness-l5-full", "完全自动驾驶决策模型"),
     )
     return tuple(
         AgentApiSummary(
             agent_api_id=UUID(f"00000000-0000-0000-0000-0000000000a{index}"),
             workspace_id=_MOCK_WORKSPACE_ID,
             name=name,
-            api_base_url=f"https://mock-agents.trafficverse.local/v1/l{index - 1}",
+            api_base_url=f"https://mock-agents.simharness.local/v1/l{index - 1}",
             model_id=model_id,
             credential_env_var=f"TRAFFICVERSE_L{index - 1}_AGENT_API_KEY",
             description=description,

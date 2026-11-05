@@ -5,7 +5,7 @@
 Run a SUMO scenario and optional vehicle agents with one command, without starting a desktop UI or a separate backend:
 
 ```bash
-uv run trafficverse run --config configs/headless.example.yaml --scenario image2road
+uv run simharness run --config configs/headless.example.yaml --scenario image2road
 ```
 
 Install the Python dependencies and SUMO first. The command uses `sumo` on `PATH`, or tries the executable in an installed Python `sumo` package if it is not on `PATH`. `--scenario` is the ID of a discovered SUMO scenario under `configs/maps/`, not an arbitrary `.sumocfg` path. Omit it to use `map_id` from the configuration.

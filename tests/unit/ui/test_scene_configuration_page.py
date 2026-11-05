@@ -27,6 +27,7 @@ def _application() -> QApplication:
 def test_generated_scene_shows_settings_preserves_routes_and_waits_for_manual_launch() -> None:
     _application()
     page = SceneConfigurationPage(load_web_map=False)
+    assert page.generate_button.text() == "打开 TrafficForge  →"
     launched: list[object] = []
     opened: list[bool] = []
     page.launch_requested.connect(launched.append)

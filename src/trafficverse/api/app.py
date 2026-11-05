@@ -57,7 +57,7 @@ def create_app(dependencies: ApiDependencies) -> FastAPI:
         await dependencies.maps.close()
 
     app = FastAPI(
-        title="TrafficVerse API",
+        title="SimHarness API",
         version="1.0.0",
         lifespan=lifespan,
     )

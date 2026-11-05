@@ -1,6 +1,6 @@
 # Web 3D model samples
 
-This directory contains small, reviewable model inputs for the TrafficVerse Web map prototype.
+This directory contains small, reviewable model inputs for the SimHarness Web map prototype.
 They are not CARLA runtime assets.
 
 ## `box.glb`

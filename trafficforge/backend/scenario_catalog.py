@@ -1,4 +1,4 @@
-"""Publish generated inputs to the existing TrafficVerse native SUMO catalog."""
+"""Publish generated inputs to the existing SimHarness native SUMO catalog."""
 
 import json
 import re
@@ -23,7 +23,9 @@ def _task_id(value: str) -> str:
 
 def _draft(directory: Path) -> ScenarioDraft:
     spec = json.loads((directory / _METADATA).read_text(encoding="utf-8"))["spec"]
-    settings = ScenarioDraftSettings.model_validate(spec["nl2map"])
+    # Existing published scenes remain immutable and retain their original metadata key.
+    metadata = spec["trafficforge"] if "trafficforge" in spec else spec["nl2map"]
+    settings = ScenarioDraftSettings.model_validate(metadata)
     prefix = f"/scenarios/{settings.task_id}/files"
     return ScenarioDraft(
         map_id=directory.name,
@@ -103,11 +105,11 @@ def publish_scenario(result: ScenarioResult, output: Path) -> ScenarioDraft:
             if (output / name).is_file():
                 shutil.copyfile(output / name, staging / name)
         metadata = {
-            "schema_version": "1.0",
+            "schema_version": "2.0",
             "spec": {
                 "name": result.description[:80],
                 "trafficDemandMode": "scripted",
-                "nl2map": settings.model_dump(mode="json"),
+                "trafficforge": settings.model_dump(mode="json"),
                 "definition": {
                     "intent": result.intent.model_dump(mode="json") if result.intent else None,
                     "plan": plan.model_dump(mode="json"),

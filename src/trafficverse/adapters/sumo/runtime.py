@@ -1,4 +1,4 @@
-"""Lazy TraCI SDK wrapper for external or TrafficVerse-managed SUMO."""
+"""Lazy TraCI SDK wrapper for external or SimHarness-managed SUMO."""
 
 from __future__ import annotations
 

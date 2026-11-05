@@ -1,4 +1,4 @@
-"""Asynchronous Qt REST client for the TrafficVerse resource API."""
+"""Asynchronous Qt REST client for the SimHarness resource API."""
 
 from __future__ import annotations
 

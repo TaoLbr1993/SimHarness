@@ -165,7 +165,7 @@ class Subscription:
 
 
 class FrameBroker:
-    """Non-blocking latest-state publisher for TrafficVerse-owned UI data."""
+    """Non-blocking latest-state publisher for SimHarness-owned UI data."""
 
     def __init__(self, *, critical_capacity: int = 64) -> None:
         self._critical_capacity = critical_capacity

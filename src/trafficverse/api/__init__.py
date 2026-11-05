@@ -1,4 +1,4 @@
-"""TrafficVerse REST and WebSocket API."""
+"""SimHarness REST and WebSocket API."""
 
 from trafficverse.api.app import create_app
 from trafficverse.api.dependencies import ApiDependencies, RuntimeDirectory

@@ -1,4 +1,4 @@
-"""TrafficVerse command-line entry point."""
+"""SimHarness command-line entry point."""
 
 import argparse
 import json
@@ -55,7 +55,7 @@ def _repository_root() -> Path:
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="trafficverse")
+    parser = argparse.ArgumentParser(prog="simharness")
     subcommands = parser.add_subparsers(dest="command", required=True)
 
     doctor = subcommands.add_parser("doctor", help="inspect local runtime compatibility")

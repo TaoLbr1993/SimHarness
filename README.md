@@ -32,6 +32,7 @@ SimHarness is an **agent-native harness for traffic simulation**. With a single 
 - **Models and custom controllers:** Use OpenAI-compatible and Jev adapters, or implement a custom Python controller.
 - **Memory and Skills:** Optionally provide short-term per-vehicle memory and driving-style instructions. Both are disabled by default.
 - **Visualization and replay:** View traffic in the desktop interface and save, inspect, and replay simulation runs.
+- **[TrafficForge](trafficforge/README.md):** Describe a traffic scenario in natural language, generate synthetic or real-world roads with vehicle demand, preview and edit the draft, then confirm it before starting a simulation.
 
 ### Architecture
 
@@ -63,12 +64,14 @@ uv sync --frozen --extra sumo
 ### Run a Scenario
 
 ```bash
-uv run trafficverse run --config configs/headless.example.yaml --scenario image2road
+uv run simharness run --config configs/headless.example.yaml --scenario image2road
 ```
 
 The command starts a temporary local backend, creates and runs the experiment, and shuts it down when finished. `--scenario` selects a SUMO scenario ID discovered under `configs/maps/`.
 
 The [example configuration](configs/headless.example.yaml) defaults to `bindings: []`: no model is called, and SUMO controls all vehicles. Each run saves its summary and per-step requests and observations under `artifacts/headless/<run-id>/`. With no bindings, no selected-vehicle observations are recorded.
+
+The legacy `trafficverse` command remains available, as do existing Python imports and environment variables.
 
 ### Connect an Agent
 
@@ -96,6 +99,7 @@ To use the desktop UI instead, follow [Getting Started](docs/en/getting-started.
 SimHarness/
 ├── src/trafficverse/        # Simulation application, API, SUMO adapter, Agent Harness
 ├── ui/                      # Desktop interface and map visualization
+├── trafficforge/            # Natural-language scene authoring and generation service
 ├── configs/                 # Scenario, map, and agent configuration
 ├── contracts/               # API and message contracts
 ├── docs/                    # Project documentation

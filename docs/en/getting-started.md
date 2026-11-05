@@ -38,13 +38,13 @@ uv sync --frozen --extra sumo --extra ui
 From the project root, start the backend in one terminal:
 
 ```bash
-uv run trafficverse serve --host 127.0.0.1 --port 8000
+uv run simharness serve --host 127.0.0.1 --port 8000
 ```
 
 Keep it running and start the general traffic UI in a second terminal:
 
 ```bash
-uv run trafficverse traffic-ui --api-url http://127.0.0.1:8000
+uv run simharness traffic-ui --api-url http://127.0.0.1:8000
 ```
 
 The UI is an API client, so the backend must be running first. If you change its port, also update the UI's `--api-url` and the agent's `api_url`.

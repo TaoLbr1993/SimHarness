@@ -31,7 +31,7 @@ def main() -> int:
     repo = Path(__file__).resolve().parents[2]
     output = repo / "artifacts/scene-preview-edit-stage" / args.mode
     output.mkdir(parents=True, exist_ok=True)
-    source = repo / "nl2map/backend/workspaces" / args.source_task_id / "output"
+    source = repo / "trafficforge/backend/workspaces" / args.source_task_id / "output"
     source_files = [path for path in source.iterdir() if path.is_file()]
     package = repo / "configs/maps" / ("nl2-" + args.source_task_id)
     if package.is_dir():
@@ -149,7 +149,7 @@ def main() -> int:
 
     def inspect_revision() -> None:
         try:
-            changed = repo / "nl2map/backend/workspaces" / state["task_id"] / "output"
+            changed = repo / "trafficforge/backend/workspaces" / state["task_id"] / "output"
             vehicles = ET.parse(changed / "traffic.rou.xml").getroot().findall("vehicle")
             assert len(vehicles) == args.vehicle_count
             assert (changed / "network.net.xml").read_bytes() == (
@@ -194,7 +194,9 @@ def main() -> int:
             metadata = json.loads((package / "scenario.manifest.json").read_text(encoding="utf-8"))
             assert (
                 len(vehicles)
-                == metadata["spec"]["nl2map"]["planned_vehicles"]
+                == metadata["spec"].get("trafficforge", metadata["spec"].get("nl2map", {}))[
+                    "planned_vehicles"
+                ]
                 == args.vehicle_count
             )
             assert metadata["spec"]["definition"]["parent_task_id"] == original.task_id

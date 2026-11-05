@@ -1,1 +1,1 @@
-"""Framework-independent TrafficVerse domain contracts."""
+"""Framework-independent SimHarness domain contracts."""

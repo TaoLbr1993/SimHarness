@@ -469,6 +469,10 @@ def test_studio_starts_in_english_and_examples_follow_interface_language() -> No
     assert str(page.language) == "en"
     assert page.language_combo.currentData() == "en"
     assert page.generate_button.text() == "Generate preview  →"
+    brand = next(
+        label for label in page.findChildren(QLabel) if label.property("studioRole") == "pageTitle"
+    )
+    assert brand.text() == "TrafficForge"
     assert page.title.text() == "Turn an idea into a traffic scene"
     assert "Beihang" in page.description.placeholderText()
     assert all(
@@ -484,6 +488,7 @@ def test_studio_starts_in_english_and_examples_follow_interface_language() -> No
     page.language_combo.setCurrentIndex(page.language_combo.findData("zh"))
     assert str(page.language) == "zh"
     assert page.generate_button.text() == "生成预览  →"
+    assert brand.text() == "TrafficForge"
     assert page.description.text() == description
     example.click()
     assert page.description.text() == "生成北航学院路校区附近 1 公里路网，测试拥堵场景"

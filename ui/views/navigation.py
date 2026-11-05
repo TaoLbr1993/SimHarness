@@ -30,7 +30,7 @@ _NAVIGATION_GROUPS = (
     (
         "交通仿真",
         (
-            ("generate", "../scene-spark.svg", "场景生成", None),
+            ("generate", "../scene-spark.svg", "TrafficForge", None),
             ("scene", "set-up.svg", "仿真配置", None),
             ("experiments", "data-board.svg", "历史仿真", "仿真记录"),
             ("traffic_scenes", "monitor.svg", "交通场景", "场景列表"),
@@ -52,13 +52,13 @@ _HISTORY_ENTRY_HEIGHT = 32
 _SCENARIO_ENTRY_HEIGHT = 32
 _SCENE_NAV_TEXT = {
     "交通仿真系统": "Traffic simulation",
-    "TrafficVerse  ·  v0.1\n核心运行控制台": "TrafficVerse  ·  v0.1\nSimulation console",
+    "SimHarness  ·  v0.1\n核心运行控制台": "SimHarness  ·  v0.1\nSimulation console",
     "←  返回工作区": "←  Back to workspaces",
     "尚未选择工作区": "No workspace selected",
     "控制中心": "CONTROL CENTER",
     "交通仿真": "SIMULATION",
     "资产中心": "ASSETS",
-    "场景生成": "Scene Studio",
+    "TrafficForge": "TrafficForge",
     "仿真配置": "Simulation setup",
     "历史仿真": "Simulation history",
     "仿真记录": "Run history",
@@ -186,7 +186,7 @@ class NavigationRail(QWidget):
         divider.setObjectName("navigationDivider")
         divider.setFrameShape(QFrame.Shape.HLine)
         layout.addWidget(divider)
-        version = QLabel("TrafficVerse  ·  v0.1\n核心运行控制台")
+        version = QLabel("SimHarness  ·  v0.1\n核心运行控制台")
         version.setObjectName("brandCaption")
         version.setAlignment(Qt.AlignmentFlag.AlignLeft)
         layout.addWidget(version)
@@ -331,7 +331,7 @@ class NavigationRail(QWidget):
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         text = QVBoxLayout()
         text.setSpacing(0)
-        name = QLabel("TrafficVerse")
+        name = QLabel("SimHarness")
         name.setObjectName("brandName")
         caption = QLabel("交通仿真系统")
         caption.setObjectName("brandCaption")
@@ -649,7 +649,7 @@ class WorkspaceNavigationRail(QWidget):
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         text = QVBoxLayout()
         text.setSpacing(0)
-        name = QLabel("TrafficVerse")
+        name = QLabel("SimHarness")
         name.setObjectName("brandName")
         caption = QLabel("交通仿真系统")
         caption.setObjectName("brandCaption")

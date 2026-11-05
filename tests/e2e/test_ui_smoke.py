@@ -269,7 +269,7 @@ def test_core_run_window_constructs_and_closes_without_backend_or_carla() -> Non
 
     window = MainWindow(viewmodel, load_web_map=False)
 
-    assert window.windowTitle().startswith("TrafficVerse")
+    assert window.windowTitle().startswith("SimHarness")
     assert window.minimumWidth() >= 1180
 
     page_stack = window.findChild(QStackedWidget, "pageStack")
