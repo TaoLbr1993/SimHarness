@@ -1,6 +1,7 @@
 """Bounded, cached Photon/Overpass requests. Provider content is data, never code."""
 
 import json
+import re
 import threading
 import time
 import uuid
@@ -92,19 +93,37 @@ def _fetch(url: str, query: str, *, post: bool) -> SourceResponse:
         )
 
 
-def geocoder_provider() -> str:
-    """Resolve the configured provider without exposing its credential."""
+def _has_han(text: str) -> bool:
+    return (
+        re.search(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\U00020000-\U000323af]", text)
+        is not None
+    )
+
+
+def geocoder_provider(location_text: str | None = None) -> str:
+    """Route auto mode by the original place text, independent of credentials and UI language."""
     provider = config.REAL_MAP.geocoder_provider
-    if provider == "auto":
-        return "amap" if config.AMAP_WEB_API_KEY else "photon"
-    return provider
+    if provider != "auto" or location_text is None:
+        return provider
+    return "amap" if _has_han(location_text) else "photon"
 
 
-def geocode(place_query: str, alternate_query: str, output: Path) -> GeocodingResult:
-    """Use the configured provider; provider errors are never silent fallbacks."""
-    if geocoder_provider() == "amap":
-        return amap_source.geocode(place_query, alternate_query, output)
-    return _photon_geocode(place_query, alternate_query, output)
+def geocode(
+    place_query: str,
+    alternate_query: str,
+    output: Path,
+    *,
+    location_quote: str | None = None,
+) -> GeocodingResult:
+    """Keep routing and the first lookup in the original address language; never hide failures."""
+    original = (location_quote or "").strip() or place_query.strip()
+    queries = list(dict.fromkeys(q.strip() for q in (place_query, alternate_query) if q.strip()))
+    # Intent extraction may translate an address. That must not override the user's language.
+    primary = next((q for q in queries if _has_han(q) == _has_han(original)), original)
+    alternate = next((q for q in queries if q != primary), "")
+    if geocoder_provider(original) == "amap":
+        return amap_source.geocode(primary, alternate, output)
+    return _photon_geocode(primary, alternate, output)
 
 
 def _photon_geocode(place_query: str, alternate_query: str, output: Path) -> GeocodingResult:

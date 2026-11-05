@@ -265,17 +265,24 @@ SUMO XSD 数据，也可设置 `SUMO_HOME`。`.env.example` 列出地图服务�
 地图及图片保留 [© OpenStreetMap contributors / ODbL](https://www.openstreetmap.org/copyright) 署名。
 本实验入口依据 ADR-029，尚未注册到 Core 地图目录或提供 CARLA 镜像。
 
-### 高德地址定位
+### 中英文地址定位
 
 在高德开放平台申请 **Web 服务**类型 Key，确认拥有地理编码与 POI 搜索权限。
 将 Key 配置为本机用户或系统环境变量 `AMAP_WEB_API_KEY`，或在本机 backend `.env` 中设置，
 不要提交到仓库。Windows 启动器按进程、用户、系统的顺序读取，并传入 WSL 后端子进程。
-配置改变后需重启生成服务；`GET /health` 的 `amap_configured` 和 `geocoder_provider`
-可以确认是否启用，不返回 Key。
+配置改变后需重启生成服务；`GET /health` 的 `amap_configured` 表示是否配置高德 Key，
+`geocoder_provider` 表示配置模式（自动分流时为 `auto`），均不返回 Key。
 
-`MAP_GEOCODER_PROVIDER=auto` 默认有 Key 用高德，无 Key 用 Photon；也可显式设为 `amap`
-或 `photon`。`MAP_AMAP_CITY` 可选填北京等城市约束。高德鉴权、权限、配额或网络错误会
-直接显示，不会静默切换地点供应商。若地理编码已有有效候选，仅 POI 权限不足时保留候选并提示原因。
+`MAP_GEOCODER_PROVIDER=auto` 默认按**原始地点/地址文本**分流：英文用 Photon，中文用高德；
+混合文本含汉字时按中文处理。依据为地点原文引用 `location_quote`，界面语言、需求中的其余
+文字和模型生成的译名不会改变供应商。例如“生成 Stanford University 周边路网”使用 Photon，
+`Generate roads near 北京航空航天大学` 使用高德。Photon 公共接口无需申请 API Key；
+中文地址缺少高德 Key 时会明确报错，不会自动改用 Photon。
+
+可显式设为 `amap` 或 `photon`，固定使用指定供应商。`MAP_AMAP_CITY` 可选填北京等城市约束，
+仅影响高德查询。具体查询所用服务保存在候选的 `provider` 与来源记录中。高德鉴权、权限、
+配额或网络错误会直接显示，不会静默切换地点供应商。若地理编码已有有效候选，仅 POI 权限
+不足时保留候选并提示原因。
 地点无匹配仍需补充说明，不能保证每个楼栋都已收录。
 
 高德仅提供地点定位，周边道路仍取自 OSM。结果保留实际返回地址、匹配粒度、原 GCJ-02

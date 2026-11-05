@@ -358,7 +358,9 @@ def generate_real_map(
             result.status = "needs_clarification"
             result.error = f"半径须为 100–{config.REAL_MAP.max_radius_m:g} 米，未自动缩放"
             return _finish(result, output)
-        geocoding = map_sources.geocode(intent.place_query, intent.alternate_query, output)
+        geocoding = map_sources.geocode(
+            intent.place_query, intent.alternate_query, output, location_quote=intent.location_quote
+        )
         result.sources.extend(geocoding.records)
         result.warnings.extend(geocoding.warnings)
         result.candidates = geocoding.candidates

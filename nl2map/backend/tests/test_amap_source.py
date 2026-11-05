@@ -155,7 +155,7 @@ class AmapTest(unittest.TestCase):
                 map_sources.geocode("地址", "", self.root)
             self.assertNotIn(self.secret, str(caught.exception))
 
-    def test_missing_explicit_key_fails_but_auto_without_key_uses_photon(self):
+    def test_missing_key_fails_for_chinese_in_explicit_and_auto_modes(self):
         with (
             patch.object(config, "AMAP_WEB_API_KEY", ""),
             patch.object(amap_source, "urlopen") as remote,
@@ -168,8 +168,12 @@ class AmapTest(unittest.TestCase):
             patch.object(
                 config, "REAL_MAP", config.REAL_MAP.model_copy(update={"geocoder_provider": "auto"})
             ),
+            patch.object(map_sources, "_fetch") as photon,
         ):
-            self.assertEqual(map_sources.geocoder_provider(), "photon")
+            self.assertEqual(map_sources.geocoder_provider(), "auto")
+            with self.assertRaisesRegex(ValueError, "AMAP_WEB_API_KEY"):
+                map_sources.geocode("地址", "", self.root)
+            photon.assert_not_called()
 
     def test_empty_provider_environment_uses_auto_instead_of_preventing_startup(self):
         with patch.dict(os.environ, {"MAP_GEOCODER_PROVIDER": "  "}):
