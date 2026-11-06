@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from trafficverse.api.dependencies import ApiDependencies
 from trafficverse.api.models import ErrorBody, ErrorDetail, ErrorResponse
 from trafficverse.api.rest import build_router as build_rest_router
+from trafficverse.api.rest.agent_sessions import build_agent_session_router
 from trafficverse.api.websocket import build_router as build_websocket_router
 from trafficverse.domain.enums import ErrorCode
 from trafficverse.domain.errors import TrafficVerseError
@@ -51,6 +52,8 @@ def create_app(dependencies: ApiDependencies) -> FastAPI:
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         del app
         yield
+        if dependencies.agent_sessions is not None:
+            await dependencies.agent_sessions.close()
         if dependencies.shutdown is not None:
             await dependencies.shutdown()
         await dependencies.commands.close()
@@ -93,5 +96,6 @@ def create_app(dependencies: ApiDependencies) -> FastAPI:
         )
 
     app.include_router(build_rest_router(dependencies))
+    app.include_router(build_agent_session_router(dependencies))
     app.include_router(build_websocket_router(dependencies))
     return app

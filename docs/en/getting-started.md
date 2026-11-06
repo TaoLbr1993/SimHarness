@@ -56,7 +56,7 @@ The UI is an API client, so the backend must be running first. If you change its
 3. Start the simulation and observe the roads and vehicles on the run page.
 4. Use simulation history to inspect, replay, or export saved formal runs.
 
-To attach an external agent, select the UI option labeled “等待外部 Agent 控制” before starting the simulation. In this mode the simulation waits for external step requests; opening the UI alone will not advance it continuously. See [Agent Harness](agent-harness.md) for the complete workflow. The current desktop UI labels are in Chinese.
+To attach an agent, select “等待外部 Agent 控制” before starting. Then open “智能体接入”, configure models and vehicles, and click “开始接入”; see [Connect Agents from the Desktop](agent-connection.md). The simulation waits for external steps, so opening the UI alone does not advance it. The [Agent Harness CLI](agent-harness.md) remains available. These desktop controls use Chinese labels.
 
 ## 5. Use your own SUMO scenario
 
@@ -76,5 +76,6 @@ The `.sumocfg` must reference existing network, route, and additional inputs ins
 
 - **No vehicles appear:** check that the backend is running, the scenario started, and vehicles have reached their departure times. External control also requires a client to submit steps.
 - **SUMO cannot be found:** run `sumo --version` in the same terminal used to start the backend and check its `PATH`.
+- **Windows reports `Quitting (on unknown error)` at startup:** local testing with SUMO 1.27.1 reproduced this when `SUMO_HOME` pointed to a directory containing Chinese characters. When using SUMO from the project environment, add its `bin` directory to `PATH` without setting `SUMO_HOME`. If that variable already contains such a path, run `Remove-Item Env:SUMO_HOME -ErrorAction SilentlyContinue` in the backend terminal and restart the backend. The scene files need no changes.
 - **The model is not called:** the default `bindings: []` calls no model. Check that the selected vehicle IDs appear in the current frame.
 - **The simulation remains running after the agent exits:** an agent attached by experiment ID does not own a desktop-created experiment. Stop it from the UI. An experiment created by the agent is stopped by the agent on exit.

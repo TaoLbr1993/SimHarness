@@ -18,6 +18,7 @@ from trafficverse.adapters.persistence import (
     RunMetadataExperimentRepository,
 )
 from trafficverse.adapters.sumo import SumoTrafficEngineAdapter
+from trafficverse.agent_harness.sessions import AgentSessionService
 from trafficverse.api import ApiDependencies, RuntimeDirectory, create_app
 from trafficverse.api.command_bus import ExperimentCommandBus
 from trafficverse.api.map_catalog import MapCatalog
@@ -406,6 +407,15 @@ def build_core_api(
             )
         ),
         shutdown=factory.close,
+        agent_sessions=AgentSessionService(
+            runtimes,
+            history_root=(
+                simulation_artifact_root.parent
+                if simulation_artifact_root
+                else repository_root / "artifacts"
+            )
+            / "agent-sessions",
+        ),
     )
     return create_app(dependencies)
 

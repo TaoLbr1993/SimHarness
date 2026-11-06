@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ui.api_client import RestApiClient
 from ui.models import (
     TRAFFIC_SCENARIO_PRESETS,
     ControlAvailability,
@@ -31,7 +32,10 @@ from ui.models import (
 )
 from ui.scene_language import Language
 from ui.viewmodels import ReplayPlaybackViewModel, RunViewModel
+from ui.viewmodels.agent_connection import AgentConnectionViewModel
+from ui.viewmodels.agent_decisions import AgentDecisionsViewModel
 from ui.views.agent_asset_page import AgentAssetPage
+from ui.views.agent_connection_page import AgentConnectionPage
 from ui.views.data_replay_page import DataReplayPage
 from ui.views.experiment_management_page import ExperimentManagementPage
 from ui.views.live_monitor_page import LiveMonitorPage
@@ -108,6 +112,13 @@ class MainWindow(QMainWindow):
         self.traffic_scenes_page = TrafficScenePage(load_web_map=load_web_map)
         self.maps_page = MapAssetPage(load_web_map=load_web_map)
         self.agents_page = AgentAssetPage(traffic_mode=traffic_mode)
+        self.agent_connection_page = AgentConnectionPage()
+        self.agent_connection_viewmodel = AgentConnectionViewModel(
+            RestApiClient(viewmodel.api_url, self), self
+        )
+        self.agent_decisions_viewmodel = AgentDecisionsViewModel(
+            RestApiClient(viewmodel.api_url, self), self
+        )
         self.settings_page = SystemSettingsPage()
         self.workspace_page = WorkspaceOverviewPage(
             load_web_map=load_web_map, traffic_mode=traffic_mode
@@ -124,6 +135,7 @@ class MainWindow(QMainWindow):
             "traffic_scenes": self.traffic_scenes_page,
             "maps": self.maps_page,
             "agents": self.agents_page,
+            "agent_connection": self.agent_connection_page,
             "settings": self.settings_page,
         }
         for page in self._pages.values():
@@ -164,6 +176,31 @@ class MainWindow(QMainWindow):
 
     def _connect_pages(self) -> None:
         vm = self._viewmodel
+        connection = self.agent_connection_viewmodel
+        page = self.agent_connection_page
+        page.command_requested.connect(connection.command)
+        page.visibility_changed.connect(connection.set_visible)
+        page.monitor_requested.connect(lambda: self._show_page("live"))
+        connection.view_changed.connect(page.set_view)
+        connection.config_loaded.connect(page.set_configuration)
+        connection.message_changed.connect(page.message.setText)
+        connection.busy_changed.connect(page.set_busy)
+        decisions = self.agent_decisions_viewmodel
+        connection.view_changed.connect(decisions.set_session)
+        decisions.page_changed.connect(page.decisions.set_page)
+        decisions.detail_changed.connect(page.decisions.set_detail)
+        decisions.error.connect(page.decisions.detail_note.setText)
+        page.decisions.page_requested.connect(decisions.load_page)
+        page.decisions.detail_requested.connect(decisions.load_detail)
+        page.visibility_changed.connect(
+            lambda visible: decisions.set_visible(visible and page.sections.currentIndex() == 1)
+        )
+        page.sections.currentChanged.connect(
+            lambda index: decisions.set_visible(page.isVisible() and index == 1)
+        )
+        self.live_page.agent_connection_requested.connect(
+            lambda: self._show_page("agent_connection")
+        )
         self.navigation.page_selected.connect(self._show_page)
         self.navigation.replay_requested.connect(self._show_replay)
         self.navigation.traffic_scene_requested.connect(self._show_traffic_scene)
@@ -226,6 +263,8 @@ class MainWindow(QMainWindow):
         vm.workspace_overview_changed.connect(self._set_workspace_overview)
         vm.workspace_context_changed.connect(self._set_workspace_context)
         vm.agent_catalog_changed.connect(self.agents_page.set_agents)
+        vm.agent_catalog_changed.connect(self.agent_connection_page.set_assets)
+        vm.experiment_id_changed.connect(self.agent_connection_viewmodel.bind_experiment)
         vm.map_catalog_changed.connect(self._set_maps)
         vm.generation_state_changed.connect(self.generation_page.set_generation_state)
         vm.scene_generation_failed.connect(self.generation_page.set_generation_error)
@@ -272,7 +311,11 @@ class MainWindow(QMainWindow):
         if page is None:
             return
         self.page_stack.setCurrentWidget(page)
-        self._apply_scene_language(self.generation_page.language)
+        self.setWindowTitle(
+            "SimHarness · TrafficForge"
+            if page is self.generation_page
+            else self._normal_window_title
+        )
         self.navigation.set_active(key)
         if key != "replay":
             self.navigation.set_history_selection(None)
@@ -284,12 +327,8 @@ class MainWindow(QMainWindow):
             self.navigation.set_traffic_scene_selection(None)
 
     def _apply_scene_language(self, language: str) -> None:
+        """Keep TrafficForge language local; page navigation must not reset the shell."""
         self._viewmodel.set_scene_language(language)
-        studio_active = self.page_stack.currentWidget() is self.generation_page
-        self.navigation.set_scene_language(language if studio_active else "zh")
-        self.setWindowTitle(
-            "SimHarness · TrafficForge" if studio_active else self._normal_window_title
-        )
 
     def _open_scene_generator(self) -> None:
         if not self.generation_page.description.text().strip():

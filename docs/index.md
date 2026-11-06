@@ -8,6 +8,8 @@ SimHarness 是面向交通仿真的智能体 Harness。它使用 SUMO 推进交�
 
 快速运行：参见[无界面运行仿真](HEADLESS_RUN.md)，一个命令启动场景和可选 Agent。
 
+桌面接入：参见[在页面中接入智能体](AGENT_CONNECTION.md)，通过页面配置模型、车辆、Memory 和 Skill，并开始或暂停接入。
+
 1. [安装与运行](GETTING_STARTED.md)：安装依赖、启动后端和桌面界面、运行 SUMO 场景。
 2. [使用 Agent Harness](../src/trafficverse/agent_harness/README.md)：接入实验、选择车辆、配置本地模型、API、Jev 或自定义控制器。
 3. [外部程序控制接口](EXTERNAL_STEP_API.md)：不使用内置 Agent Harness，直接调用同步步进 API。

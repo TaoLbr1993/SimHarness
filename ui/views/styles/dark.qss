@@ -423,3 +423,37 @@ QPushButton#trafficSceneConfigureButton:disabled,
 QPushButton#trafficSceneLaunchButton:disabled {
   background: #20232b; border-color: #303641; color: #666e7e;
 }
+/* Agent decision cards: native widgets, matching the active desktop theme. */
+QWidget#decisionSidebar, QWidget#decisionContent { background: transparent; }
+QScrollArea#decisionScroll { background: transparent; border: 0; }
+QFrame#decisionHero {
+  background: #19283c; border: 1px solid #314966; border-radius: 10px;
+}
+QLabel#decisionHeading { color: #d5e6fc; font-size: 21px; font-weight: 700; }
+QFrame#decisionCard {
+  background: #1d232d; border: 1px solid #35404f; border-radius: 9px;
+}
+QLabel#decisionCardTitle { color: #d0dcea; font-size: 13px; font-weight: 600; }
+QLabel#decisionBody { color: #b7c5d7; font-size: 13px; }
+QLabel#decisionCaption { color: #8c9db2; font-size: 11px; }
+QLabel#decisionMetric { color: #8fbeee; font-size: 24px; font-weight: 700; }
+QLabel#decisionBadge {
+  color: #afc0d4; background: #303c4c; border-radius: 5px; padding: 6px 10px;
+  font-size: 11px; font-weight: 600;
+}
+QLabel#decisionBadge[tone="success"] { background: #1e4137; color: #8fd4b4; }
+QLabel#decisionBadge[tone="warning"] { background: #46391e; color: #e7bd72; }
+QLabel#decisionBadge[tone="active"] { background: #263f60; color: #9bc6fb; }
+QListWidget#decisionRounds { background: transparent; border: 0; outline: 0; }
+QListWidget#decisionRounds::item {
+  background: #1d232d; color: #a6b6ca; border: 1px solid #35404f;
+  border-radius: 7px; padding: 10px; margin: 3px 0;
+}
+QListWidget#decisionRounds::item:hover { background: #263345; border-color: #476589; }
+QListWidget#decisionRounds::item:selected {
+  background: #253d5b; color: #c0ddff; border: 1px solid #6695c8;
+}
+QPlainTextEdit#decisionOutput {
+  background: #18202b; color: #b7c5d7; border: 0; border-radius: 6px; padding: 8px;
+}
+QPushButton#decisionRawButton { color: #9bc6fb; background: transparent; border: 0; }

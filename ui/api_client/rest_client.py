@@ -17,6 +17,7 @@ from PySide6.QtNetwork import (
 )
 
 from ui.models import SimulationConfigurationDraft
+from ui.models.agent_session import AgentSessionConfig
 
 
 class RestApiClient(QObject):
@@ -220,6 +221,42 @@ class RestApiClient(QObject):
             f"/api/v1/experiments/{experiment_id}",
         )
 
+    def get_agent_session(self, experiment_id: UUID) -> None:
+        self._get(
+            f"agent-session:view:{experiment_id}",
+            f"/api/v1/experiments/{experiment_id}/agent-session",
+        )
+
+    def get_agent_decisions(
+        self, experiment_id: UUID, operation: str, before_id: int | None = None
+    ) -> None:
+        parameters = {"limit": "20"}
+        if before_id is not None:
+            parameters["before_id"] = str(before_id)
+        self._get(
+            operation, f"/api/v1/experiments/{experiment_id}/agent-session/decisions", parameters
+        )
+
+    def get_agent_decision(
+        self, experiment_id: UUID, session_id: UUID, record_id: int, operation: str
+    ) -> None:
+        self._get(
+            operation,
+            f"/api/v1/experiments/{experiment_id}/agent-session/decisions/{record_id}",
+            {"session_id": str(session_id)},
+        )
+
+    def agent_session_command(
+        self, experiment_id: UUID, action: str, config: AgentSessionConfig | None = None
+    ) -> None:
+        if action not in {"check", "start", "pause", "stop"}:
+            raise ValueError("unsupported Agent session command")
+        self._post_json(
+            f"agent-session:{action}:{experiment_id}",
+            f"/api/v1/experiments/{experiment_id}/agent-session/{action}",
+            config.model_dump(mode="json") if config else {},
+        )
+
     def experiment_command(
         self,
         experiment_id: UUID,
@@ -238,10 +275,15 @@ class RestApiClient(QObject):
         path: str,
         parameters: Mapping[str, str] | None = None,
     ) -> None:
-        self._watch(operation, self._network.get(QNetworkRequest(self._url(path, parameters))))
+        request = QNetworkRequest(self._url(path, parameters))
+        if operation.startswith(("agent-session:", "agent-decisions:")):
+            request.setTransferTimeout(10000)
+        self._watch(operation, self._network.get(request))
 
     def _post_json(self, operation: str, path: str, payload: dict[str, object]) -> None:
         request = QNetworkRequest(self._url(path))
+        if operation.startswith("agent-session:"):
+            request.setTransferTimeout(10000)
         request.setHeader(QNetworkRequest.KnownHeaders.ContentTypeHeader, "application/json")
         reply = self._network.post(
             request,

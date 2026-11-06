@@ -3,7 +3,7 @@
 import logging
 import sys
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from uuid import UUID
 
 from trafficverse.api.models import (
@@ -19,6 +19,7 @@ from .client import SimulationClient
 from .config import HarnessConfig
 from .models.base import VehicleAgent
 from .skills.provider import FileSkillProvider
+from .tracing import DecisionHistory, capture_decision
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,8 @@ class AgentManager:
             matching = [
                 binding.name
                 for binding in self._config.bindings
-                if vehicle.vehicle_id in binding.vehicle_ids
+                if binding.all_vehicles
+                or vehicle.vehicle_id in binding.vehicle_ids
                 or vehicle.automation_level.value in binding.automation_levels
             ]
             if len(matching) > 1:
@@ -58,22 +60,36 @@ class AgentManager:
                 assignments[matching[0]].append(observation)
         return assignments
 
-    def actions_for(self, frame: LocalObservationFrame) -> tuple[VehicleControlRequest, ...]:
+    def actions_for(
+        self,
+        frame: LocalObservationFrame,
+        *,
+        should_continue: Callable[[], bool] | None = None,
+        history: DecisionHistory | None = None,
+    ) -> tuple[VehicleControlRequest, ...]:
         assignments = self._assign(frame)
         actions: list[VehicleControlRequest] = []
         for binding in self._config.bindings:
+            if should_continue is not None and not should_continue():
+                return ()
             observations = tuple(assignments[binding.name])
-            if not observations:
-                continue
-            allowed = {item.ego.vehicle_id for item in observations}
-            decisions = self._driving_agents[binding.name].decide(observations)
-            for decision in decisions:
-                action = VehicleControlRequest.model_validate(decision)
-                if action.vehicle_id not in allowed:
-                    raise ValueError(f"agent {binding.name} returned an unassigned vehicle")
-                if action.vehicle_id in {item.vehicle_id for item in actions}:
-                    raise ValueError(f"duplicate action for {action.vehicle_id}")
-                actions.append(action)
+            with capture_decision(history, binding, frame, observations) as capture:
+                allowed = {item.ego.vehicle_id for item in observations}
+                decisions = (
+                    self._driving_agents[binding.name].decide(observations) if observations else ()
+                )
+                group_actions = []
+                for decision in decisions:
+                    action = VehicleControlRequest.model_validate(decision)
+                    if action.vehicle_id not in allowed:
+                        raise ValueError(f"agent {binding.name} returned an unassigned vehicle")
+                    group_actions.append(action)
+                validated = ExternalStepRequest(
+                    expected_sequence=frame.sequence, actions=tuple(group_actions)
+                ).actions
+                actions.extend(validated)
+                if capture:
+                    capture.finish(validated)
         return ExternalStepRequest(expected_sequence=frame.sequence, actions=tuple(actions)).actions
 
     def _step_request(
@@ -83,6 +99,7 @@ class AgentManager:
             expected_sequence=sequence,
             actions=actions,
             radius_m=self._config.observation_radius_m,
+            all_vehicles=any(binding.all_vehicles for binding in self._config.bindings),
             vehicle_ids=tuple(
                 sorted({v for binding in self._config.bindings for v in binding.vehicle_ids})
             ),
@@ -93,6 +110,18 @@ class AgentManager:
                 )
             ),
         )
+
+    def record_transition(
+        self,
+        previous: LocalObservationFrame,
+        actions: tuple[VehicleControlRequest, ...],
+        frame: LocalObservationFrame,
+    ) -> None:
+        assignments = self._assign(previous)
+        for binding in self._config.bindings:
+            self._driving_agents[binding.name].record_transition(
+                tuple(assignments[binding.name]), actions, frame
+            )
 
     def run(self) -> UUID:
         owned = self._config.experiment_id is None
@@ -126,11 +155,7 @@ class AgentManager:
                 frame = self._client.step(
                     experiment_id, self._step_request(frame.sequence, actions)
                 )
-                assignments = self._assign(previous)
-                for binding in self._config.bindings:
-                    self._driving_agents[binding.name].record_transition(
-                        tuple(assignments[binding.name]), actions, frame
-                    )
+                self.record_transition(previous, actions, frame)
                 for event in frame.events:
                     if event.event_type == "vehicle.control.rejected":
                         logger.warning("Vehicle action rejected: %s", event.payload)

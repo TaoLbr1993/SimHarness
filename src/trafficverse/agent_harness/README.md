@@ -4,6 +4,8 @@
 
 Agent Harness 是独立运行的外部程序。它连接 SimHarness 实验，按配置选择车辆，把局部观测交给模型或自定义控制器，然后将动作汇总为一个批次提交。没有动作的车辆由 SUMO 控制。
 
+也可通过[智能体接入页面](../../../docs/AGENT_CONNECTION.md)配置并启动后端托管会话，复用这里的模型、Memory 和 Skill，无需单独运行命令行。本页主要介绍独立 CLI。
+
 如果只想通过 HTTP API 接入自己的程序，不需要使用此模块，参见 [外部程序同步控制车辆](../../../docs/EXTERNAL_STEP_API.md)。
 
 ## 工作流程
@@ -66,7 +68,7 @@ bindings: []
 
 ## 选择车辆
 
-每个 binding 有独立名称、控制器和车辆选择条件。`vehicle_ids` 和 `automation_levels` 至少填写一个；同时填写时匹配任一条件即可。等级以仿真快照中的 `automation_level` 为准，自定义场景应先确认该标注符合预期。
+每个 binding 有独立名称、控制器和车辆选择条件。`vehicle_ids`、`automation_levels` 至少填写一个，或设 `all_vehicles: true` 控制当前及后续车辆；同时填写时匹配任一条件即可。`all_vehicles` 默认 false。等级以仿真快照中的 `automation_level` 为准，自定义场景应先确认该标注符合预期。
 
 ```yaml
 bindings:

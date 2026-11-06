@@ -8,6 +8,8 @@ SimHarness is an agent harness for traffic simulation. It uses SUMO to advance t
 
 For a single-command run, see [Run Without a Desktop](headless-run.md).
 
+For visual configuration, see [Connect Agents from the Desktop](agent-connection.md): assign models, vehicles, memory, and skills, then start or pause a session.
+
 1. [Getting Started](getting-started.md): install dependencies, start the backend and desktop UI, and run a SUMO scenario.
 2. [Agent Harness](agent-harness.md): connect to an experiment, select vehicles, and configure a local model, API, Jev, or custom controller.
 3. [External Control API](external-step-api.md): use synchronous step APIs directly from your own program.

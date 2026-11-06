@@ -349,7 +349,6 @@ def build_router(dependencies: ApiDependencies) -> APIRouter:
 
     @router.post("/experiments/{experiment_id}/step", response_model=SimulationFrame)
     async def step_experiment(experiment_id: UUID, request: ExternalStepRequest) -> SimulationFrame:
-        manager = await dependencies.runtimes.get(experiment_id)
         commands = {
             action.vehicle_id: ControlCommand(
                 desired_speed_mps=action.desired_speed_mps,
@@ -359,7 +358,9 @@ def build_router(dependencies: ApiDependencies) -> APIRouter:
             )
             for action in request.actions
         }
-        return await manager.step_external(request.expected_sequence, commands)
+        return await dependencies.runtimes.step_external(
+            experiment_id, request.expected_sequence, commands
+        )
 
     @router.post("/experiments/{experiment_id}/local-step", response_model=LocalObservationFrame)
     async def local_step_experiment(

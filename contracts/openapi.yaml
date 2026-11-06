@@ -167,6 +167,213 @@ components:
       - DISABLED
       title: ComponentStatus
       type: string
+    DecisionInputPreview:
+      properties:
+        truncated:
+          default: false
+          title: Truncated
+          type: boolean
+        vehicles:
+          default: []
+          items:
+            $ref: '#/components/schemas/VehicleInputPreview'
+          title: Vehicles
+          type: array
+      title: DecisionInputPreview
+      type: object
+    DecisionPage:
+      properties:
+        items:
+          default: []
+          items:
+            $ref: '#/components/schemas/DecisionSummary'
+          title: Items
+          type: array
+        next_before_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Next Before Id
+        session_id:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Session Id
+        storage_warning:
+          default: false
+          title: Storage Warning
+          type: boolean
+        total:
+          default: 0
+          title: Total
+          type: integer
+      title: DecisionPage
+      type: object
+    DecisionRecord:
+      properties:
+        action_count:
+          default: 0
+          title: Action Count
+          type: integer
+        actions_text:
+          default: '[]'
+          title: Actions Text
+          type: string
+        elapsed_ms:
+          default: 0
+          title: Elapsed Ms
+          type: integer
+        fallback_count:
+          default: 0
+          title: Fallback Count
+          type: integer
+        group_name:
+          title: Group Name
+          type: string
+        input_preview:
+          anyOf:
+          - $ref: '#/components/schemas/DecisionInputPreview'
+          - type: 'null'
+        input_text:
+          default: ''
+          title: Input Text
+          type: string
+        message:
+          default: 正在推理
+          title: Message
+          type: string
+        model_id:
+          title: Model Id
+          type: string
+        outcome:
+          default: pending
+          enum:
+          - pending
+          - submitted
+          - discarded
+          - failed
+          title: Outcome
+          type: string
+        output_text:
+          default: ''
+          title: Output Text
+          type: string
+        record_id:
+          title: Record Id
+          type: integer
+        request_text:
+          default: ''
+          title: Request Text
+          type: string
+        sequence:
+          title: Sequence
+          type: integer
+        simulation_time_ms:
+          title: Simulation Time Ms
+          type: integer
+        started_at:
+          format: date-time
+          title: Started At
+          type: string
+        state:
+          default: running
+          enum:
+          - running
+          - completed
+          - failed
+          - skipped
+          title: State
+          type: string
+        truncated:
+          default: false
+          title: Truncated
+          type: boolean
+        vehicle_count:
+          default: 0
+          title: Vehicle Count
+          type: integer
+      required:
+      - record_id
+      - sequence
+      - simulation_time_ms
+      - group_name
+      - model_id
+      - started_at
+      title: DecisionRecord
+      type: object
+    DecisionSummary:
+      properties:
+        action_count:
+          default: 0
+          title: Action Count
+          type: integer
+        elapsed_ms:
+          default: 0
+          title: Elapsed Ms
+          type: integer
+        fallback_count:
+          default: 0
+          title: Fallback Count
+          type: integer
+        group_name:
+          title: Group Name
+          type: string
+        message:
+          default: 正在推理
+          title: Message
+          type: string
+        model_id:
+          title: Model Id
+          type: string
+        outcome:
+          default: pending
+          enum:
+          - pending
+          - submitted
+          - discarded
+          - failed
+          title: Outcome
+          type: string
+        record_id:
+          title: Record Id
+          type: integer
+        sequence:
+          title: Sequence
+          type: integer
+        simulation_time_ms:
+          title: Simulation Time Ms
+          type: integer
+        started_at:
+          format: date-time
+          title: Started At
+          type: string
+        state:
+          default: running
+          enum:
+          - running
+          - completed
+          - failed
+          - skipped
+          title: State
+          type: string
+        truncated:
+          default: false
+          title: Truncated
+          type: boolean
+        vehicle_count:
+          default: 0
+          title: Vehicle Count
+          type: integer
+      required:
+      - record_id
+      - sequence
+      - simulation_time_ms
+      - group_name
+      - model_id
+      - started_at
+      title: DecisionSummary
+      type: object
     DomainEvent:
       additionalProperties: false
       properties:
@@ -658,6 +865,40 @@ components:
       - network_schema_version
       title: MapSummary
       type: object
+    MemoryConfig:
+      additionalProperties: false
+      description: Per-vehicle in-process memory configuration.
+      properties:
+        enabled:
+          default: false
+          title: Enabled
+          type: boolean
+        max_steps:
+          default: 10
+          maximum: 1000.0
+          minimum: 1.0
+          title: Max Steps
+          type: integer
+      title: MemoryConfig
+      type: object
+    MemoryInputPreview:
+      properties:
+        action_text:
+          title: Action Text
+          type: string
+        next_speed_mps:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Next Speed Mps
+        sequence:
+          title: Sequence
+          type: integer
+      required:
+      - sequence
+      - action_text
+      title: MemoryInputPreview
+      type: object
     MetricSample:
       additionalProperties: false
       properties:
@@ -692,6 +933,57 @@ components:
       - unit
       - simulation_time_ms
       title: MetricSample
+      type: object
+    ModelConfig:
+      additionalProperties: false
+      description: Connection settings; credentials are resolved from the named environment
+        variable.
+      properties:
+        api_key_env:
+          anyOf:
+          - minLength: 1
+            type: string
+          - type: 'null'
+          title: Api Key Env
+        base_url:
+          minLength: 1
+          title: Base Url
+          type: string
+        jev_acceleration_mps2:
+          default: 1.0
+          exclusiveMinimum: 0.0
+          title: Jev Acceleration Mps2
+          type: number
+        model_id:
+          minLength: 1
+          title: Model Id
+          type: string
+        timeout_s:
+          default: 30.0
+          exclusiveMinimum: 0.0
+          title: Timeout S
+          type: number
+      required:
+      - base_url
+      - model_id
+      title: ModelConfig
+      type: object
+    NearbyInputPreview:
+      properties:
+        distance_m:
+          title: Distance M
+          type: number
+        speed_mps:
+          title: Speed Mps
+          type: number
+        vehicle_id:
+          title: Vehicle Id
+          type: string
+      required:
+      - vehicle_id
+      - distance_m
+      - speed_mps
+      title: NearbyInputPreview
       type: object
     NearbyVehicle:
       additionalProperties: false
@@ -745,6 +1037,166 @@ components:
       - ready
       - components
       title: ReadinessResponse
+      type: object
+    SessionBinding:
+      additionalProperties: false
+      properties:
+        all_vehicles:
+          default: false
+          title: All Vehicles
+          type: boolean
+        kind:
+          default: api
+          enum:
+          - api
+          - local
+          - jev
+          title: Kind
+          type: string
+        memory:
+          $ref: '#/components/schemas/MemoryConfig'
+        model:
+          $ref: '#/components/schemas/ModelConfig'
+        name:
+          maxLength: 80
+          minLength: 1
+          title: Name
+          type: string
+        skills:
+          default: []
+          items:
+            enum:
+            - human_cautious
+            - human_normal
+            - human_reckless
+            type: string
+          title: Skills
+          type: array
+        vehicle_ids:
+          default: []
+          items:
+            type: string
+          maxItems: 10000
+          title: Vehicle Ids
+          type: array
+      required:
+      - name
+      - model
+      title: SessionBinding
+      type: object
+    SessionCheck:
+      properties:
+        issues:
+          default: []
+          items:
+            type: string
+          title: Issues
+          type: array
+        ready:
+          title: Ready
+          type: boolean
+        warnings:
+          default: []
+          items:
+            type: string
+          title: Warnings
+          type: array
+      required:
+      - ready
+      title: SessionCheck
+      type: object
+    SessionConfig:
+      additionalProperties: false
+      properties:
+        bindings:
+          items:
+            $ref: '#/components/schemas/SessionBinding'
+          maxItems: 16
+          minItems: 1
+          title: Bindings
+          type: array
+        max_steps:
+          default: 100
+          maximum: 1000000.0
+          minimum: 1.0
+          title: Max Steps
+          type: integer
+        observation_radius_m:
+          default: 100
+          exclusiveMinimum: 0.0
+          title: Observation Radius M
+          type: number
+        step_delay_s:
+          default: 0
+          maximum: 60.0
+          minimum: 0.0
+          title: Step Delay S
+          type: number
+      required:
+      - bindings
+      title: SessionConfig
+      type: object
+    SessionView:
+      properties:
+        config:
+          anyOf:
+          - $ref: '#/components/schemas/SessionConfig'
+          - type: 'null'
+        experiment_id:
+          format: uuid
+          title: Experiment Id
+          type: string
+        experiment_status:
+          title: Experiment Status
+          type: string
+        external_stepping:
+          title: External Stepping
+          type: boolean
+        message:
+          default: 尚未接入
+          title: Message
+          type: string
+        sequence:
+          default: 0
+          title: Sequence
+          type: integer
+        session_id:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Session Id
+        simulation_time_ms:
+          default: 0
+          title: Simulation Time Ms
+          type: integer
+        status:
+          default: idle
+          enum:
+          - idle
+          - running
+          - pausing
+          - paused
+          - stopping
+          - stopped
+          - failed
+          title: Status
+          type: string
+        steps_completed:
+          default: 0
+          title: Steps Completed
+          type: integer
+        vehicle_ids:
+          default: []
+          items:
+            type: string
+          title: Vehicle Ids
+          type: array
+      required:
+      - experiment_id
+      - experiment_status
+      - external_stepping
+      title: SessionView
       type: object
     SetSpeedRequest:
       additionalProperties: false
@@ -1229,6 +1681,19 @@ components:
       - value
       title: SimulationTrendSample
       type: object
+    SkillInputPreview:
+      properties:
+        content:
+          title: Content
+          type: string
+        name:
+          title: Name
+          type: string
+      required:
+      - name
+      - content
+      title: SkillInputPreview
+      type: object
     StopExperimentRequest:
       additionalProperties: false
       properties:
@@ -1388,6 +1853,54 @@ components:
       required:
       - vehicle_id
       title: VehicleControlRequest
+      type: object
+    VehicleInputPreview:
+      properties:
+        lane_id:
+          title: Lane Id
+          type: string
+        memory_steps:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Memory Steps
+        nearby:
+          default: []
+          items:
+            $ref: '#/components/schemas/NearbyInputPreview'
+          title: Nearby
+          type: array
+        nearby_count:
+          title: Nearby Count
+          type: integer
+        radius_m:
+          title: Radius M
+          type: number
+        recent_memory:
+          default: []
+          items:
+            $ref: '#/components/schemas/MemoryInputPreview'
+          title: Recent Memory
+          type: array
+        skills:
+          default: []
+          items:
+            $ref: '#/components/schemas/SkillInputPreview'
+          title: Skills
+          type: array
+        speed_mps:
+          title: Speed Mps
+          type: number
+        vehicle_id:
+          title: Vehicle Id
+          type: string
+      required:
+      - vehicle_id
+      - speed_mps
+      - lane_id
+      - radius_m
+      - nearby_count
+      title: VehicleInputPreview
       type: object
     VehicleObservation:
       additionalProperties: false
@@ -1748,6 +2261,224 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
           description: Validation Error
       summary: Get Experiment
+  /api/v1/experiments/{experiment_id}/agent-session:
+    get:
+      operationId: view_api_v1_experiments__experiment_id__agent_session_get
+      parameters:
+      - in: path
+        name: experiment_id
+        required: true
+        schema:
+          format: uuid
+          title: Experiment Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionView'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: View
+  /api/v1/experiments/{experiment_id}/agent-session/check:
+    post:
+      operationId: check_api_v1_experiments__experiment_id__agent_session_check_post
+      parameters:
+      - in: path
+        name: experiment_id
+        required: true
+        schema:
+          format: uuid
+          title: Experiment Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionConfig'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionCheck'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Check
+  /api/v1/experiments/{experiment_id}/agent-session/decisions:
+    get:
+      operationId: decisions_api_v1_experiments__experiment_id__agent_session_decisions_get
+      parameters:
+      - in: path
+        name: experiment_id
+        required: true
+        schema:
+          format: uuid
+          title: Experiment Id
+          type: string
+      - in: query
+        name: before_id
+        required: false
+        schema:
+          anyOf:
+          - minimum: 1
+            type: integer
+          - type: 'null'
+          title: Before Id
+      - in: query
+        name: limit
+        required: false
+        schema:
+          default: 20
+          maximum: 50
+          minimum: 1
+          title: Limit
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionPage'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Decisions
+  /api/v1/experiments/{experiment_id}/agent-session/decisions/{record_id}:
+    get:
+      operationId: decision_api_v1_experiments__experiment_id__agent_session_decisions__record_id__get
+      parameters:
+      - in: path
+        name: experiment_id
+        required: true
+        schema:
+          format: uuid
+          title: Experiment Id
+          type: string
+      - in: path
+        name: record_id
+        required: true
+        schema:
+          title: Record Id
+          type: integer
+      - in: query
+        name: session_id
+        required: true
+        schema:
+          format: uuid
+          title: Session Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionRecord'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Decision
+  /api/v1/experiments/{experiment_id}/agent-session/pause:
+    post:
+      operationId: pause_api_v1_experiments__experiment_id__agent_session_pause_post
+      parameters:
+      - in: path
+        name: experiment_id
+        required: true
+        schema:
+          format: uuid
+          title: Experiment Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionView'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Pause
+  /api/v1/experiments/{experiment_id}/agent-session/start:
+    post:
+      operationId: start_api_v1_experiments__experiment_id__agent_session_start_post
+      parameters:
+      - in: path
+        name: experiment_id
+        required: true
+        schema:
+          format: uuid
+          title: Experiment Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionConfig'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionView'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Start
+  /api/v1/experiments/{experiment_id}/agent-session/stop:
+    post:
+      operationId: stop_api_v1_experiments__experiment_id__agent_session_stop_post
+      parameters:
+      - in: path
+        name: experiment_id
+        required: true
+        schema:
+          format: uuid
+          title: Experiment Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionView'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Stop
   /api/v1/experiments/{experiment_id}/local-step:
     post:
       operationId: local_step_experiment_api_v1_experiments__experiment_id__local_step_post

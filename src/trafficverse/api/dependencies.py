@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 from uuid import UUID
 
 from trafficverse.api.models import ExperimentView, ReadinessComponent
-from trafficverse.domain.enums import ExperimentStatus
+from trafficverse.domain.enums import ErrorCode, ExperimentStatus
+from trafficverse.domain.errors import TrafficVerseError
 from trafficverse.domain.models import ControlCommand, SimulationFrame, SimulationRunInput
 
 if TYPE_CHECKING:
     from trafficverse.adapters.messaging.frame_broker import FrameBroker
+    from trafficverse.agent_harness.sessions import AgentSessionService
     from trafficverse.api.command_bus import ExperimentCommandBus
     from trafficverse.api.map_catalog import MapCatalog
     from trafficverse.application.simulation_configuration_service import (
@@ -76,6 +79,35 @@ class RuntimeDirectory:
         self._factory = factory
         self._managers: dict[UUID, SimulationControlPort] = {}
         self._workspace_ids: dict[UUID, UUID] = {}
+        self._step_owners: dict[UUID, UUID] = {}
+        self._step_locks: dict[UUID, asyncio.Lock] = {}
+
+    def control_owner(self, experiment_id: UUID) -> UUID | None:
+        return self._step_owners.get(experiment_id)
+
+    async def claim_control(self, experiment_id: UUID, owner: UUID) -> None:
+        async with self._step_locks.setdefault(experiment_id, asyncio.Lock()):
+            if self._step_owners.get(experiment_id) not in (None, owner):
+                raise TrafficVerseError(ErrorCode.RESOURCE_CONFLICT, "实验已有 Agent 接入会话")
+            self._step_owners[experiment_id] = owner
+
+    def release_control(self, experiment_id: UUID, owner: UUID) -> None:
+        if self._step_owners.get(experiment_id) == owner:
+            del self._step_owners[experiment_id]
+
+    async def step_external(
+        self,
+        experiment_id: UUID,
+        expected_sequence: int,
+        commands: dict[str, ControlCommand],
+        *,
+        owner: UUID | None = None,
+    ) -> SimulationFrame:
+        async with self._step_locks.setdefault(experiment_id, asyncio.Lock()):
+            if self._step_owners.get(experiment_id) != owner:
+                raise TrafficVerseError(ErrorCode.RESOURCE_CONFLICT, "实验由另一接入会话控制")
+            manager = await self.get(experiment_id)
+            return await manager.step_external(expected_sequence, commands)
 
     async def create(
         self,
@@ -87,9 +119,6 @@ class RuntimeDirectory:
         external_stepping: bool = False,
     ) -> ExperimentView:
         if self._factory is None:
-            from trafficverse.domain.enums import ErrorCode
-            from trafficverse.domain.errors import TrafficVerseError
-
             raise TrafficVerseError(
                 ErrorCode.COMPONENT_UNAVAILABLE,
                 "experiment runtime factory is not configured",
@@ -122,9 +151,6 @@ class RuntimeDirectory:
     async def get(self, experiment_id: UUID) -> SimulationControlPort:
         manager = self._managers.get(experiment_id)
         if manager is None:
-            from trafficverse.domain.enums import ErrorCode
-            from trafficverse.domain.errors import TrafficVerseError
-
             raise TrafficVerseError(
                 ErrorCode.RESOURCE_NOT_FOUND,
                 f"experiment runtime is not registered: {experiment_id}",
@@ -155,3 +181,4 @@ class ApiDependencies:
     configurations: SimulationConfigurationService | None = None
     histories: SimulationHistoryService | None = None
     shutdown: ShutdownHook | None = None
+    agent_sessions: AgentSessionService | None = None

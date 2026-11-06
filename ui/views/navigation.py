@@ -32,6 +32,7 @@ _NAVIGATION_GROUPS = (
         (
             ("generate", "../scene-spark.svg", "TrafficForge", None),
             ("scene", "set-up.svg", "仿真配置", None),
+            ("agent_connection", "trend-charts.svg", "智能体接入", None),
             ("experiments", "data-board.svg", "历史仿真", "仿真记录"),
             ("traffic_scenes", "monitor.svg", "交通场景", "场景列表"),
         ),
@@ -40,7 +41,7 @@ _NAVIGATION_GROUPS = (
         "资产中心",
         (
             ("maps", "box.svg", "地图", "地图资产"),
-            ("agents", "trend-charts.svg", "智能体", "API 配置"),
+            ("agents", "trend-charts.svg", "智能体配置", "API 配置"),
         ),
     ),
 )
@@ -67,6 +68,8 @@ _SCENE_NAV_TEXT = {
     "地图": "Maps",
     "地图资产": "Map assets",
     "智能体": "Agents",
+    "智能体接入": "Agent connection",
+    "智能体配置": "Agent configurations",
     "API 配置": "API settings",
     "系统设置": "Settings",
 }

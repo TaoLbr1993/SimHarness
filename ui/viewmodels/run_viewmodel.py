@@ -148,6 +148,10 @@ class RunViewModel(QObject):
         )
 
     @property
+    def api_url(self) -> str:
+        return self._rest.base_url
+
+    @property
     def experiment_id(self) -> UUID | None:
         return self._experiment_id
 

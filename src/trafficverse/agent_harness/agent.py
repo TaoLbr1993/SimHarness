@@ -11,6 +11,7 @@ from .context import AgentInput, MemoryRecord, SkillContent
 from .memory import InMemoryMemoryStore, MemoryStore
 from .models.base import ContextVehicleAgent, VehicleAgent
 from .skills.provider import SkillProvider
+from .tracing import record_context
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,7 @@ class DrivingAgent:
                 except Exception:
                     logger.warning("agent.memory_read_failed agent=%s", self._binding.name)
             inputs.append(AgentInput(observation=observation, memory=memory, skills=tuple(skills)))
+        record_context(tuple(inputs))
         return self._model.decide_with_context(tuple(inputs))
 
     def record_transition(

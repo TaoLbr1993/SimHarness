@@ -35,6 +35,7 @@ class LiveMonitorPage(QWidget):
     stop_requested = Signal()
     restart_requested = Signal()
     speed_changed = Signal(float)
+    agent_connection_requested = Signal()
 
     def __init__(
         self, *, load_web_map: bool, traffic_mode: bool = False, parent: QWidget | None = None
@@ -67,6 +68,12 @@ class LiveMonitorPage(QWidget):
         self.page_title: QLabel = page_title
         self.page_subtitle: QLabel = page_subtitle
         root.addWidget(header)
+        self.agent_connection_button = QPushButton("接入智能体 →")
+        self.agent_connection_button.setToolTip(
+            "已开启等待外部 Agent 控制的实验，可在这里配置并接入"
+        )
+        self.agent_connection_button.clicked.connect(self.agent_connection_requested)
+        root.addWidget(self.agent_connection_button)
 
         body = QWidget()
         body_layout = QVBoxLayout(body)

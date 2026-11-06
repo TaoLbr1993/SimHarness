@@ -1,26 +1,13 @@
 """Run the external agent harness from the command line."""
 
 import argparse
-import importlib
 import logging
 from pathlib import Path
-from typing import cast
 
 from .client import HttpSimulationClient
-from .config import Binding, load_config
+from .config import load_config
+from .loader import load_agent as load_agent
 from .manager import AgentManager
-from .models.base import VehicleAgent
-
-
-def load_agent(binding: Binding) -> VehicleAgent:
-    module_name, separator, class_name = binding.wrapper.partition(":")
-    if not separator or not module_name or not class_name:
-        raise ValueError(f"wrapper for {binding.name} must have the form module:Class")
-    wrapper = getattr(importlib.import_module(module_name), class_name)
-    instance = wrapper(binding.model) if binding.model is not None else wrapper()
-    if not callable(getattr(instance, "decide", None)):
-        raise TypeError(f"wrapper for {binding.name} must implement decide")
-    return cast(VehicleAgent, instance)
 
 
 def main() -> int:

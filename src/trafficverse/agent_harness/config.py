@@ -1,5 +1,6 @@
 """Typed configuration for external polling and agent assignments."""
 
+import re
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
@@ -18,6 +19,13 @@ class ModelConfig(BaseModel):
     api_key_env: str | None = Field(default=None, min_length=1)
     timeout_s: float = Field(default=30.0, gt=0, allow_inf_nan=False)
     jev_acceleration_mps2: float = Field(default=1.0, gt=0, allow_inf_nan=False)
+
+    @field_validator("api_key_env")
+    @classmethod
+    def validate_environment_name(cls, value: str | None) -> str | None:
+        if value is not None and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", value) is None:
+            raise ValueError("api_key_env must be an environment variable name, not a key")
+        return value
 
     @field_validator("base_url")
     @classmethod
@@ -46,6 +54,7 @@ class Binding(BaseModel):
         min_length=3, description="Python module:class; accepts model if configured"
     )
     vehicle_ids: tuple[str, ...] = ()
+    all_vehicles: bool = False
     automation_levels: tuple[Literal["L0", "L1", "L2", "L3", "L4", "L5"], ...] = ()
     model: ModelConfig | None = None
     memory: MemoryConfig = Field(default_factory=MemoryConfig)
@@ -53,8 +62,8 @@ class Binding(BaseModel):
 
     @model_validator(mode="after")
     def require_selector(self) -> "Binding":
-        if not self.vehicle_ids and not self.automation_levels:
-            raise ValueError("a binding must select vehicle IDs or automation levels")
+        if not self.all_vehicles and not self.vehicle_ids and not self.automation_levels:
+            raise ValueError("a binding must select vehicle IDs, automation levels or all vehicles")
         return self
 
 

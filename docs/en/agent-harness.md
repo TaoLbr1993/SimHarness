@@ -4,6 +4,8 @@
 
 Agent Harness runs as a separate external program. It connects to a SimHarness experiment, selects vehicles, passes local observations to models or custom controllers, and submits their actions as a batch. Vehicles without actions are controlled by SUMO.
 
+The [Agent Connection page](agent-connection.md) can also start a backend-hosted session using the same model, memory, and skill components without a separate CLI process. This guide focuses on the standalone CLI.
+
 You can also use the [external control API](external-step-api.md) directly without this module.
 
 ## Control loop
@@ -64,7 +66,7 @@ The sample configuration explicitly sets `step_delay_s: 0.2`.
 
 ## Select vehicles
 
-Each binding has a unique name, a controller, and at least one selector. `vehicle_ids` and `automation_levels` are combined as a union. Automation levels come from the simulation snapshot; verify labels in custom scenarios.
+Each binding has a unique name, a controller, and at least one selector. Set `vehicle_ids`, `automation_levels`, or `all_vehicles: true` for all current and future vehicles. Selectors are combined as a union; `all_vehicles` defaults to false. Automation levels come from the simulation snapshot; verify labels in custom scenarios.
 
 ```yaml
 bindings:

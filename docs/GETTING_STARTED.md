@@ -54,7 +54,7 @@ uv run simharness traffic-ui --api-url http://127.0.0.1:8000
 3. 开始仿真，在运行页面查看道路与车辆状态。
 4. 运行完成后，可从历史仿真查看正式运行记录、回放或导出结果。
 
-要接入外部 Agent，应在开始前勾选“等待外部 Agent 控制”。此模式下仿真会等待外部步进请求；仅打开界面不会使其自动持续推进。具体操作见 [Agent Harness 使用说明](../src/trafficverse/agent_harness/README.md)。
+要接入 Agent，应在开始前勾选“等待外部 Agent 控制”。开始后打开“智能体接入”页面配置模型和车辆，再点击“开始接入”，详见[页面接入说明](AGENT_CONNECTION.md)。此模式下仅打开界面不会使仿真自动持续推进；也可以使用 [Agent Harness 命令行](../src/trafficverse/agent_harness/README.md)。
 
 ## 5. 使用自己的 SUMO 场景
 
@@ -75,6 +75,8 @@ configs/maps/my-scene/
 **页面打开了但没有车辆？** 检查后端是否运行、场景是否成功启动，以及路线文件的车辆出发时间。外部控制模式还需要 Agent 或其他客户端发起步进。
 
 **启动场景时找不到 SUMO？** 在启动后端的同一终端执行 `sumo --version`；确保该进程继承了正确的 `PATH`。
+
+**Windows 上 SUMO 启动时仅显示 `Quitting (on unknown error)`？** 本机验证发现，SUMO 1.27.1 在 `SUMO_HOME` 指向包含中文的目录时会提前退出。使用项目虚拟环境中的 SUMO 时，把其 `bin` 目录加入 `PATH` 即可，不必额外设置 `SUMO_HOME`。若已设置了这样的路径，在启动后端的终端执行 `Remove-Item Env:SUMO_HOME -ErrorAction SilentlyContinue`，然后重启后端；不要修改场景文件。
 
 **Agent 接入后没有调用模型？** 默认 `bindings: []` 不会调用模型。还要确认绑定的车辆 ID 实际出现在当前帧。
 
