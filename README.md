@@ -27,12 +27,11 @@ SimHarness is an **agent-native harness for traffic simulation**. With a single 
 
 ### Functionality
 
-- **Vehicle observation and control:** Obtain nearby vehicles within a distance radius and submit vehicle actions in batches, including speed, acceleration, lane-change, and stop requests.
-- **External agent integration:** Connect through the API or use the Agent Harness to assign controllers by vehicle ID or the scenario's automation level.
-- **Models and custom controllers:** Use OpenAI-compatible and Jev adapters, or implement a custom Python controller.
-- **Memory and Skills:** Optionally provide short-term per-vehicle memory and driving-style instructions. Both are disabled by default.
+- **Vehicle observation and control:** Simulate observations of nearby vehicles with customizable observation rules, and control vehicles through predefined actions for speed, acceleration, lane changes, and stopping.
+- **External agent integration:** Connect agent APIs, local LLM agents, or Jev-style decision models at the scenario or individual-vehicle level.
+- **Memory and Skills:** Integrate Memory to record and recall each vehicle's driving experiences, and use Skills to define agent driving styles.
 - **Visualization and replay:** View traffic in the desktop interface and save, inspect, and replay simulation runs.
-- **[TrafficForge](trafficforge/README.md):** Describe a traffic scenario in natural language, generate synthetic or real-world roads with vehicle demand, preview and edit the draft, then confirm it before starting a simulation.
+- **[TrafficForge](trafficforge/README.md):** Generate synthetic or real-world road networks and traffic demand from natural-language scenario descriptions.
 
 ### Architecture
 
@@ -41,8 +40,8 @@ SimHarness is an **agent-native harness for traffic simulation**. With a single 
 SUMO is the source of traffic state. In external control mode, the simulation waits for a program to submit actions before advancing. Vehicles without actions are controlled by SUMO. Local observations currently filter SUMO state by XY distance; they do not simulate sensor errors or occlusion.
 
 ## News
-
-- **(2026-11-02)** SimHarness was released.
+- **(2026-11-07)** [TrafficForge](trafficforge/README.md) is released! TrafficForge turns your idea into a traffic simulation scenario with one sentence.
+- **(2026-11-02)** SimHarness is released.
 
 ## Quick Start
 
