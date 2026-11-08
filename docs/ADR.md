@@ -1578,6 +1578,19 @@ Memory 与 Skill 同时提升为与模型配置同级的独立面板，默认启
 
 ---
 
+## ADR-044 — README 演示视频使用 GitHub 附件托管
+
+- 状态：Accepted（用户要求在 News 后展示 SimHarness、TrafficForge 两个视频）
+- 日期：2026-11-08
+- 范围：中英文 README 的演示媒体
+
+两个 MP4 视频通过本仓库的 GitHub 视频附件服务托管，README 使用独占段落的附件 URL
+显示播放器，顺序固定为 SimHarness、TrafficForge。原始视频保留在本地
+`introduction-video/` 文件夹中，不将录屏文件直接加入 Git 历史。
+视频更新时上传新附件，并同步替换中英文 README 的链接；不引用本机绝对路径。
+
+---
+
 ## 3. 待验证但不改变当前基线的议题
 
 以下事项需要实现和基准测试后量化，目前不构成新的架构方向：

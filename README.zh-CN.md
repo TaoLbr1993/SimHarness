@@ -43,6 +43,20 @@ SUMO 是交通状态的来源。外部控制模式下，仿真等待外部程序
 
 - **(2026-11-02)** SimHarness 正式发布。
 
+## 演示视频
+
+### SimHarness
+
+智能体接入与交通仿真。
+
+https://github.com/user-attachments/assets/78188fdb-efac-4f2d-8348-596898ca8b83
+
+### TrafficForge
+
+从自然语言描述到交通仿真场景。
+
+https://github.com/user-attachments/assets/a48477ee-b25e-4388-a120-cd2fb3b99ecf
+
 ## 快速开始
 
 无需启动桌面界面或单独启动后端，使用一个命令运行 SUMO 场景及可选的车辆 Agent。

@@ -40,8 +40,23 @@ SimHarness is an **agent-native harness for traffic simulation**. With a single 
 SUMO is the source of traffic state. In external control mode, the simulation waits for a program to submit actions before advancing. Vehicles without actions are controlled by SUMO. Local observations currently filter SUMO state by XY distance; they do not simulate sensor errors or occlusion.
 
 ## News
+
 - **(2026-11-07)** [TrafficForge](trafficforge/README.md) is released! TrafficForge turns your idea into a traffic simulation scenario with one sentence.
 - **(2026-11-02)** SimHarness is released.
+
+## Demo Videos
+
+### SimHarness
+
+Agent integration and traffic simulation.
+
+https://github.com/user-attachments/assets/78188fdb-efac-4f2d-8348-596898ca8b83
+
+### TrafficForge
+
+From natural-language descriptions to traffic scenarios.
+
+https://github.com/user-attachments/assets/a48477ee-b25e-4388-a120-cd2fb3b99ecf
 
 ## Quick Start
 
