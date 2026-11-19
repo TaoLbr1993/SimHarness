@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from typing import Protocol
 from uuid import UUID
 
-from trafficverse.config.models import CarlaConfig, SumoConfig, WeatherConfig
+from trafficverse.config.models import CarlaConfig, TrafficEngineConfig, WeatherConfig
 from trafficverse.domain.enums import SimulationRunKind
 from trafficverse.domain.models import (
     ActorSpawnResult,
@@ -47,7 +47,7 @@ class ActorTransform(Protocol):
 
 
 class TrafficEnginePort(Protocol):
-    def load(self, config: SumoConfig) -> None: ...
+    def load(self, config: TrafficEngineConfig) -> None: ...
 
     def apply_controls(self, commands: Mapping[str, ControlCommand]) -> None: ...
 

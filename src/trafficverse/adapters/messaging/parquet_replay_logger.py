@@ -97,7 +97,11 @@ class ParquetReplayDataLogger:
             raise RuntimeError("cannot append replay frames after the logger was flushed")
         snapshot = frame.traffic
         simulation_time_ms = snapshot.simulation_time_ms
-        if self._next_sample_ms is not None and simulation_time_ms < self._next_sample_ms:
+        if (
+            self._next_sample_ms is not None
+            and simulation_time_ms < self._next_sample_ms
+            and not snapshot.episode_ended
+        ):
             return
         self._next_sample_ms = simulation_time_ms + self._sample_interval_ms
         is_snapshot = self._next_snapshot_ms is None or simulation_time_ms >= self._next_snapshot_ms

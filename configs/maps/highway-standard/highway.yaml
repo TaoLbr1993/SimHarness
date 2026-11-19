@@ -1,0 +1,9 @@
+map_id: highway-standard
+display_name: HighwayEnv — 4 lanes / 30 background vehicles
+config:
+  seed: 42
+  lanes_count: 4
+  vehicles_count: 30
+  duration_ms: 40000
+  policy_frequency: 10
+  simulation_frequency: 20

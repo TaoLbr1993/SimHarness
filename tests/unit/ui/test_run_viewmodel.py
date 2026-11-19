@@ -618,7 +618,7 @@ def test_map_catalog_skips_core_run_asset_and_auto_selects_sumo_package() -> Non
             "image2road",
         ),
     ) in rest.calls
-    assert notifications[-1] == ("error", "所选资产不是可直接运行的 SUMO 场景包。")
+    assert notifications[-1] == ("error", "所选资产不是可直接运行的仿真场景。")
 
 
 def test_native_sumo_package_loads_network_without_town04_manifest() -> None:

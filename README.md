@@ -156,3 +156,9 @@ uv run pytest
 ```
 
 This project is licensed under the [MIT License](LICENSE).
+
+## HighwayEnv
+
+Select SUMO or HighwayEnv in the simulation configuration page. Both engines share the existing 2D scenarios; select a scenario, then an engine; install with `uv sync --frozen --extra highway --extra ui --extra sumo`.
+
+[HighwayEnv usage and limitations](docs/HIGHWAY_ENV.md)

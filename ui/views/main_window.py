@@ -534,7 +534,7 @@ class MainWindow(QMainWindow):
             if isinstance(maps, tuple)
             else ()
         )
-        self.scene_page.set_maps(tuple(item for item in values if item.kind == "sumo"))
+        self.scene_page.set_maps(tuple(item for item in values if item.kind in {"sumo", "highway"}))
         self.workspace_page.set_maps(values)
         self.traffic_scenes_page.set_maps(values)
         self.maps_page.set_maps(values)

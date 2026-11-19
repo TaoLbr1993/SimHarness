@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -18,6 +19,7 @@ from trafficverse.domain.enums import ErrorCode
 from trafficverse.domain.errors import TrafficVerseError
 from trafficverse.maps.compiler import OpenDriveMapCompiler
 from trafficverse.maps.errors import MapCompileError, SumoPackageError
+from trafficverse.maps.highway import HighwayScenario, load_highway_scenario
 from trafficverse.maps.sumo_display import sumo_display_geojson
 from trafficverse.maps.sumo_package import SumoScenarioPackage, load_sumo_package
 
@@ -27,6 +29,7 @@ _SUMO_DISPLAY_SCHEMA = "sumo-net/display-1.0"
 @dataclass(frozen=True, slots=True)
 class _MapEntry:
     directory: Path
+    highway: HighwayScenario | None = None
     manifest: MapManifest | None = None
     package: SumoScenarioPackage | None = None
     errors: tuple[str, ...] = ()
@@ -50,10 +53,12 @@ class MapCatalog:
         *,
         artifact_root: Path,
         package_root: Path | None = None,
+        highway_network: Callable[[HighwayScenario], dict[str, object]] | None = None,
         maximum_upload_bytes: int = 20 * 1024 * 1024,
     ) -> None:
         if maximum_upload_bytes <= 0:
             raise ValueError("maximum map upload size must be positive")
+        self._highway_network = highway_network
         self._artifact_root = artifact_root
         self._maximum_upload_bytes = maximum_upload_bytes
         self._package_root = package_root.resolve() if package_root is not None else None
@@ -73,6 +78,22 @@ class MapCatalog:
         self._discover_new_packages()
         summaries = []
         for map_id, entry in sorted(self._entries.items()):
+            if entry.highway is not None:
+                highway = entry.highway
+                summaries.append(
+                    MapSummary(
+                        map_id=map_id,
+                        kind="highway",
+                        display_name=highway.display_name,
+                        validated=True,
+                        network_schema_version="highway/display-1.0",
+                        manifest_available=False,
+                        engine_step_ms=highway.config.step_ms,
+                        engine_duration_ms=highway.config.duration_ms,
+                        files=("highway.yaml",),
+                    )
+                )
+                continue
             if entry.manifest is not None:
                 manifest = _validate_manifest(entry.directory / "manifest.yaml")
                 summaries.append(
@@ -125,7 +146,9 @@ class MapCatalog:
                 continue
             # Core manifest assets retain their startup validation path. Empty/staging
             # directories are not registered, so later completed publication is discoverable.
-            if (directory / "manifest.yaml").is_file() or not any(directory.glob("*.sumocfg")):
+            if (directory / "manifest.yaml").is_file() or not (
+                any(directory.glob("*.sumocfg")) or (directory / "highway.yaml").is_file()
+            ):
                 continue
             self._register_directory(directory, package_root=root)
             self._registered_directories.add(resolved)
@@ -152,6 +175,9 @@ class MapCatalog:
             )
         return entry.package
 
+    def highway_package(self, map_id: str) -> HighwayScenario | None:
+        return self._require_entry(map_id).highway
+
     def network_geojson(self, map_id: str) -> dict[str, object]:
         entry = self._require_entry(map_id)
         if entry.errors:
@@ -160,6 +186,13 @@ class MapCatalog:
                 "SUMO scenario package is not renderable",
                 details={"configuration": "; ".join(entry.errors)},
             )
+        if entry.highway is not None:
+            if self._highway_network is None:
+                raise TrafficVerseError(
+                    ErrorCode.COMPONENT_UNAVAILABLE,
+                    "HighwayEnv preview is unavailable; install the highway extra",
+                )
+            return self._highway_network(entry.highway)
         if entry.package is not None:
             return sumo_display_geojson(entry.package.network_path)
         payload = json.loads((entry.directory / "network.geojson").read_text(encoding="utf-8"))
@@ -233,6 +266,15 @@ class MapCatalog:
             )
 
     def _register_directory(self, directory: Path, *, package_root: Path) -> None:
+        highway_path = directory / "highway.yaml"
+        if highway_path.is_file():
+            if not highway_path.resolve().is_relative_to(package_root.resolve()):
+                raise ValueError("HighwayEnv configuration must remain within the map root")
+            highway = load_highway_scenario(highway_path)
+            if highway.map_id in self._entries:
+                raise ValueError("duplicate HighwayEnv scenario ID")
+            self._entries[highway.map_id] = _MapEntry(directory=directory, highway=highway)
+            return
         manifest_path = directory / "manifest.yaml"
         if manifest_path.is_file():
             manifest = _validate_manifest(manifest_path)

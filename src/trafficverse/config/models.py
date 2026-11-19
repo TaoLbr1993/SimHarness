@@ -7,6 +7,7 @@ from pydantic import Field, field_validator, model_validator
 
 from trafficverse.domain.enums import AutomationLevel, RequirementMode
 from trafficverse.domain.models.common import StrictModel
+from trafficverse.domain.models.shared_scene import SharedScene
 
 
 class ComponentRequirement(StrictModel):
@@ -78,6 +79,41 @@ class SumoConfig(StrictModel):
     binary: str = Field(default="sumo", min_length=1)
     output_directory: str | None = Field(default=None, min_length=1)
     freeze_collisions: bool = False
+
+
+class HighwayEnvConfig(StrictModel):
+    """Reproducible highway scenarios, with bounded, typed SDK settings."""
+
+    provider: Literal["highway"] = "highway"
+    shared_scene: SharedScene | None = None
+    environment_id: Literal["highway-v0"] = "highway-v0"
+    seed: int = Field(default=42, ge=0)
+    lanes_count: int = Field(default=4, ge=1, le=8)
+    vehicles_count: int = Field(default=30, ge=0, le=500)
+    controlled_vehicles: int = Field(default=1, ge=1, le=20)
+    initial_lane_id: int | None = Field(default=None, ge=0)
+    duration_ms: int = Field(default=40000, gt=0, le=3600000)
+    policy_frequency: int = Field(default=10, ge=1, le=50)
+    simulation_frequency: int = Field(default=20, ge=1, le=100)
+
+    @property
+    def step_ms(self) -> int:
+        return 1000 // self.policy_frequency
+
+    @model_validator(mode="after")
+    def validate_timing_and_lane(self) -> "HighwayEnvConfig":
+        if 1000 % self.policy_frequency:
+            raise ValueError("policy_frequency must divide 1000 exactly")
+        if self.simulation_frequency % self.policy_frequency:
+            raise ValueError("simulation_frequency must be a multiple of policy_frequency")
+        if self.duration_ms % self.step_ms:
+            raise ValueError("duration_ms must contain whole policy steps")
+        if self.initial_lane_id is not None and self.initial_lane_id >= self.lanes_count:
+            raise ValueError("initial_lane_id must be less than lanes_count")
+        return self
+
+
+TrafficEngineConfig = SumoConfig | HighwayEnvConfig
 
 
 class CarlaViewConfig(StrictModel):
@@ -183,6 +219,7 @@ class ScenarioConfig(StrictModel):
     simulation: SimulationConfig
     traffic: TrafficConfig
     sumo: SumoConfig
+    highway: HighwayEnvConfig | None = None
     automation: AutomationConfig
     roi: RoiConfig
     carla: CarlaConfig
@@ -194,6 +231,16 @@ class ScenarioConfig(StrictModel):
 
     @model_validator(mode="after")
     def duplicated_engine_values_must_match(self) -> "ScenarioConfig":
+        if self.highway is not None:
+            if self.carla.mode is not RequirementMode.DISABLED:
+                raise ValueError("HighwayEnv does not support CARLA mirroring")
+            if (
+                self.simulation.step_ms != self.highway.step_ms
+                or self.simulation.start_time_ms != 0
+                or self.simulation.duration_ms != self.highway.duration_ms
+            ):
+                raise ValueError("HighwayEnv and simulation timing must match")
+            return self
         mismatches = []
         if self.simulation.step_ms != self.sumo.step_ms:
             mismatches.append("sumo.step_ms")

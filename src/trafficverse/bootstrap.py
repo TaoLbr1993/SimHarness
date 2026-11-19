@@ -5,11 +5,12 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import FastAPI
 
 from trafficverse.adapters.carla import CarlaAdapter
+from trafficverse.adapters.highway_env.adapter import HighwayTrafficEngineAdapter
 from trafficverse.adapters.messaging import FrameBroker, ParquetReplayDataLogger
 from trafficverse.adapters.persistence import (
     FileSimulationHistoryStore,
@@ -36,7 +37,8 @@ from trafficverse.config.models import MapManifest, ScenarioConfig
 from trafficverse.controllers import controller_for_sumo_package
 from trafficverse.domain.enums import ComponentStatus, ExperimentStatus, RequirementMode
 from trafficverse.domain.models import SimulationRunInput
-from trafficverse.maps.simulation_configuration import SumoSimulationConfigurationStore
+from trafficverse.maps.engine_configuration import EngineConfigurationStore
+from trafficverse.maps.highway import HighwayScenario, load_highway_scenario
 from trafficverse.maps.sumo_package import (
     SumoScenarioPackage,
     load_sumo_package,
@@ -84,6 +86,7 @@ class CoreRuntimeFactory:
         self._managers: dict[UUID, SimulationManager] = {}
         self._runners: dict[UUID, SimulationRunner] = {}
         self._carla_modes: dict[UUID, RequirementMode] = {}
+        self._engine_names: dict[UUID, str] = {}
 
     async def create(
         self,
@@ -109,16 +112,69 @@ class CoreRuntimeFactory:
             else self._repository
         )
         selected_map_id = map_id or self._scenario.scenario.map_id
-        package = (
-            load_sumo_package(
-                run_input.sumo_config_path,
-                allowed_root=run_input.directory,
-                package_id=run_input.map_id,
-            )
+        highway = (
+            load_highway_scenario(run_input.highway_config_path)
+            if run_input is not None and run_input.highway_config_path is not None
+            else None
             if run_input is not None
-            else self._maps.sumo_package(selected_map_id)
+            else self._maps.highway_package(selected_map_id)
         )
-        if package is not None:
+        package = (
+            None
+            if highway is not None
+            else (
+                load_sumo_package(
+                    run_input.sumo_config_path,
+                    allowed_root=run_input.directory,
+                    package_id=run_input.map_id,
+                )
+                if run_input is not None and run_input.sumo_config_path is not None
+                else self._maps.sumo_package(selected_map_id)
+            )
+        )
+        if highway is not None:
+            if run_input is None:
+                run_directory = self._sumo_artifact_root.parent / "highway" / str(experiment_id)
+            scenario = self._scenario.model_copy(
+                update={
+                    "highway": highway.config,
+                    "scenario": self._scenario.scenario.model_copy(
+                        update={
+                            "name": highway.display_name,
+                            "map_id": highway.map_id,
+                            "seed": highway.config.seed,
+                        }
+                    ),
+                    "simulation": self._scenario.simulation.model_copy(
+                        update={
+                            "start_time_ms": 0,
+                            "step_ms": highway.config.step_ms,
+                            "duration_ms": highway.config.duration_ms,
+                        }
+                    ),
+                    "carla": self._scenario.carla.model_copy(
+                        update={"mode": RequirementMode.DISABLED}
+                    ),
+                }
+            )
+            # Revalidate the assembled scenario rather than bypass cross-field invariants.
+            scenario = ScenarioConfig.model_validate(scenario.model_dump())
+            run_directory.mkdir(parents=True, exist_ok=True)
+            (run_directory / "highway.json").write_text(
+                highway.model_dump_json(indent=2), encoding="utf-8"
+            )
+            manager = SimulationManager(
+                scenario=scenario,
+                carla_map_name="HIGHWAY_2D",
+                controller=controller_for_sumo_package(highway.map_id),
+                traffic=HighwayTrafficEngineAdapter(experiment_id),
+                carla=CarlaAdapter(),
+                experiments=experiments,
+                data_logger=self._replay_logger(scenario, run_directory),
+                frame_publisher=self._broker,
+                registry=self._registry,
+            )
+        elif package is not None:
             scenario = self._scenario_for_sumo_package(
                 package,
                 experiment_id,
@@ -173,6 +229,7 @@ class CoreRuntimeFactory:
         self._managers[experiment_id] = manager
         self._runners[experiment_id] = runner
         self._carla_modes[experiment_id] = scenario.carla.mode
+        self._engine_names[experiment_id] = "highway" if highway is not None else "sumo"
         runner.start()
         return manager
 
@@ -209,6 +266,8 @@ class CoreRuntimeFactory:
                 package_id=package_id,
             )
         else:
+            if run_input.sumo_config_path is None:
+                raise ValueError("SUMO run input requires a SUMO configuration")
             staged_config = run_input.sumo_config_path
         duration_ms = self._scenario.simulation.duration_ms
         if package.end_time_ms is not None:
@@ -310,14 +369,18 @@ class CoreRuntimeFactory:
             )
         return (
             ReadinessComponent(
-                component="sumo",
+                component=(
+                    "highway"
+                    if self._engine_names and set(self._engine_names.values()) == {"highway"}
+                    else "sumo"
+                ),
                 status=(
                     ComponentStatus.HEALTHY
                     if any(manager.experiment_id is not None for manager in self._managers.values())
                     else ComponentStatus.DEGRADED
                 ),
                 required=True,
-                message="SUMO connection is validated while preparing the experiment",
+                message="Traffic engine is validated while preparing the experiment",
             ),
             ReadinessComponent(
                 component="carla",
@@ -338,6 +401,7 @@ class CoreRuntimeFactory:
         self._runners.clear()
         self._managers.clear()
         self._carla_modes.clear()
+        self._engine_names.clear()
 
 
 def build_core_api(
@@ -376,6 +440,7 @@ def build_core_api(
         built_in_directories,
         artifact_root=artifact_root or repository_root / "artifacts/maps",
         package_root=maps_root,
+        highway_network=_highway_network,
     )
     factory = CoreRuntimeFactory(
         resolved,
@@ -384,7 +449,9 @@ def build_core_api(
         maps,
         sumo_artifact_root=sumo_artifact_root or repository_root / "artifacts/sumo",
     )
-    configuration_storage = SumoSimulationConfigurationStore(
+    configuration_storage = EngineConfigurationStore(
+        highway_resolver=maps.highway_package,
+        highway_network=_highway_network,
         package_resolver=maps.sumo_package,
         configuration_root=configuration_root or repository_root / "configs/configs",
         simulation_artifact_root=(
@@ -440,3 +507,12 @@ def _resolve_scenario_paths(scenario: ScenarioConfig, repository_root: Path) -> 
             "sumo": scenario.sumo.model_copy(update={"config_file": sumo_config_file}),
         }
     )
+
+
+def _highway_network(package: HighwayScenario) -> dict[str, object]:
+    adapter = HighwayTrafficEngineAdapter(uuid4())
+    try:
+        adapter.load(package.config)
+        return adapter.network_geojson()
+    finally:
+        adapter.close()

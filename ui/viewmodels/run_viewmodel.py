@@ -423,10 +423,10 @@ class RunViewModel(QObject):
     def select_map(self, map_id: str) -> None:
         selected = next((item for item in self._maps if item.map_id == map_id), None)
         if selected is None:
-            self.notification.emit("error", "所选场景不在 SUMO 场景包列表中。")
+            self.notification.emit("error", "所选场景不在 仿真场景列表中。")
             return
-        if selected.kind != "sumo":
-            self.notification.emit("error", "所选资产不是可直接运行的 SUMO 场景包。")
+        if selected.kind not in {"sumo", "highway"}:
+            self.notification.emit("error", "所选资产不是可直接运行的仿真场景。")
             return
         if not selected.validated:
             detail = "; ".join(selected.validation_errors) or "SUMO 场景配置无效"
@@ -536,14 +536,16 @@ class RunViewModel(QObject):
             self.notification.emit("error", "请输入场景名称。")
             return False
         if not configuration.map_id:
-            self.notification.emit("error", "请选择一份已验证的 SUMO 场景包。")
+            self.notification.emit("error", "请选择一份已验证的仿真场景。")
             return False
         selected = next(
             (item for item in self._maps if item.map_id == configuration.map_id),
             None,
         )
-        if self._maps and (selected is None or selected.kind != "sumo" or not selected.validated):
-            self.notification.emit("error", "当前地图不是可运行的 SUMO 场景包。")
+        if self._maps and (
+            selected is None or selected.kind not in {"sumo", "highway"} or not selected.validated
+        ):
+            self.notification.emit("error", "当前地图不是可运行的仿真场景。")
             return False
         if configuration.duration_ms <= 0:
             self.notification.emit("error", "仿真时长必须大于 0。")
@@ -569,7 +571,7 @@ class RunViewModel(QObject):
             self.notification.emit("error", "请先进入工作区，再创建仿真实验。")
             return False
         if self._selected_map_id is None:
-            self.notification.emit("error", "请先选择一份已验证的 SUMO 场景包。")
+            self.notification.emit("error", "请先选择一份已验证的仿真场景。")
             return False
         args = (
             self._active_workspace_id,
@@ -727,7 +729,11 @@ class RunViewModel(QObject):
                     self._rest.get_map_manifest(item.map_id)
             if self._selected_map_id is None:
                 first_valid = next(
-                    (item for item in self._maps if item.kind == "sumo" and item.validated),
+                    (
+                        item
+                        for item in self._maps
+                        if item.kind in {"sumo", "highway"} and item.validated
+                    ),
                     None,
                 )
                 if first_valid is not None:

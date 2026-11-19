@@ -395,3 +395,36 @@ def test_windows_automation_stepper_renders_explicit_arrow_icons(
 
     page.close()
     application.setStyleSheet(previous_stylesheet)
+
+
+def test_engine_selection_preserves_shared_scenario_and_demand() -> None:
+    _application()
+    page = SceneConfigurationPage(load_web_map=False)
+    page.set_maps(
+        (
+            MapSummary(
+                map_id="sumo-demo",
+                kind="sumo",
+                validated=True,
+                network_schema_version="sumo-net/display-1.0",
+            ),
+            MapSummary(
+                map_id="highway-demo",
+                kind="highway",
+                validated=True,
+                network_schema_version="highway/display-1.0",
+                engine_duration_ms=40000,
+            ),
+        )
+    )
+    assert page.map_combo.currentData() == "sumo-demo"
+    page.engine_combo.setCurrentIndex(1)
+    assert page.map_combo.count() == 1
+    assert page.map_combo.currentData() == "sumo-demo"
+    assert not page.automation_section.isHidden()
+    assert page.current_configuration().engine == "highway"
+    assert page.current_configuration().duration_ms == 3600000
+    page.engine_combo.setCurrentIndex(0)
+    assert page.map_combo.currentData() == "sumo-demo"
+    assert not page.automation_section.isHidden()
+    page.close()

@@ -212,11 +212,11 @@ class SimulationManager:
             try:
                 await self._transition(ExperimentStatus.PREPARING)
                 self._traffic_opened = True
-                self._traffic.load(self._scenario.sumo)
+                self._traffic.load(self._scenario.highway or self._scenario.sumo)
                 if self._traffic.health().status is not ComponentStatus.HEALTHY:
                     raise TrafficVerseError(
                         ErrorCode.COMPONENT_UNAVAILABLE,
-                        "SUMO is not healthy after initialization",
+                        "Traffic engine is not healthy after initialization",
                     )
                 if self._scenario.carla.mode is not RequirementMode.DISABLED:
                     await self._prepare_carla()
@@ -462,7 +462,10 @@ class SimulationManager:
             control_events: list[DomainEvent] = []
             for vehicle_id, reason in (
                 *((vehicle_id, "VEHICLE_NOT_ACTIVE") for vehicle_id in unknown_vehicle_ids),
-                *((vehicle_id, "SUMO_REJECTED") for vehicle_id in rejected_vehicle_ids),
+                *(
+                    (vehicle_id, "ENGINE_REJECTED" if self._scenario.highway else "SUMO_REJECTED")
+                    for vehicle_id in rejected_vehicle_ids
+                ),
             ):
                 event = DomainEvent(
                     event_id=uuid4(),
@@ -487,7 +490,9 @@ class SimulationManager:
             end_time_ms = (
                 self._scenario.simulation.start_time_ms + self._scenario.simulation.duration_ms
             )
-            if target_time_ms >= end_time_ms:
+            if traffic_snapshot.episode_ended:
+                await self._stop_from_tick("EPISODE_ENDED")
+            elif target_time_ms >= end_time_ms:
                 await self._stop_from_tick("DURATION_REACHED")
             return frame
         except Exception as error:

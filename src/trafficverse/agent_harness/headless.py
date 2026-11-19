@@ -11,7 +11,7 @@ import socket
 import threading
 import time
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import Literal
 from uuid import UUID, uuid4
@@ -39,6 +39,7 @@ class HeadlessConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     schema_version: Literal["1.0"] = "1.0"
     map_id: str = Field(min_length=1)
+    engine: Literal["sumo", "highway"] = "sumo"
     max_steps: int = Field(default=100, ge=1)
     step_delay_s: float = Field(default=0, ge=0, allow_inf_nan=False)
     request_timeout_s: float = Field(default=30, gt=0, allow_inf_nan=False)
@@ -149,28 +150,53 @@ def run_headless(
     steps_path.touch()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     logger.info("Headless run output: %s", run_dir)
-    with _sumo_path(), _local_api(repository_root) as api_url:
+    with ExitStack() as stack:
+        api_url = stack.enter_context(_local_api(repository_root))
         client = RecordingClient(api_url, config.request_timeout_s, steps_path)
         maps = client._request("/maps")
         if not isinstance(maps, list) or not any(
             isinstance(item, dict)
             and item.get("map_id") == config.map_id
-            and item.get("kind") == "sumo"
+            and item.get("kind") in {"sumo", "highway"}
             and item.get("validated") is True
             for item in maps
         ):
-            raise ValueError(f"SUMO scenario is missing or invalid: {config.map_id}")
+            raise ValueError(f"Simulation scenario is missing or invalid: {config.map_id}")
+        selected = next(
+            item for item in maps if isinstance(item, dict) and item.get("map_id") == config.map_id
+        )
+        engine = "highway" if selected.get("kind") == "highway" else config.engine
+        if engine == "sumo":
+            stack.enter_context(_sumo_path())
         workspaces = client._request("/workspaces")
         if not isinstance(workspaces, list) or not workspaces:
             raise RuntimeError("local simulation API returned no workspace")
         first = workspaces[0]
         if not isinstance(first, dict) or not isinstance(first.get("workspace_id"), str):
             raise RuntimeError("local simulation API returned an invalid workspace")
+        configuration_id = None
+        if engine == "highway" and selected.get("kind") == "sumo":
+            saved = client._request(
+                "/simulation-configurations",
+                payload={
+                    "workspace_id": first["workspace_id"],
+                    "scenario_id": str(_SCENARIO_ID),
+                    "map_id": config.map_id,
+                    "engine": engine,
+                    "scene_name": config.map_id,
+                    "duration_ms": 3600000,
+                    "automation_demands": [],
+                },
+            )
+            if not isinstance(saved, dict) or not isinstance(saved.get("configuration_id"), str):
+                raise RuntimeError("local simulation API returned an invalid configuration")
+            configuration_id = saved["configuration_id"]
         harness = HarnessConfig(
             api_url=api_url,
             workspace_id=UUID(first["workspace_id"]),
             scenario_id=_SCENARIO_ID,
             map_id=config.map_id,
+            configuration_id=configuration_id,
             max_steps=config.max_steps,
             step_delay_s=config.step_delay_s,
             request_timeout_s=config.request_timeout_s,
@@ -183,14 +209,21 @@ def run_headless(
         summary = {
             "experiment_id": str(experiment_id),
             "map_id": config.map_id,
+            "engine": engine,
             "status": experiment.status.value,
             "steps": experiment.latest_sequence,
             "simulation_time_ms": experiment.simulation_time_ms,
             "steps_file": str(steps_path.resolve()),
-            "sumo_artifacts": str(
-                (repository_root / "artifacts/sumo" / str(experiment_id)).resolve()
+            "engine_artifacts": str(
+                (
+                    repository_root / "artifacts/simulations"
+                    if configuration_id
+                    else repository_root / "artifacts" / engine / str(experiment_id)
+                ).resolve()
             ),
         }
+        if engine == "sumo":
+            summary["sumo_artifacts"] = summary["engine_artifacts"]
         (run_dir / "summary.json").write_text(
             json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )

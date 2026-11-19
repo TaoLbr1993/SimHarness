@@ -1,0 +1,7 @@
+schema_version: '1.0'
+map_id: mixed-automation-obstacle
+engine: highway
+max_steps: 100
+step_delay_s: 0
+bindings: []
+# The same map_id can use engine: sumo. Original vehicle IDs are retained.

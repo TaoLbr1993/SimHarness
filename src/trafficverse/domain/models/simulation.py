@@ -27,6 +27,7 @@ class TrafficSnapshot(StrictModel):
     vehicles: tuple[VehicleState, ...] = ()
     traffic_lights: tuple[TrafficLightState, ...] = ()
     collision_vehicle_ids: tuple[str, ...] = ()
+    episode_ended: bool = False
 
 
 class CarlaFrame(StrictModel):
@@ -101,7 +102,7 @@ class AutomationDemand(StrictModel):
 
 
 class SimulationConfigurationDraft(StrictModel):
-    """Validated user input used to materialize an immutable SUMO configuration."""
+    """Validated input for a shared scenario and its selected traffic engine."""
 
     workspace_id: UUID
     scenario_id: UUID
@@ -109,6 +110,7 @@ class SimulationConfigurationDraft(StrictModel):
     description: str = Field(default="", max_length=1_000)
     map_id: str = Field(min_length=1, max_length=200)
     duration_ms: int = Field(gt=0)
+    engine: Literal["sumo", "highway"] = "sumo"
     automation_demands: tuple[AutomationDemand, ...] = Field(max_length=6)
 
     @field_validator("scene_name", "map_id")
@@ -147,4 +149,5 @@ class SimulationRunInput:
     scenario_id: UUID
     map_id: str
     directory: Path
-    sumo_config_path: Path
+    sumo_config_path: Path | None = None
+    highway_config_path: Path | None = None

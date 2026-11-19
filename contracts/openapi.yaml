@@ -798,6 +798,18 @@ components:
             type: string
           - type: 'null'
           title: Display Name
+        engine_duration_ms:
+          anyOf:
+          - exclusiveMinimum: 0.0
+            type: integer
+          - type: 'null'
+          title: Engine Duration Ms
+        engine_step_ms:
+          anyOf:
+          - exclusiveMinimum: 0.0
+            type: integer
+          - type: 'null'
+          title: Engine Step Ms
         files:
           default: []
           items:
@@ -813,6 +825,7 @@ components:
           enum:
           - core_run
           - sumo
+          - highway
           title: Kind
           type: string
         manifest_available:
@@ -1229,6 +1242,13 @@ components:
           exclusiveMinimum: 0.0
           title: Duration Ms
           type: integer
+        engine:
+          default: sumo
+          enum:
+          - sumo
+          - highway
+          title: Engine
+          type: string
         map_id:
           maxLength: 200
           minLength: 1
@@ -1741,6 +1761,10 @@ components:
             type: string
           title: Collision Vehicle Ids
           type: array
+        episode_ended:
+          default: false
+          title: Episode Ended
+          type: boolean
         experiment_id:
           format: uuid
           title: Experiment Id

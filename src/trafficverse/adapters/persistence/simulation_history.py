@@ -77,6 +77,9 @@ class FileSimulationHistoryStore:
 
     def get_network(self, run_id: str) -> dict[str, object]:
         directory = self._directory(run_id)
+        configuration = self._read_json(directory / "configuration.json")
+        if configuration.get("engine") == "highway":
+            return self._read_json(directory / "network.geojson")
         config_path = self._sumo_config_path(directory)
         package = load_sumo_package(config_path, allowed_root=directory)
         return sumo_display_geojson(package.network_path)
@@ -178,6 +181,16 @@ class FileSimulationHistoryStore:
         map_value = self._mapping(configuration.get("map"))
         simulation = self._mapping(configuration.get("simulation"))
         simulation_time_ms = int(round(self._float(steps[-1].get("time")) * 1_000)) if steps else 0
+        if configuration.get("engine") == "highway":
+            frames_path = directory / "replay" / "frames.parquet"
+            if frames_path.is_file():
+                simulation_time_ms = max(
+                    (
+                        self._int(row["simulation_time_ms"])
+                        for row in self._parquet_rows(frames_path)
+                    ),
+                    default=0,
+                )
         ended_at = self._datetime_value(run.get("ended_at"))
         if ended_at is None and status in _TERMINAL:
             ended_at = self._latest_result_time(directory)

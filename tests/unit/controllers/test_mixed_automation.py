@@ -51,6 +51,18 @@ def _snapshot(
     )
 
 
+def test_ambulance_waits_for_body_clearance_after_lane_id_changes() -> None:
+    controller = MixedAutomationScenarioController("mixed-automation-emergency-yield")
+    ambulance = _vehicle("ambulance_L5_0", x_m=100, speed_mps=28)
+    yielding = _vehicle("yield_L0_000", x_m=107, lane_index=0, speed_mps=8)
+    yielding = yielding.model_copy(update={"position": Vector3(x=107, y=1.5)})
+    commands = controller.step(_snapshot(ambulance, yielding), 0.05)
+    assert commands[ambulance.vehicle_id].desired_speed_mps == 8
+    cleared = yielding.model_copy(update={"position": Vector3(x=107, y=0)})
+    commands = controller.step(_snapshot(ambulance, cleared), 0.05)
+    assert commands[ambulance.vehicle_id].desired_speed_mps == 28
+
+
 def test_obstacle_scene_keeps_l0_late_and_routes_l5_early() -> None:
     controller = MixedAutomationScenarioController("mixed-automation-obstacle")
     l0 = _vehicle("target_L0_0", x_m=500.0, lane_index=0)

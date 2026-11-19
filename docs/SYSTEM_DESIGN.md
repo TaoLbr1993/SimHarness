@@ -1,4 +1,8 @@
+> 2026-11-11 / ADR-046：二维场景共用现有目录，先选场景再选引擎；HighwayEnv 转换同一份路网、路线、车辆、发车计划、静态信号及特殊事件，允许动力学结果不同。Town04/CARLA 约束不变。
+
 # TrafficVerse System Design
+
+> 2026-11-09：二维运行的 SUMO-only 限制由 [ADR-045](HIGHWAY_ENV.md) 扩展为每实验选择 SUMO 或 HighwayEnv。每次实验仍只有一个交通真值源和一个 SimulationManager 时钟；Town04/CARLA 约束不变。
 
 > 版本：v1.7
 > 状态：Target Baseline（SUMO/CARLA 迁移中）

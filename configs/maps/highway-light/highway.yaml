@@ -1,0 +1,9 @@
+map_id: highway-light
+display_name: HighwayEnv — 3 lanes / 10 background vehicles
+config:
+  seed: 42
+  lanes_count: 3
+  vehicles_count: 10
+  duration_ms: 40000
+  policy_frequency: 10
+  simulation_frequency: 20

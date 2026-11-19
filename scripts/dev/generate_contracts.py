@@ -33,7 +33,7 @@ def main() -> None:
             indent=2,
             sort_keys=True,
         )
-        output_path.write_text(f"{payload}\n", encoding="utf-8")
+        output_path.write_text(f"{payload}\n", encoding="utf-8", newline="\n")
 
     openapi_path = REPOSITORY_ROOT / "contracts/openapi.yaml"
     openapi_path.write_text(
@@ -43,6 +43,7 @@ def main() -> None:
             sort_keys=True,
         ),
         encoding="utf-8",
+        newline="\n",
     )
 
 

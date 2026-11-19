@@ -155,3 +155,9 @@ uv run pytest
 ```
 
 本项目采用 [MIT 许可证](LICENSE)。
+
+## HighwayEnv
+
+支持在仿真配置页选择 SUMO 或 HighwayEnv。两种引擎共用原有二维场景，先选场景再选引擎，使用 `uv sync --frozen --extra highway --extra ui --extra sumo` 安装。
+
+[HighwayEnv usage and limitations](docs/HIGHWAY_ENV.md)

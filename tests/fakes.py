@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from uuid import UUID
 
-from trafficverse.config.models import CarlaConfig, SumoConfig, WeatherConfig
+from trafficverse.config.models import CarlaConfig, TrafficEngineConfig, WeatherConfig
 from trafficverse.domain.enums import ComponentStatus, ExperimentStatus
 from trafficverse.domain.models import (
     ActorSpawnResult,
@@ -31,7 +31,7 @@ class FakeTrafficEnginePort:
         self.last_time_ms = -1
         self.controls: dict[str, ControlCommand] = {}
 
-    def load(self, config: SumoConfig) -> None:
+    def load(self, config: TrafficEngineConfig) -> None:
         del config
         self.started = True
         self.closed = False

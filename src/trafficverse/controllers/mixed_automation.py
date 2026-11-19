@@ -35,6 +35,9 @@ _CUTIN_BACKGROUND_SPEED_MPS = (8.0, 13.0, 18.0, 23.0, 26.0, 27.5)
 _CUTIN_POST_EVENT_SPEED_MPS = 22.0
 _EMERGENCY_CRUISE_SPEED_MPS = (10.0, 13.0, 16.0, 19.0, 22.0, 25.0)
 _EMERGENCY_BACKGROUND_SPEED_MPS = (12.0, 13.5, 15.0, 16.5, 18.0, 21.0)
+# This scene has 3.5 m lanes. A nearest-lane ID changes halfway through a
+# manoeuvre; the vehicle body must clear the ambulance's path before it accelerates.
+_EMERGENCY_PASSAGE_CLEARANCE_M = 3.0
 _ACCIDENT_L1_BRAKE_TRIGGER_DISTANCE_M = 13.0
 _ACCIDENT_L5_CRUISE_SPEED_MPS = 12.0
 _ACCIDENT_L5_PHASE_START_MS = 60_000
@@ -335,7 +338,11 @@ class MixedAutomationScenarioController:
         yielding_speeds_mps: list[float] = []
         for vehicle in snapshot.vehicles:
             match = _YIELD_PATTERN.match(vehicle.vehicle_id)
-            if match is None or int(match.group(2)) >= 3 or _lane_index(vehicle.lane_id) != 1:
+            if (
+                match is None
+                or int(match.group(2)) >= 3
+                or abs(vehicle.position.y - ambulance.position.y) >= _EMERGENCY_PASSAGE_CLEARANCE_M
+            ):
                 continue
             level = int(match.group(1))
             gap_m = vehicle.position.x - ambulance.position.x

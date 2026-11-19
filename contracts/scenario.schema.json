@@ -134,6 +134,98 @@
       "title": "CarlaViewConfig",
       "type": "object"
     },
+    "HighwayEnvConfig": {
+      "additionalProperties": false,
+      "description": "Reproducible highway scenarios, with bounded, typed SDK settings.",
+      "properties": {
+        "controlled_vehicles": {
+          "default": 1,
+          "maximum": 20,
+          "minimum": 1,
+          "title": "Controlled Vehicles",
+          "type": "integer"
+        },
+        "duration_ms": {
+          "default": 40000,
+          "exclusiveMinimum": 0,
+          "maximum": 3600000,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "environment_id": {
+          "const": "highway-v0",
+          "default": "highway-v0",
+          "title": "Environment Id",
+          "type": "string"
+        },
+        "initial_lane_id": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Initial Lane Id"
+        },
+        "lanes_count": {
+          "default": 4,
+          "maximum": 8,
+          "minimum": 1,
+          "title": "Lanes Count",
+          "type": "integer"
+        },
+        "policy_frequency": {
+          "default": 10,
+          "maximum": 50,
+          "minimum": 1,
+          "title": "Policy Frequency",
+          "type": "integer"
+        },
+        "provider": {
+          "const": "highway",
+          "default": "highway",
+          "title": "Provider",
+          "type": "string"
+        },
+        "seed": {
+          "default": 42,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "shared_scene": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SharedScene"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "simulation_frequency": {
+          "default": 20,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Simulation Frequency",
+          "type": "integer"
+        },
+        "vehicles_count": {
+          "default": 30,
+          "maximum": 500,
+          "minimum": 0,
+          "title": "Vehicles Count",
+          "type": "integer"
+        }
+      },
+      "title": "HighwayEnvConfig",
+      "type": "object"
+    },
     "LoggingConfig": {
       "additionalProperties": false,
       "properties": {
@@ -304,6 +396,342 @@
         "seed"
       ],
       "title": "ScenarioIdentityConfig",
+      "type": "object"
+    },
+    "SceneConnection": {
+      "additionalProperties": false,
+      "properties": {
+        "signal_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Signal Id"
+        },
+        "signal_index": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Signal Index",
+          "type": "integer"
+        },
+        "source_lane": {
+          "title": "Source Lane",
+          "type": "string"
+        },
+        "target_lane": {
+          "title": "Target Lane",
+          "type": "string"
+        },
+        "via_lane": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Via Lane"
+        }
+      },
+      "required": [
+        "source_lane",
+        "target_lane"
+      ],
+      "title": "SceneConnection",
+      "type": "object"
+    },
+    "SceneLane": {
+      "additionalProperties": false,
+      "properties": {
+        "edge_id": {
+          "title": "Edge Id",
+          "type": "string"
+        },
+        "lane_id": {
+          "title": "Lane Id",
+          "type": "string"
+        },
+        "points": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "minItems": 2,
+          "title": "Points",
+          "type": "array"
+        },
+        "speed_mps": {
+          "default": 30,
+          "title": "Speed Mps",
+          "type": "number"
+        },
+        "width_m": {
+          "default": 3.2,
+          "exclusiveMinimum": 0,
+          "title": "Width M",
+          "type": "number"
+        }
+      },
+      "required": [
+        "lane_id",
+        "edge_id",
+        "points"
+      ],
+      "title": "SceneLane",
+      "type": "object"
+    },
+    "SceneSignal": {
+      "additionalProperties": false,
+      "properties": {
+        "offset_s": {
+          "default": 0,
+          "title": "Offset S",
+          "type": "number"
+        },
+        "phases": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Phases",
+          "type": "array"
+        },
+        "signal_id": {
+          "title": "Signal Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signal_id",
+        "phases"
+      ],
+      "title": "SceneSignal",
+      "type": "object"
+    },
+    "SceneStop": {
+      "additionalProperties": false,
+      "properties": {
+        "duration_s": {
+          "default": 0,
+          "title": "Duration S",
+          "type": "number"
+        },
+        "lane_id": {
+          "title": "Lane Id",
+          "type": "string"
+        },
+        "position_m": {
+          "title": "Position M",
+          "type": "number"
+        },
+        "until_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Until S"
+        }
+      },
+      "required": [
+        "lane_id",
+        "position_m"
+      ],
+      "title": "SceneStop",
+      "type": "object"
+    },
+    "SceneVehicle": {
+      "additionalProperties": false,
+      "properties": {
+        "acceleration_mps2": {
+          "default": 3,
+          "exclusiveMinimum": 0,
+          "title": "Acceleration Mps2",
+          "type": "number"
+        },
+        "deceleration_mps2": {
+          "default": 4.5,
+          "exclusiveMinimum": 0,
+          "title": "Deceleration Mps2",
+          "type": "number"
+        },
+        "depart_lane": {
+          "default": "best",
+          "title": "Depart Lane",
+          "type": "string"
+        },
+        "depart_position_m": {
+          "default": 0,
+          "title": "Depart Position M",
+          "type": "number"
+        },
+        "depart_s": {
+          "title": "Depart S",
+          "type": "number"
+        },
+        "depart_speed": {
+          "default": "0",
+          "title": "Depart Speed",
+          "type": "string"
+        },
+        "edges": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Edges",
+          "type": "array"
+        },
+        "headway_s": {
+          "default": 1.5,
+          "exclusiveMinimum": 0,
+          "title": "Headway S",
+          "type": "number"
+        },
+        "length_m": {
+          "default": 5,
+          "exclusiveMinimum": 0,
+          "title": "Length M",
+          "type": "number"
+        },
+        "max_speed_mps": {
+          "default": 30,
+          "title": "Max Speed Mps",
+          "type": "number"
+        },
+        "min_gap_m": {
+          "default": 2.5,
+          "title": "Min Gap M",
+          "type": "number"
+        },
+        "route_id": {
+          "title": "Route Id",
+          "type": "string"
+        },
+        "stops": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SceneStop"
+          },
+          "title": "Stops",
+          "type": "array"
+        },
+        "type_id": {
+          "default": "DEFAULT_VEHTYPE",
+          "title": "Type Id",
+          "type": "string"
+        },
+        "vehicle_id": {
+          "title": "Vehicle Id",
+          "type": "string"
+        },
+        "width_m": {
+          "default": 1.8,
+          "exclusiveMinimum": 0,
+          "title": "Width M",
+          "type": "number"
+        }
+      },
+      "required": [
+        "vehicle_id",
+        "route_id",
+        "edges",
+        "depart_s"
+      ],
+      "title": "SceneVehicle",
+      "type": "object"
+    },
+    "SharedScene": {
+      "additionalProperties": false,
+      "properties": {
+        "begin_time_s": {
+          "default": 0,
+          "title": "Begin Time S",
+          "type": "number"
+        },
+        "connections": {
+          "items": {
+            "$ref": "#/$defs/SceneConnection"
+          },
+          "title": "Connections",
+          "type": "array"
+        },
+        "lanes": {
+          "items": {
+            "$ref": "#/$defs/SceneLane"
+          },
+          "title": "Lanes",
+          "type": "array"
+        },
+        "map_id": {
+          "title": "Map Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "seed": {
+          "default": 42,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "signals": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SceneSignal"
+          },
+          "title": "Signals",
+          "type": "array"
+        },
+        "vehicles": {
+          "items": {
+            "$ref": "#/$defs/SceneVehicle"
+          },
+          "maxItems": 100000,
+          "title": "Vehicles",
+          "type": "array"
+        }
+      },
+      "required": [
+        "map_id",
+        "lanes",
+        "connections",
+        "vehicles"
+      ],
+      "title": "SharedScene",
       "type": "object"
     },
     "SimulationConfig": {
@@ -517,6 +945,17 @@
     },
     "carla": {
       "$ref": "#/$defs/CarlaConfig"
+    },
+    "highway": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/HighwayEnvConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "logging": {
       "$ref": "#/$defs/LoggingConfig"

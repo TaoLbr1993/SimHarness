@@ -10,7 +10,7 @@ from uuid import UUID
 
 from trafficverse.adapters.sumo.models import SumoRuntime, SumoVehicleSample
 from trafficverse.adapters.sumo.runtime import PythonSumoRuntime
-from trafficverse.config.models import SumoConfig
+from trafficverse.config.models import SumoConfig, TrafficEngineConfig
 from trafficverse.domain.enums import (
     AutomationLevel,
     ComponentStatus,
@@ -59,7 +59,9 @@ class SumoTrafficEngineAdapter:
         self._frozen_collision_poses: dict[str, SumoVehicleSample] = {}
         self._collision_vehicle_ids: set[str] = set()
 
-    def load(self, config: SumoConfig) -> None:
+    def load(self, config: TrafficEngineConfig) -> None:
+        if not isinstance(config, SumoConfig):
+            raise ValueError("SUMO adapter requires SUMO configuration")
         if self._connected:
             return
         try:

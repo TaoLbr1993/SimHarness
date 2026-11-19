@@ -11,7 +11,7 @@ from trafficverse.application.clock import SimulationClock
 from trafficverse.application.experiment_registry import ExperimentRegistry
 from trafficverse.application.simulation_manager import SimulationManager
 from trafficverse.config.loader import load_scenario
-from trafficverse.config.models import CarlaConfig, SumoConfig, WeatherConfig
+from trafficverse.config.models import CarlaConfig, TrafficEngineConfig, WeatherConfig
 from trafficverse.domain.enums import (
     AutomationLevel,
     ComponentStatus,
@@ -65,7 +65,7 @@ class TraceTraffic:
         self.applied_commands: list[dict[str, ControlCommand]] = []
         self.released: list[tuple[str, ...]] = []
 
-    def load(self, config: SumoConfig) -> None:
+    def load(self, config: TrafficEngineConfig) -> None:
         del config
         self.trace.append("traffic.load")
         self.failures.check("traffic.load")

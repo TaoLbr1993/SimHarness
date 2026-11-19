@@ -267,11 +267,18 @@ class SceneConfigurationPage(QWidget):
 
     def _map_configuration(self) -> QFrame:
         section, layout = self._section("地图选择")
+        self.engine_combo = QComboBox()
+        self.engine_combo.setObjectName("simulationEngineCombo")
+        self.engine_combo.addItem("SUMO", "sumo")
+        self.engine_combo.addItem("HighwayEnv", "highway")
+        self.engine_combo.currentIndexChanged.connect(self._engine_changed)
         self.map_combo = QComboBox()
         self.map_combo.setObjectName("simulationMapCombo")
         self.map_combo.setMinimumContentsLength(24)
         self.map_combo.currentIndexChanged.connect(self._select_map)
         layout.addWidget(self.map_combo)
+        layout.addWidget(QLabel("仿真引擎"))
+        layout.addWidget(self.engine_combo)
 
         self.map_widget = MapLibreDeckMapWidget(load_page=self._load_web_map)
         self.map_widget.setObjectName("simulationMapPreview")
@@ -373,26 +380,31 @@ class SceneConfigurationPage(QWidget):
         return label
 
     def set_maps(self, maps: tuple[MapSummary, ...]) -> None:
-        current_id = self.map_combo.currentData()
         self._maps = {item.map_id: item for item in maps if item.kind == "sumo"}
+        self._filter_engine_maps()
+
+    def _filter_engine_maps(self) -> None:
+        current_id = self.map_combo.currentData()
         self.map_combo.blockSignals(True)
         self.map_combo.clear()
-        for item in maps:
-            if item.kind != "sumo":
-                continue
-            name = item.display_name or item.carla_map or item.map_id
-            self.map_combo.addItem(name, item.map_id)
+        for item in self._maps.values():
+            if item.kind == "sumo":
+                self.map_combo.addItem(item.display_name or item.map_id, item.map_id)
+        index = self.map_combo.findData(current_id)
+        self.map_combo.setCurrentIndex(max(0, index) if self.map_combo.count() else -1)
         self.map_combo.blockSignals(False)
         if self.map_combo.count():
-            preserved_index = self.map_combo.findData(current_id)
-            index = preserved_index if preserved_index >= 0 else 0
-            self.map_combo.blockSignals(True)
-            self.map_combo.setCurrentIndex(index)
-            self.map_combo.blockSignals(False)
-            self._select_map(index)
+            self._select_map(self.map_combo.currentIndex())
         else:
-            self._show_generated_scene("")
-            self.map_preview_status.setText("暂无可运行的 SUMO 地图资源")
+            self.map_widget.set_network({"type": "FeatureCollection", "features": []})
+            self.map_preview_status.setText("暂无可运行的场景")
+
+    def _engine_changed(self) -> None:
+        self.map_preview_status.setText(
+            "同一场景：HighwayEnv 使用原路网、发车计划和事件；动力学结果允许不同。"
+            if self.engine_combo.currentData() == "highway"
+            else "同一场景：使用 SUMO 运行。"
+        )
 
     @Slot(object)
     def set_preview_network(self, network: object) -> None:
@@ -430,6 +442,7 @@ class SceneConfigurationPage(QWidget):
             description=self.description.toPlainText().strip(),
             map_id=str(self.map_combo.currentData() or ""),
             duration_ms=self.duration_time.time().msecsSinceStartOfDay(),
+            engine=str(self.engine_combo.currentData()),
             automation_demands=()
             if self._traffic_mode or self._selected_generated_scene()
             else tuple(
