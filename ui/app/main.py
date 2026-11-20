@@ -10,6 +10,8 @@ from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
 from ui.api_client import RealtimeClient, RestApiClient
+from ui.localization import set_language
+from ui.scene_language import Language
 from ui.viewmodels import RunViewModel
 from ui.views import MainWindow
 
@@ -17,14 +19,19 @@ DEFAULT_SCENARIO_ID = UUID("00000000-0000-0000-0000-000000000042")
 
 
 def run(
-    api_url: str, scenario_id: UUID = DEFAULT_SCENARIO_ID, *, traffic_mode: bool = False
+    api_url: str,
+    scenario_id: UUID = DEFAULT_SCENARIO_ID,
+    *,
+    traffic_mode: bool = False,
+    language: Language = "zh",
 ) -> int:
     app = QApplication.instance() or QApplication(sys.argv)
     app.setApplicationName("SimHarness")
+    set_language(language)
     rest = RestApiClient(api_url)
     realtime = RealtimeClient(api_url)
     viewmodel = RunViewModel(rest, realtime, scenario_id)
-    window = MainWindow(viewmodel, traffic_mode=traffic_mode)
+    window = MainWindow(viewmodel, traffic_mode=traffic_mode, scene_language=language)
     window.show()
     QTimer.singleShot(0, viewmodel.initialize)
     return app.exec()

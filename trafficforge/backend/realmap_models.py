@@ -29,10 +29,10 @@ class MapIntent(BaseModel):
     scenario: ScenarioIntent | None = None
     map_description: str = ""
 
-    def validate_sources(self, description: str) -> None:
+    def validate_sources(self, description: str, *, area_selected: bool = False) -> None:
         if self.scenario is not None:
             self.scenario.validate_sources(description)
-        if self.source_mode == "real_map":
+        if self.source_mode == "real_map" and not area_selected:
             if not self.place_query.strip() or not self.location_quote.strip():
                 raise ValueError("真实地图请求缺少地点，请说明城市、地点或校区")
             quotes = [self.location_quote, *self.extra_requirements]
@@ -43,6 +43,13 @@ class MapIntent(BaseModel):
             invalid = [q for q in quotes if not q.strip() or q not in description]
             if invalid:
                 raise ValueError(f"地点、范围和额外要求必须连续引用原文；无效引用：{invalid!r}")
+
+        if area_selected:
+            quotes = [*self.extra_requirements]
+            if self.detail_level == "detailed":
+                quotes.append(self.detail_quote)
+            if any(not quote.strip() or quote not in description for quote in quotes):
+                raise ValueError("Area requirements must quote the original request.")
 
 
 class PlaceCandidate(BaseModel):
@@ -57,7 +64,7 @@ class PlaceCandidate(BaseModel):
     street: str = ""
     osm_key: str = ""
     osm_value: str = ""
-    provider: Literal["photon", "amap"] = "photon"
+    provider: Literal["photon", "amap", "selection"] = "photon"
     source_crs: Literal["WGS84", "GCJ-02"] = "WGS84"
     source_longitude: float | None = Field(default=None, ge=-180, le=180, allow_inf_nan=False)
     source_latitude: float | None = Field(default=None, ge=-85, le=85, allow_inf_nan=False)

@@ -44,8 +44,10 @@ uv run simharness serve --host 127.0.0.1 --port 8000
 Keep it running and start the general traffic UI in a second terminal:
 
 ```bash
-uv run simharness traffic-ui --api-url http://127.0.0.1:8000
+uv run simharness traffic-ui-en
 ```
+
+`traffic-ui-en` opens the English desktop, including TrafficForge, agent connection, settings, and replay. Use `uv run simharness traffic-ui` for Chinese. No language flag is needed. Workspace names, vehicle IDs, and raw model responses retain their original text.
 
 The UI is an API client, so the backend must be running first. If you change its port, also update the UI's `--api-url` and the agent's `api_url`.
 
@@ -56,7 +58,7 @@ The UI is an API client, so the backend must be running first. If you change its
 3. Start the simulation and observe the roads and vehicles on the run page.
 4. Use simulation history to inspect, replay, or export saved formal runs.
 
-To attach an agent, select “等待外部 Agent 控制” before starting. Then open “智能体接入”, configure models and vehicles, and click “开始接入”; see [Connect Agents from the Desktop](agent-connection.md). The simulation waits for external steps, so opening the UI alone does not advance it. The [Agent Harness CLI](agent-harness.md) remains available. These desktop controls use Chinese labels.
+To attach an agent, select “Wait for external agents” before starting. Then open “Agent Connection”, configure models and vehicles, and click “Connect Agent”; see [Connect Agents from the Desktop](agent-connection.md). The simulation waits for external steps, so opening the UI alone does not advance it. The [Agent Harness CLI](agent-harness.md) remains available.
 
 ## 5. Use your own SUMO scenario
 

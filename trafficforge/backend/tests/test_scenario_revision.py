@@ -16,6 +16,7 @@ import main
 import scenario_catalog
 import scenario_revision
 from fastapi.testclient import TestClient
+from map_area import SelectedBounds
 from PIL import Image
 from scenario_demand import build_demand, write_simulation_config
 from scenario_models import (
@@ -90,6 +91,17 @@ class ScenarioRevisionTest(unittest.TestCase):
         )
         (self.source_dir / "scenario.json").write_text(result.model_dump_json(), encoding="utf-8")
         return result
+
+    def test_parameter_revision_preserves_selected_area(self):
+        bounds = SelectedBounds(west=116.34, south=39.98, east=116.35, north=39.99)
+        self.source.selected_bounds = bounds
+        (self.source_dir / "scenario.json").write_text(
+            self.source.model_dump_json(), encoding="utf-8"
+        )
+        result = scenario_revision.revise_scenario(SOURCE_ID, ScenarioRevision(vehicle_count=25))
+        self.assertEqual(result.selected_bounds, bounds)
+        self.assertEqual(result.demand.planned_vehicles, 25)
+        self.assertIsNone(result.catalog_map_id)
 
     def _snapshot(self, directory):
         return {

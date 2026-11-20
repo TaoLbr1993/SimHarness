@@ -4,21 +4,24 @@ import re
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QCheckBox,
-    QComboBox,
-    QDoubleSpinBox,
-    QFormLayout,
     QHBoxLayout,
-    QLabel,
-    QLineEdit,
     QListWidget,
     QListWidgetItem,
-    QSpinBox,
     QStyle,
     QVBoxLayout,
     QWidget,
 )
 
+from ui.localization import tr
+from ui.localized_widgets import (
+    QCheckBox,
+    QComboBox,
+    QDoubleSpinBox,
+    QFormLayout,
+    QLabel,
+    QLineEdit,
+    QSpinBox,
+)
 from ui.models import AgentApiSummary
 from ui.models.agent_session import ControlGroup, MemorySettings, ModelSettings
 from ui.views.components import panel
@@ -40,7 +43,8 @@ class AgentGroupEditor(QWidget):
         self._updating = False
         self.name_input = QLineEdit(name)
         self.source = QComboBox()
-        self.source.addItem("本次配置")
+        self.source.setProperty("literalItems", True)
+        self.source.addItem(tr("本次配置"))
         self.kind = QComboBox()
         for label, value in (
             ("远程 API · OpenAI 兼容", "api"),
@@ -218,7 +222,7 @@ class AgentGroupEditor(QWidget):
         self._assets = assets
         self.source.blockSignals(True)
         self.source.clear()
-        self.source.addItem("本次配置")
+        self.source.addItem(tr("本次配置"))
         for asset in assets:
             self.source.addItem(asset.name)
         self.source.blockSignals(False)
@@ -247,7 +251,7 @@ class AgentGroupEditor(QWidget):
         self.vehicle_list.clear()
         for vehicle_id in dict.fromkeys((*self._available, *selected)):
             item = QListWidgetItem(
-                vehicle_id + (" · 待出现" if vehicle_id not in self._available else "")
+                vehicle_id + (tr(" · 待出现") if vehicle_id not in self._available else "")
             )
             item.setData(Qt.ItemDataRole.UserRole, vehicle_id)
             item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)

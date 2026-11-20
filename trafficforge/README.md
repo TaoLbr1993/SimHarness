@@ -1,208 +1,266 @@
 # TrafficForge
 
-**Natural-language authoring for traffic simulation scenarios.**
+**English** · [简体中文](README.zh-CN.md)
 
-TrafficForge 是 SimHarness 的交通场景创作模块，原名 NL2MAP。输入自然语言需求后，它可以
-生成合成路网或导入真实地点周边道路，配置车辆数量、交通状态目标和发车计划，并提供可编辑的
-场景预览。用户确认添加后，再进入系统启动仿真。
+**Turn a single sentence into a traffic simulation scenario.**
+
+TrafficForge, formerly NL2MAP, is the traffic scenario authoring module in SimHarness. Describe a
+scenario in natural language or select an area on a map to generate a synthetic road network or
+import real-world roads. TrafficForge adds vehicle counts, target traffic conditions and departure
+plans, then presents an editable preview. After confirming and adding the scenario, you can start
+the simulation in the main system.
 
 ```text
-描述需求 → 生成路网与车流草稿 → 预览 / 修改 → 确认添加 → 用户启动仿真
+Describe a scenario / Select a map area → Generate roads and traffic demand → Preview / Edit settings → Confirm and add → Start the simulation
 ```
 
-生成预览不运行车辆仿真，也不自动加入场景目录。预览中的拥堵、密度和车辆数量是场景设定，
-实际速度、排队和拥堵情况需要运行后验证。
+Generating a preview does not run a vehicle simulation or automatically add the draft to the
+scenario catalog. Congestion targets, density and vehicle counts in the preview are scenario
+settings; actual speed, queues and congestion must be evaluated after a run.
 
-## 可以生成什么
+## What you can generate
 
-| 输入示例 | 处理方式 |
+| Example input | Processing |
 |---|---|
-| `生成一个四向十字路口，四个方向都要有信号灯` | 模型编写 roadgen 代码，编译 SUMO 路网，执行 XML 规则与图像辅助检查，按问题原因反馈修复 |
-| `生成北航学院路校区附近 1 公里路网，测试拥堵场景` | 高德定位中文地点，OSM 提供道路，SUMO 编译路网，再生成交通需求 |
-| `Generate roads within 1 km of Times Square, Manhattan, New York, USA` | Photon 定位英文地点，OSM 提供道路，SUMO 编译路网 |
-| `希望测试拥堵场景下车辆速度，计划发出120辆车，仿真10分钟` | 未指定地图时创建默认信号十字路口，并生成车辆需求、时长与待验证目标 |
+| `Generate a four-way intersection with traffic lights on all four approaches` | The model writes roadgen code; the service compiles a SUMO network, checks XML rules and visual evidence, and feeds problems and reasons back for repair |
+| `生成北航学院路校区附近 1 公里路网，测试拥堵场景` (roads within 1 km of Beihang's Xueyuan Road campus for a congestion test) | Amap locates the Chinese place name, OSM supplies roads, SUMO compiles the network, and TrafficForge generates demand |
+| `Generate roads within 1 km of Times Square, Manhattan, New York, USA` | Photon locates the English place name, OSM supplies roads, and SUMO compiles the network |
+| Select an area on the map, optionally adding `Schedule 120 vehicles over 10 minutes` | OSM roads are imported using the selected bounds; text adds scenario requirements without allowing the model to relocate the area |
+| `Test vehicle speeds in congested traffic, with 120 planned departures over 10 minutes` | When no map is specified, the service creates a default signalized intersection and generates demand, duration and targets to evaluate |
 
-- 地图默认展示主要道路；明确要求支路、车道或信号细节时生成详细版。
-- 普通交通模式显示车辆总数和发车强度；自动驾驶模式还支持 L0–L5 请求比例。
-- 预览支持图片放大，以及车辆数、密度、时长、预热、种子、流量、参考速度和等级比例修改。
-- 界面默认 **English**，可切换 **简体中文**，保留输入、当前草稿和未应用修改。
-- 地点检索按地址原文分流：英文使用 Photon，中文使用高德；界面语言不影响供应商选择。
-- 确认后的场景输出 SUMO 路网、车辆路线和 `.sumocfg`，可由 SimHarness 加载。
+- Maps show main roads by default; explicitly request minor roads, lanes or signal details for a detailed version.
+- Traffic mode displays vehicle totals and departure rates; autonomy mode also supports requested L0–L5 shares.
+- Previews support image zoom and edits to vehicle count, density, duration, warm-up, seed, flow, reference speed and automation shares.
+- The interface defaults to **English** and can switch to **简体中文** while preserving input, the current draft and unapplied edits.
+- Geocoding follows the original place text: English uses Photon and Chinese uses Amap. Interface language does not select the provider.
+- Confirmed scenarios contain SUMO networks, vehicle routes and a `.sumocfg` file that SimHarness can load.
 
-## 快速开始
+After the first preview, use the map edit field at the top. Each request acts on the current draft. For example, enter `Add an east-west road`, then `Remove the east-west road`. TrafficForge attaches a two-way road to an available junction and rebuilds SUMO connections and vehicle routes. Removal targets the most recently added road in that direction first, otherwise the matching arms at the junction nearest the map center.
 
-以下命令均从 **SimHarness 仓库根目录**执行。桌面入口依赖已配置的 Windows `.venv`、
-SUMO 和 WSL 生成环境；启动脚本负责启动或复用服务，不会安装这些依赖。
+Use `Show only main roads`, `Show secondary roads`, or `Show all roads` to filter the preview. The filter uses the roads already in the draft. For OSM maps it uses highway classes, and for unclassified synthetic networks “main roads” uses the highest edge priority. The network and departures used by the simulation stay the same when changing the display. The API accepts one instruction per `POST /scenarios/{task_id}/map-edits` with fields `instruction` and optional `ui_language`. Confirm the edited preview to publish it.
+
+## Quick start
+
+Run all commands below from the **SimHarness repository root**. The desktop launcher requires an
+already configured Windows `.venv`, SUMO and WSL generation environment. It starts or reuses
+services; it does not install these dependencies.
 
 ```powershell
-# 默认英文入口；生成服务为 8001，Core API 为 8000
+# English by default; generation service on 8001, Core API on 8000
 ./scripts/dev/start_trafficforge.ps1
 
-# 中文入口
+# Open in Chinese
 ./scripts/dev/start_trafficforge.ps1 -Language zh
 
-# 只启动后台服务
+# Start background services only
 ./scripts/dev/start_trafficforge.ps1 -NoUi
 
-# 后台就绪后，单独打开自动驾驶场景创作入口
+# Once the services are ready, open the autonomy scenario authoring interface
 .venv/Scripts/python.exe scripts/dev/open_trafficforge.py --mode autonomy
 ```
 
-在 TrafficForge 输入框描述需求，生成后查看地图和场景设定。点击“应用修改”保存参数修改，
-点击“确认，添加到场景”才入库；进入仿真配置后，由用户决定何时开始。
+Describe your requirements in the TrafficForge input box, then review the generated map and
+scenario settings. Use **Apply all changes** to apply parameter edits. Only **Confirm and add scene**
+adds the draft to the catalog; you decide when to start it in Simulation setup.
 
-也可以使用命令行。`generate` 默认只创建草稿，`publish` 显式确认添加：
+### Start with a map selection
+
+1. Click **Select map area** on the simple entry page to open the map dialog.
+2. Search for a place and choose a candidate, or pan and zoom the base map directly. Searching moves the viewport; it does not select an area.
+3. Click **Draw area**, drag a rectangle and check its extent and dimensions. Redraw it if needed.
+4. Click **Use this area** to return to the input page. Add vehicle counts, traffic conditions or duration, or leave the text blank to use default scenario settings.
+5. Click **Generate preview**, inspect the generated roads and departure plan, then confirm to add the scenario.
+
+Canceling leaves the original input and selection unchanged. After changing or clearing the area,
+generate a new preview before confirming; the old preview cannot be added as the new area.
+Only main roads are imported by default. The default maximum selection diagonal is 6 km; draw a
+smaller rectangle if it exceeds the limit. The system does not silently shrink the selection.
+You can request minor roads or greater detail in the text. After generating a draft, use the map
+edit field to add or remove east–west or north–south roads, or change the preview’s road filter.
+
+The base map uses online OpenStreetMap tiles and the repository's local Leaflet scripts, with
+WGS84 coordinates throughout. If tiles fail to load, check the connection and retry. Generation
+also requires access to the OSM road service. Chinese searches still use Amap and English searches
+use Photon. Manual selection without a search does not depend on geocoding or an Amap key.
+An area-only request with no text uses deterministic defaults without calling a model; additional
+text requirements are parsed by the configured model.
+
+### Drafts from the command line
+
+The natural-language workflow is also available through the CLI. `generate` creates a draft by
+default; `publish` explicitly confirms that it should be added:
 
 ```powershell
 .venv/Scripts/python.exe trafficforge/scene_cli.py generate "生成北航学院路校区附近1公里路网，计划发出120辆车"
-.venv/Scripts/python.exe trafficforge/scene_cli.py publish <任务ID>
+.venv/Scripts/python.exe trafficforge/scene_cli.py publish <task_id>
 .venv/Scripts/python.exe trafficforge/scene_cli.py list
-.venv/Scripts/python.exe trafficforge/scene_cli.py show <任务ID>
+.venv/Scripts/python.exe trafficforge/scene_cli.py show <task_id>
 ```
 
-接口文档：[http://127.0.0.1:8001/docs](http://127.0.0.1:8001/docs)；
-健康检查：[http://127.0.0.1:8001/health](http://127.0.0.1:8001/health)。
+The Chinese example requests roads within 1 km of Beihang's Xueyuan Road campus and 120 planned
+departures. Its original Chinese place name selects Amap.
 
-## 依赖和配置
+API documentation: [http://127.0.0.1:8001/docs](http://127.0.0.1:8001/docs).
+Health check: [http://127.0.0.1:8001/health](http://127.0.0.1:8001/health).
 
-主桌面与 Core 使用仓库配置的 Python 3.10 环境；生成服务使用独立 Python 环境。
-当前 Windows 启动器复用 WSL 发行版 `SimHarness-Ubuntu`、既有用户 `nl2map` 和
-`/opt/nl2map-venv/bin/python`。这些是历史运行资源名称，改名时保留，避免重装环境。
+## Dependencies and configuration
 
-生成服务依赖见 [backend/requirements.txt](backend/requirements.txt)，包括 FastAPI、
-OpenAI 兼容客户端、roadgen、Pillow、pyproj 和 pypinyin。roadgen 提供 Linux wheel，
-Windows 使用 WSL；`sumo` 和 `netconvert` 均需在生成环境的 PATH 中。
-真实地点解析需要 OpenAI 兼容文本模型；合成路网的默认图像辅助审核还要求模型支持图像输入。
-roadgen 源码见 [hdmap_generator](https://github.com/hakuturu583/hdmap_generator)。
+The desktop and Core use the repository's Python 3.10 environment; the generation service uses a
+separate Python environment. The current Windows launcher reuses the `SimHarness-Ubuntu` WSL
+distribution, the existing `nl2map` user and `/opt/nl2map-venv/bin/python`. These historical runtime
+resource names were retained during the rename to avoid reinstalling the environment.
 
-| 配置 | 用途 |
+Generation dependencies are listed in [backend/requirements.txt](backend/requirements.txt),
+including FastAPI, an OpenAI-compatible client, roadgen, Pillow, pyproj and pypinyin. roadgen
+provides a Linux wheel, so Windows uses WSL. Both `sumo` and `netconvert` must be on the generation
+environment's PATH. Natural-language place or scenario parsing requires an OpenAI-compatible text
+model. An area-only request with blank text can use defaults without a model. The default visual
+review of synthetic networks additionally requires image input support.
+roadgen source: [hdmap_generator](https://github.com/hakuturu583/hdmap_generator).
+
+| Setting | Purpose |
 |---|---|
-| `MODEL_BASE_URL` / `MODEL_API_KEY` / `MODEL_NAME` | 生成服务使用的模型连接配置 |
-| `OPENAI_API_KEY` | 本机 Windows 启动器读取的模型 Key，转交给 WSL 子进程的 `MODEL_API_KEY` |
-| `AMAP_WEB_API_KEY` | 中文地点查询所需的高德 Web 服务 Key；Photon 公共接口无需 Key |
-| `MAP_GEOCODER_PROVIDER=auto` | 根据原始地点文字选择供应商；也可显式设为 `amap` 或 `photon` |
-| `MAP_PHOTON_URL` / `MAP_OVERPASS_URL` | 地点服务与道路服务地址，可配置自建实例 |
-| `TRAFFICFORGE_API_URL` | 桌面及 CLI 的生成服务地址，默认 `http://127.0.0.1:8001` |
+| `MODEL_BASE_URL` / `MODEL_API_KEY` / `MODEL_NAME` | Model connection settings for the generation service |
+| `OPENAI_API_KEY` | Optional Windows key forwarded to WSL as `MODEL_API_KEY`. A model can also be configured in the backend’s local `.env`. |
+| `AMAP_WEB_API_KEY` | Amap Web Service key required for Chinese place queries; the public Photon API needs no key |
+| `MAP_GEOCODER_PROVIDER=auto` | Choose the provider from the original place text, or explicitly set `amap` or `photon` |
+| `MAP_PHOTON_URL` / `MAP_OVERPASS_URL` | Geocoding and road service endpoints, including self-hosted instances |
+| `TRAFFICFORGE_API_URL` | Generation service URL for the desktop and CLI; defaults to `http://127.0.0.1:8001` |
 
-完整后端配置模板见 [backend/.env.example](backend/.env.example)。真实 Key 只保存在本机
-环境或未跟踪的 `.env` 中。`TRAFFICFORGE_API_URL` 设置在桌面或 CLI 的进程环境中；
-未设置时仍兼容旧的 `NL2MAP_API_URL`，新变量优先。
-`trafficforge-preview` 是主项目的预览附加依赖组，不能代替完整后端 requirements。
+See [backend/.env.example](backend/.env.example) for the full backend configuration template. Keep
+real keys only in the local environment or an untracked `.env`. Set `TRAFFICFORGE_API_URL` in the
+desktop or CLI process environment. The legacy `NL2MAP_API_URL` remains a fallback; the new variable
+takes precedence. The main project's `trafficforge-preview` extra supplies preview dependencies,
+not the full backend requirements.
 
-如需在独立 Linux 环境启动生成服务，先准备 SUMO，再安装依赖和配置模型：
+To start the generation service in a separate Linux environment, install SUMO, then prepare the
+Python dependencies and model configuration:
 
 ```bash
 cd trafficforge/backend
 python -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 cp .env.example .env
-# 编辑本机 .env，填写 MODEL_BASE_URL / MODEL_API_KEY / MODEL_NAME；中文查询配置高德 Key
+# Set MODEL_BASE_URL / MODEL_API_KEY / MODEL_NAME in the local .env; add an Amap key for Chinese queries
 .venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8001
 ```
 
-## 目录结构
+## Directory structure
 
 ```text
 trafficforge/
-├── README.md                 # 本模块的使用说明与接口细节
-├── scene_cli.py              # 草稿生成、确认发布及场景查询
+├── README.md                 # English guide and API details (default)
+├── README.zh-CN.md           # Chinese guide and API details
+├── scene_cli.py              # Draft generation, explicit publication and scenario queries
 └── backend/
-    ├── main.py               # 独立 FastAPI 生成服务
-    ├── agent.py              # 需求解析、候选选择、roadgen 代码及审核
-    ├── realmap.py            # 真实地点道路导入与检查
-    ├── map_sources.py        # 中英文地点分流与 OSM 道路获取
-    ├── amap_source.py        # 高德查询及坐标转换
-    ├── runner.py             # 执行 roadgen 代码并编译路网
-    ├── review_pipeline.py    # XML 规则、图像证据及反馈修复
-    ├── scenario_pipeline.py  # 场景需求与草稿编排
-    ├── scenario_revision.py  # 修改草稿，复用路网并重建车流
-    ├── scenario_catalog.py   # 确认发布及既有场景兼容读取
-    ├── renderer.py           # 预览绘图；双语名称及旧图刷新见 preview_*.py
-    ├── tests/                # 离线回归测试
-    ├── requirements.txt      # 独立后端依赖
-    ├── .env.example          # 无真实密钥的配置示例
-    └── workspaces/           # 草稿、来源、预览和日志；不提交
+    ├── main.py               # Standalone FastAPI generation service
+    ├── agent.py              # Intent parsing, place selection, roadgen code and review
+    ├── realmap.py            # Real-world road import and validation
+    ├── map_sources.py        # Language-based geocoding and OSM road retrieval
+    ├── map_area.py           # WGS84 rectangles and extent validation
+    ├── amap_source.py        # Amap queries and coordinate conversion
+    ├── runner.py             # Execute roadgen code and compile networks
+    ├── review_pipeline.py    # XML rules, visual evidence and repair feedback
+    ├── scenario_pipeline.py  # Scenario demand and draft orchestration
+    ├── scenario_revision.py  # Reuse the map and rebuild demand in a new draft
+    ├── scenario_catalog.py   # Explicit publication and legacy scenario reads
+    ├── renderer.py           # Preview rendering; bilingual labels/refresh in preview_*.py
+    ├── tests/                # Offline regression tests
+    ├── requirements.txt      # Standalone backend dependencies
+    ├── .env.example          # Configuration example without real credentials
+    └── workspaces/           # Drafts, sources, previews and logs; not committed
 ```
 
-桌面控件位于主项目 `ui/`；正式启动入口位于 `scripts/dev/`；确认后的场景位于
-`configs/maps/nl2-<任务ID>/`。保留既有 `nl2-` 场景 ID，避免影响历史配置和实验引用。
-新发布清单使用 `schema_version: "2.0"`，场景摘要写入 `spec.trafficforge`；读取时兼容
-旧版 `schema_version: "1.0"` / `spec.nl2map`，不重写已有发布包。旧启动脚本和
-`nl2map-preview` 依赖组继续作为兼容入口，当前代码与草稿目录统一为 `trafficforge/`。
+Desktop widgets live in the main project's `ui/`, official launchers in `scripts/dev/`, and
+confirmed scenarios in `configs/maps/nl2-<task_id>/`. Existing `nl2-` scenario IDs are preserved so
+historical configurations and experiment references continue to work. New manifests use
+`schema_version: "2.0"` and place scenario summaries in `spec.trafficforge`. Readers also support
+legacy `schema_version: "1.0"` / `spec.nl2map`; existing published packages are not rewritten.
+Old launcher scripts and the `nl2map-preview` extra remain compatibility entry points. The current
+source and draft directory is `trafficforge/`.
 
-下文保留路网检查、真实地图来源和场景接口的详细说明。
+The following sections document network checks, real-map sources and scenario APIs in detail.
 
-## 合成路网生成与校验
+## Synthetic network generation and validation
 
+```text
+Natural-language request ("Generate an intersection")
+        ↓
+  FastAPI service (main.py)
+        ↓
+  Extract acceptance criteria with quotes from the request (fixed across retries)
+        ↓
+  Agent writes Python code that calls roadgen (agent.py)
+        ↓
+  Execute code in a separate task directory (runner.py)
+        ↓
+  roadgen exports SUMO PlainXML → netconvert compiles and checks .net.xml
+        ↓
+  Render the full network, a junction close-up and signal icons for controlled lanes
+        ↓
+  Execute XML acceptance rules + model-assisted visual geometry review
+        ↓
+  Combine confirmed structural problems, suspected visual problems and unverified requirements
+        ↓
+  On failure, return code, images, problems and reasons for regeneration (up to three generation attempts in total)
+        ↓
+  Return each attempt, check results and generated files
 ```
-用户自然语言描述（"我要一个十字路口"）
-        ↓
-  FastAPI 后端（main.py）
-        ↓
-  解析带原文引用的验收清单（一次解析，重试期间保持不变）
-        ↓
-  Agent 生成调用 roadgen 的 Python 代码（agent.py）
-        ↓
-  独立任务目录中执行代码（runner.py）
-        ↓
-  roadgen 导出 SUMO PlainXML → netconvert 编译并检查 .net.xml
-        ↓
-  从 .net.xml 渲染全图、路口放大图及受控车道的信号灯图标
-        ↓
-  程序执行 XML 验收规则 + 模型辅助检查图像几何
-        ↓
-  合并已确认结构问题、疑似视觉问题和未验证要求
-        ↓
-  检查失败时反馈代码、图片、问题及原因，重新生成（最多三次）
-        ↓
-  返回每次尝试、检查结果与生成文件列表
-```
 
-## 接口说明
+## API reference
 
 ### POST /generate
 
-请求：
-```json
-{ "description": "一个十字路口，两条双向两车道的道路垂直相交" }
-```
-
-从 Demo 0.2.0 起，可选字段 `review_mode` 默认为 `rules_and_image`：
-先由模型将自然语言整理为有原文引用的验收项，再由程序解析编译后的 XML 执行这些规则。
-每次有效生成仍渲染图片，辅助模型检查道路形状、明显错位和异常折返。
-
-`image_and_facts` 和 `image_only` 保留原有行为，用于对照实验；它们不经过新的需求规则检查。
-显式设为 `image_only` 时，需求审核模型只收到
-需求文字、通用读图说明和 PNG 图片，不接收网络摘要、XML、生成代码或历史审核结论。例如：
+Request:
 
 ```json
-{ "description": "生成一个四向十字路口，必须有信号灯。", "review_mode": "image_only" }
+{ "description": "A four-way intersection where two two-way, two-lane roads cross at right angles" }
 ```
 
-`image_only` 模式仍先在本地执行 `netconvert` 和基础结构检查，但不把其事实数据发送给审核模型。
-生成/修复模型仍接收需求、先前代码、问题原因及可用的图片。每轮审核独立调用，
-`review.evidence_mode` 记录该轮实际使用的模式。
+Since Demo 0.2.0, the optional `review_mode` defaults to `rules_and_image`. The model first turns
+the request into acceptance criteria backed by quotes from the original text. Code then parses
+the compiled XML and evaluates those rules. Every valid generation still produces images for a
+supporting model check of road shapes, obvious misalignment and abnormal reversals.
 
-默认流程的验收规则覆盖：
+`image_and_facts` and `image_only` retain their original behavior for comparison experiments;
+they do not use the newer requirement-rule checks. With explicit `image_only`, the requirement
+review model receives only the request, generic image-reading instructions and PNG images. It
+does not receive a network summary, XML, generated code or previous review conclusions. For example:
 
-| 规则 | 程序实际检查 |
+```json
+{ "description": "Generate a four-way intersection. Traffic lights are required.", "review_mode": "image_only" }
+```
+
+`image_only` still runs `netconvert` and basic structural checks locally, but does not send their
+facts to the review model. The generation/repair model still receives the request, previous code,
+problem reasons and available images. Each review is a separate model call;
+`review.evidence_mode` records the mode actually used in that round.
+
+The default acceptance rules cover:
+
+| Rule | What the program checks |
 |---|---|
-| `junction_count` / `approach_count` | 交叉口数量、每个路口的相邻道路分支数量 |
-| `signals` | 全网存在/不存在有效信控，或指定进口的所有转向及所有进口车道都有有效信控连接 |
-| `lane_count` | 每个所选方向的进口、出口车道数，分别核对 |
-| `turn` | 所选进口至少存在一个指定转向，或完全禁止该转向 |
-| `connected` | 道路图是否弱连通；不等于车辆在任意两点之间可达 |
-| 固定完整性检查 | 道路和车道引用、连接端点、信号程序非空且相位长度一致、正时长、相位索引有效 |
+| `junction_count` / `approach_count` | Junction count and the number of adjacent road branches at each junction |
+| `signals` | Presence/absence of effective signal control across the network, or effective controlled connections for every turn and incoming lane on specified approaches |
+| `lane_count` | Incoming and outgoing lane counts for each selected direction, checked separately |
+| `turn` | At least one specified turning movement exists from the selected approach, or that turn is entirely prohibited |
+| `connected` | Whether the road graph is weakly connected; this does not imply vehicle reachability between arbitrary points |
+| Fixed integrity checks | Road/lane references, connection endpoints, nonempty signal programs with consistent phase lengths, positive durations and valid phase indices |
 
-一个 `tlLogic` 存在不代表四向覆盖通过；某个进口仅有一个受控转向也不够。
-普通“有信号灯”按信号控制解释，实体灯杆数量/安装位置、配时安全等额外要求不在这些规则的验证范围。
-方向使用相邻节点的 SUMO XY 坐标（北=+Y，东=+X），偏离坐标轴超过配置阈值 30° 或同侧有多个进口时，
-明确方位规则标为未验证。同一对节点间的平行道路也不会静默求和为一个进口。
-未指定方向时 `all_approaches` 检查实际进口，不强迫只有出口的单向分支增加进口灯；
-若需求明确指定某方向必须有受控进口，则不存在该进口也会失败。
-`scope=single` 要求交叉口唯一；多个路口无法唯一定位时标为未验证，不能任意挑一个通过。
+The existence of one `tlLogic` does not establish four-direction coverage; one controlled turn on
+an approach is insufficient too. A general request for "traffic lights" means signal control.
+Physical pole counts/positions and signal timing safety are outside these rules.
+Directions use adjacent nodes' SUMO XY coordinates (north = +Y, east = +X). Explicit directional
+rules become unverified when an approach deviates more than the configured 30° threshold from an
+axis or multiple approaches lie on the same side. Parallel roads between the same two nodes are
+not silently summed into a single approach. When no direction is specified, `all_approaches`
+checks actual incoming approaches; it does not require an incoming signal on an outgoing-only
+one-way branch. If the request explicitly requires a controlled incoming approach in a given
+direction, absence of that approach fails the check. `scope=single` requires a unique junction;
+ambiguous targets in a multi-junction network remain unverified rather than passing an arbitrary one.
 
-响应：
+Response:
+
 ```json
 {
   "status": "success",
@@ -227,50 +285,74 @@ trafficforge/
 }
 ```
 
-`success` 要求模型已配置、生成代码成功执行、PlainXML 文件存在且可解析、
-`netconvert` 成功编译出非空路网、图片渲染成功。默认模式还要求验收规则通过、没有未验证要求和未解决的视觉疑点；
-两个旧实验模式仍由其模型审核决定需求是否满足。
-`attempts` 保存每次生成代码、执行结果、结构检查和需求检查；检查失败的诊断会反馈给下一次生成。
-默认模式返回 `review_plan`（可核对的需求解释）、`rule_review`（逐条通过/失败/未验证及 XML 证据）、
-`visual_review`（原始图像疑点）和汇总 `review`。不依赖模型宣称 XML 正确。
-`review.issue_details` 中每项都包含 `problem`（问题）和 `reason`（问题依据）；默认模式还包含
-`source` 和 `certainty`：XML 规则失败为 `xml/confirmed`，视觉发现为 `image/suspected`。`review.issues`
-保留问题与原因拼接的字符串以兼容现有调用方。图像可用时，重试会同时发送该图像和问题原因；
-若代码报错或未生成可编译网络，则没有图片，使用文本诊断重试。模型不支持图像或图片渲染失败时
-不会降级为仅文本并宣称通过。
-超时、执行失败和检查失败分别返回 `execution_timeout`、`execution_error` 和
-`validation_error`。模型未配置或生成模型调用失败返回 `agent_error`；视觉检查调用或响应格式
-异常返回 `validation_error`，保留已经完成的 XML 检查。
-无法覆盖的要求、无法确定的检查对象或重试后仍未解决的纯视觉疑点返回 `review_required`，不会伪装为成功或已确认的结构错误。
+`success` requires a configured model, successful execution of generated code, existing and
+parseable PlainXML files, a nonempty network compiled by `netconvert`, and successful image
+rendering. The default mode additionally requires passed acceptance rules, no unverified
+requirements and no unresolved visual concerns. The two older experimental modes still rely on
+their model review to decide whether requirements are satisfied.
 
-结构冲突不会按模型一句话决定。当前自动裁决只覆盖明确的信控谓词和空间范围：
-必须是相同的 presence/absence/coverage，并且 coverage 能对应同一个唯一路口和所需方向。
-例如全网“存在信号控制”的通过，不能用来驳回“东侧未受控”的疑点。
-符合精确匹配条件的疑点保留在 `review.adjudications`，附对应 XML 证据，修复模型只收到已确认的问题与已通过的规则；
-其他无法精确匹配的结构疑点保持未验证。图像几何疑点可触发修复，但不会改标为已确认。
+`attempts` preserves each generation's code, execution result, structural checks and requirement
+checks. Failed-check diagnostics feed the next generation attempt. The default mode returns
+`review_plan` (the interpreted requirements for inspection), `rule_review` (per-rule
+pass/fail/unverified results and XML evidence), `visual_review` (raw visual concerns), and the
+combined `review`. XML validity is not accepted merely because a model claims it.
+Each `review.issue_details` entry includes `problem` and `reason`. The default mode also records
+`source` and `certainty`: an XML rule failure is `xml/confirmed`, while a visual finding is
+`image/suspected`. `review.issues` retains combined problem-and-reason strings for compatibility.
+When an image is available, retries receive it together with the reasons. Code failures or
+uncompilable networks have no image and use textual diagnostics. Unsupported image input or a
+rendering failure does not fall back to text-only review and report a pass.
 
-验收计划的自然语言解释仍依赖模型，原文引用只能防止编造来源，不能证明模型没有漏掉或误解需求。
-验收清单 JSON、字段或原文引用不合格时，反馈错误并最多纠正重试一次；再次不合格仍返回失败，
-首次失败原因写入服务日志，不能绕过后续检查。
-调用方可查看 `review_plan`；当前规则也不能保证交通规则、语义或仿真行为完全正确。图片是从
-编译后的 SUMO 几何绘制的二维示意图，仅放大一个路口；缺失车道宽度时使用默认宽度绘制。
-图片用三色信号灯图标标出由 `connection.tl` 关联到具有相位的 `tlLogic` 程序的非内部进口车道；
-同一车道的多个转向只画一个灯图标。仅有 `junction.type=traffic_light` 或无车道绑定的控制器不会画灯。
-图标与车道之间有引线；它表示该车道存在受控连接，不表示所有转向都受控，也不代表真实灯杆位置。
-三色图标是静态符号，不代表当前灯色、同时放行或配时正确。无灯图和有灯图使用同一图例，不添加判定标签。
-图片不表达高程和信号相位，不能仅凭图片确认精确宽度、立交高度、全部路口细节或信号运行安全；
-只看图审核可检验可见的缺灯问题，不能替代结构或仿真检查。
-当前路网摘要限制
-为 64 条非内部道路、64 个非内部节点、128 条连接和 64 个信号灯，超出时拒绝自动判定。每个尝试有独立目录，
-但子进程不是安全沙箱；它仍以服务用户权限执行模型生成的代码，不能将该接口开放给不受信任的用户。
-子进程环境不传递包含 API_KEY、TOKEN、SECRET、PASSWORD、CREDENTIAL 的变量，但这不是完整隔离。
-需求文本、生成的代码、运行诊断、路网图片及摘要会发送给配置的模型服务，可能包含本机路径等信息；
-部署时应确认该服务可接收这些内容。生成或需求检查的模型调用异常会立即结束，不进入代码修复重试。
+Timeouts, execution failures and failed checks return `execution_timeout`, `execution_error` and
+`validation_error`, respectively. An unconfigured model or failed generation-model call returns
+`agent_error`. Visual-review call or response-format failures return `validation_error` while
+preserving completed XML checks. Unsupported requirements, ambiguous check targets and unresolved
+purely visual concerns after retries return `review_required`; they are not reported as success
+or confirmed structural errors.
 
-## 真实地点路网（实验功能，v0.3）
+Conflicting structural findings are not resolved by a model assertion alone. Automatic
+adjudication currently covers only precisely matched signal-control predicates and spatial scopes:
+presence/absence/coverage must match, and coverage must refer to the same unique junction and
+required directions. For example, a passed network-wide signal-presence check cannot dismiss a
+concern about an uncontrolled eastern approach. Precisely matched concerns remain in
+`review.adjudications` with their XML evidence; the repair model receives only confirmed problems
+and passed rules. Other structural concerns that cannot be matched exactly remain unverified.
+Visual geometry concerns may trigger repair but are not relabeled as confirmed facts.
 
-`POST /generate` 默认 `source_mode="auto"`，由模型区分抽象路口与真实地点。
-例如：
+Interpreting natural-language acceptance criteria still depends on the model. Original-text quotes
+prevent fabricated sources but do not prove that no requirement was omitted or misunderstood.
+Invalid acceptance JSON, fields or quotes trigger feedback and at most one corrective retry. A
+second invalid result still fails; the first failure is logged and cannot bypass later checks.
+Callers can inspect `review_plan`. The current rules do not guarantee fully correct traffic rules,
+semantics or simulation behavior.
+
+Images are 2D schematics drawn from compiled SUMO geometry, with only one junction enlarged.
+Missing lane widths use a rendering default. Three-color signal icons mark non-internal incoming
+lanes whose `connection.tl` refers to a `tlLogic` program with phases. Multiple turns from one lane
+share one icon. A `junction.type=traffic_light` alone, or a controller without a lane binding, does
+not produce an icon. A leader line connects each icon to its lane. It indicates a controlled
+connection, not control of every turn or a real pole location. The three-color icon is a static
+symbol, not the current signal state, simultaneous release or valid timing. Both signal-free and
+signal-equipped images use the same legend without verdict labels.
+Images do not represent elevation or signal phases. They cannot establish exact widths, overpass
+heights, all junction details or signal safety. Image-only review can test visible missing-light
+cases but cannot replace structural or simulation checks.
+
+The current network summary is limited to 64 non-internal roads, 64 non-internal nodes,
+128 connections and 64 traffic lights; exceeding a limit rejects automatic assessment. Each attempt
+has its own directory, but the subprocess is not a security sandbox: generated code still runs
+with the service user's permissions. Do not expose this endpoint to untrusted users. Variables
+containing API_KEY, TOKEN, SECRET, PASSWORD or CREDENTIAL are removed from the child environment;
+this is not complete isolation. Requirements, generated code, diagnostics, network images and
+summaries are sent to the configured model service and may contain local paths or other details.
+Confirm that the service is appropriate for this content. Model-call exceptions during generation
+or requirement review end the request immediately rather than entering code-repair retries.
+
+## Real-world road networks (experimental, v0.3)
+
+Without `selected_bounds`, `POST /generate` defaults to `source_mode="auto"`: the model distinguishes
+abstract junction requests from real places. For example, this Chinese request asks for a real
+road network within an approximately 1 km radius of Beihang's Xueyuan Road campus:
 
 ```json
 {
@@ -278,287 +360,401 @@ trafficforge/
 }
 ```
 
-真实地点流程：语言提取地名和范围 → 按原始地点文字选择高德 / Photon 并查询实际候选 → 模型按名称、城市和校区选择
-候选 ID → Overpass 获取 OpenStreetMap 道路和转向限制 → `netconvert` → 全量 XML 检查
-→ SUMO 空车流加载检查 → 简化预览 → 用户判断是否符合需求。模型不生成经纬度和真实道路几何。
-模糊地点或无候选返回 `needs_clarification`，附 `candidates` 和原因。调用方可补充描述，或在
-相同请求增加 `selected_place_id` 选择返回的候选 ID（OSM 或 `amap:<hash>`）；接口会重新核对候选集合。
+The real-place workflow is: extract the place and extent → choose Amap / Photon from the original
+place text and query actual candidates → select a candidate ID by name, city and campus → retrieve
+OpenStreetMap roads and turn restrictions through Overpass → compile with `netconvert` → check the
+full XML network → load it in SUMO with empty demand → show a simplified preview → let the user
+judge suitability. The model does not generate coordinates or real-world road geometry.
+Ambiguous places or an empty candidate set return `needs_clarification`, with `candidates` and a
+reason. Refine the description or add `selected_place_id` to the same request using a returned
+candidate ID (OSM or `amap:<hash>`); the service checks the candidate set again.
 
-显式 `source_mode="synthetic"` 使用原 roadgen 生成、检查、修复流程；`real_map` 强制要求
-真实地点。旧 `review_mode` 仅用于合成分支，真实分支固定为 XML/加载检查和用户判断，响应中记录
-`review_mode="xml_and_user"`。语言意图与候选选择仍可能误解，响应公开 `intent`、
-`place_choice.reason`、`place`、坐标和候选供核对，不以模型置信度替代地名证据。
-Photon 地名检索优先使用原文语言的已知全称，并合并主查询与备选名称的候选（最多两次查询、每次五个，
-按 OSM ID 去重）。首批搜到大厦、科技园等无关对象不会阻止备用检索。查询来源与失败诊断
-保留；多城市或多校区仍无法确定时要求补充信息，不固定坐标或默认选择第一项。
+Explicit `source_mode="synthetic"` uses the original roadgen generation/check/repair workflow;
+`real_map` requires a real place or explicit map selection. The older `review_mode` options apply
+only to synthetic generation. Real maps use XML/load checks and user judgment, recorded as
+`review_mode="xml_and_user"`. Intent parsing and candidate selection can still misunderstand a
+request. Responses expose `intent`, `place_choice.reason`, `place`, coordinates and candidates for
+inspection; model confidence does not replace place evidence.
 
-默认 `detail_level="auto"` 按语言选择详细度：未要求细节时为 `main_roads`，只导入
-OSM motorway/trunk/primary/secondary/tertiary 及其 link 连接道路，省略住宅道路、支路、
-服务道路等。这里“主干路”指主要道路骨架，并不等同于严格的市政道路等级。
-简图显示道路走向、连接和名称，不显示车道标线或信号图标；SUMO 文件仍保留运行需要的车道与信控。
-用户说“包含支路”“更详细”“显示车道/信号细节”时，选择 `detailed`，导入所有 passenger
-可用道路并生成局部细节图。也可显式传 `detail_level="main_roads"` 或 `"detailed"` 覆盖语言判断。
-详细版扩展数据和展示层级，不代表实地车道或信号信息已被校准。
+Photon lookup prefers a known full name in the original language and combines primary and
+alternative queries, with at most two queries of five candidates each, deduplicated by OSM ID.
+Unrelated first-query results, such as office buildings or technology parks, do not block the
+alternative lookup. Query provenance and failure diagnostics are retained. If ambiguity across
+cities or campuses persists, the system requests clarification rather than fixing coordinates or
+defaulting to the first candidate.
 
-范围默认 1000 米并在响应中说明，目前接受 100–3000 米，不自动缩小超范围请求。
-圆心使用选定地点服务返回的代表点（在 `place` 明示），不是沿校园边界向外缓冲 1 公里。
-Overpass 按中心周边圆形选取道路，原始文件保留完整 OSM way 和相关限制。
-转换先在 OSM 几何节点细分道路，再从导入的 SUMO 网络中用 36 点近似圆筛选道路段、简化中间节点；
-保留的段不在圆边界精确截断，因此实际边界可能超出半径。
-`validation.statistics.converted_xy_bounds` 记录实际 SUMO XY 范围，完整选择多边形在
-`conversion-command.json` 的两次调用中。实际边界从最终车道几何计算；XML location 元数据另存
-`xml_location_xy_bounds`，不能把它当成裁选后的真实边界。它不是精确 GIS 裁剪，也不是校园围墙边界。
+The default `detail_level="auto"` follows the request. Without an explicit detail requirement it
+uses `main_roads`, importing OSM motorway/trunk/primary/secondary/tertiary roads and their link
+roads, while omitting residential, minor and service roads. Here, "main roads" means the principal
+road skeleton rather than a strict municipal classification. The overview shows road shapes,
+connections and names, without lane markings or signal icons; SUMO files retain the lanes and
+signal control needed for operation. Requests for minor roads, more detail, or lane/signal details
+select `detailed`, importing all passenger-accessible roads and rendering a local detail view.
+Explicit `detail_level="main_roads"` or `"detailed"` overrides language-based selection. A detailed
+version expands the data and display, but does not imply that lane or signal data has been calibrated.
 
-只导入 `passenger` 可用的机动车路网，保留孤立分量并报告数量；不保证校园/私人道路合法通行，
-不保证任意 OD 可达。OSM 数据可能不完整或过时，缺少的车道数、限速、优先权、车道连接及信号配时
-可能由 SUMO 推断；`source_ways_with_lanes/maxspeed` 是原始 highway way 标注数量，
-不是导入后道路覆盖率。信控节点和灯图标只表示 SUMO 绑定，不证明实地灯杆或当前配时。
+The default radius is 1000 m and is disclosed in the response. The accepted range is currently
+100–3000 m; oversized requests are not silently reduced. The center is the selected geocoder's
+representative point, disclosed in `place`, not a 1 km buffer around the campus boundary.
+Overpass selects roads within a circle around that point; raw files preserve complete OSM ways and
+related restrictions. Conversion first splits roads at OSM geometry nodes, then filters SUMO road
+segments using a 36-point circle approximation and simplifies intermediate nodes. Retained
+segments are not cut precisely at the circle, so the actual extent can exceed the radius.
+`validation.statistics.converted_xy_bounds` records the actual SUMO XY extent. The full selection
+polygon appears in both calls in `conversion-command.json`. Actual bounds are computed from the
+final lane geometry. XML location metadata is recorded separately as `xml_location_xy_bounds`
+and must not be treated as the true filtered extent. This is neither exact GIS clipping nor a
+representation of campus walls.
 
-真实地图检查不使用合成分支 64 条道路的摘要上限；所有外部道路、车道连接和控制器都参加现有
-完整性规则，随后由 SUMO 加载检查。该检查仍不证明交通规则、配时冲突或现实地理精度。
-真实地图不调用视觉模型判定是否符合需求，由用户查看预览判断。转换器丢失转向限制、无法构建
-信号程序或源信号无连接时，保留 `validation.import_issues` 和日志，供用户查看，不单独阻断交付。
-额外的改道/车道/信控/CARLA/车流等要求在 `unverified_requirements` 和 `intent.extra_requirements`
-列为未验证，不自动改写真实道路。真实分支没有 roadgen 重设计兜底。
+Only motor-vehicle roads accessible to `passenger` are imported. Disconnected components are kept
+and counted. The result does not guarantee legal access to campus/private roads or reachability
+between arbitrary origins and destinations. OSM data may be incomplete or outdated. SUMO may
+infer missing lane counts, speed limits, priorities, lane connections and signal timing.
+`source_ways_with_lanes/maxspeed` counts annotations on source highway ways, not coverage of the
+imported roads. Signal nodes and icons reflect SUMO bindings, not verified real poles or current timing.
 
-输出目录 `backend/workspaces/<task_id>/output/`：
+Real-map checks do not use the synthetic branch's 64-road summary limit. All external roads, lane
+connections and controllers participate in the existing integrity rules, followed by a SUMO load
+check. These checks still do not establish correct traffic rules, conflict-free timing or
+geographic accuracy. Real maps do not call a vision model to judge requirement satisfaction; the
+user inspects the preview. Lost turn restrictions, unbuildable signal programs and source signals
+without connections are retained in `validation.import_issues` and logs for inspection, but do not
+independently block delivery. Additional road modification, lane, signal, CARLA or traffic-demand
+requirements are listed as unverified in `unverified_requirements` and `intent.extra_requirements`;
+they do not automatically rewrite real roads. There is no roadgen redesign fallback for this branch.
 
-| 文件 | 用途 |
+Output directory: `backend/workspaces/<task_id>/output/`.
+
+| File | Purpose |
 |---|---|
-| `source.osm.xml`、`overpass-query.txt`、`geocoder-*.json` | 来源数据与实际查询 |
-| `validated.net.xml`、`map.sumocfg` | SUMO 路网和无交通需求的加载测试配置 |
-| `map_preview.png`、`review.png` | 默认主干路简图；只有详细版生成带信控图标的局部放大图 |
-| `metadata.json` | 意图、地点、来源时间、是否缓存、检查结果、统计及限制 |
-| `conversion-command.json`、`netconvert-version.txt`、`netconvert.log`、`sumo-load.log` | 可复现转换参数和完整诊断 |
+| `source.osm.xml`, `overpass-query.txt`, `geocoder-*.json` | Source data and actual queries |
+| `validated.net.xml`, `map.sumocfg` | SUMO network and empty-demand load-test configuration |
+| `map_preview.png`, `review.png` | Main-road overview by default; only detailed mode generates a local close-up with signal icons |
+| `metadata.json` | Intent, place, source timestamps, cache status, validation, statistics and limitations |
+| `conversion-command.json`, `netconvert-version.txt`, `netconvert.log`, `sumo-load.log` | Reproducible conversion arguments and full diagnostics |
 
-接口响应 `artifact_urls` 给出 `GET /artifacts/<task_id>/<filename>` 下载地址；只允许任务 output
-目录下的文件。`success` 表示路网与预览生成、基础检查及加载完成，不表示现实准确性或用户需求已验证。
-此时 `user_review="pending"`，`user_review_note` 提醒用户看图判断是否符合测试需要。
-`source_error` 表示地图/地名服务失败，`validation_error` 表示转换/结构/加载失败；所有情况尽可能
-保留 metadata 和诊断。无模型可用时，仍按原入口返回 `agent_error`。
-`validation.passed` 仅表示 XML 和 SUMO 加载通过，`visual_review=null` 表示未调用视觉审核。
-工具超时保留部分输出；格式/引用/转换/加载错误仍返回失败。
+The response's `artifact_urls` provides download paths through `GET /artifacts/<task_id>/<filename>`;
+only files inside that task's output directory are accessible. `success` means that the network
+and preview were generated and basic checks and loading completed. It does not establish real-world
+accuracy or requirement satisfaction. `user_review="pending"` and `user_review_note` ask the user to
+inspect suitability for the test. `source_error` denotes a map/geocoding service failure;
+`validation_error` denotes a conversion, structural or loading failure. Metadata and diagnostics
+are preserved wherever possible. Requests needing natural-language parsing without a configured
+model return `agent_error`; area-only default scenarios do not require a model.
+`validation.passed` means only that XML and SUMO loading passed; `visual_review=null` means no visual
+review was called. Tool timeouts preserve partial output. Format, reference, conversion and
+loading errors still fail the request.
 
-真实地图分支使用上述后端依赖。需要 `netconvert`、`sumo` 和可联网的模型/地图服务；自动查找安装目录的
-SUMO XSD 数据，也可设置 `SUMO_HOME`。`.env.example` 列出地图服务地址、半径、超时、大小和缓存设置。
-单进程内串行请求公共地图服务，缓存 24 小时；遇到限流不立即重试。不把公共演示服务当成生产 SLA。
-地名与检索内容发送给配置的地名服务，坐标/半径发送给地图服务；真实分支仅将描述、候选发送给模型。
+The real-map branch uses the backend dependencies listed above. It needs `netconvert`, `sumo` and
+network access to map services; natural-language parsing also needs the model service. SUMO XSD
+data is discovered from the installation, or you can set `SUMO_HOME`. `.env.example` lists endpoints,
+radius, timeout, size and cache settings. Public map-service requests are serialized within one
+process and cached for 24 hours. Rate limits do not trigger immediate retries. Public demo services
+are not a production SLA. Place names and search text are sent to the configured geocoder;
+coordinates/radius or rectangular bounds go to the road service. The real-map branch sends only
+the description and candidates to the model.
 
-来源与政策：[Photon](https://github.com/komoot/photon)、
-[Overpass 公共实例使用说明](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html)、
-[SUMO OSM 导入](https://sumo.dlr.de/docs/Networks/Import/OpenStreetMap.html)、
-[Nominatim 公共服务政策](https://operations.osmfoundation.org/policies/nominatim/)。
-地图及图片保留 [© OpenStreetMap contributors / ODbL](https://www.openstreetmap.org/copyright) 署名。
-只生成地图时保留独立任务；生成场景后按 ADR-032 由用户确认添加到 Core 场景目录。
-当前输出原生 SUMO 场景，尚不提供 CARLA 镜像。
+Sources and policies: [Photon](https://github.com/komoot/photon),
+[Overpass public-instance guidance](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html),
+[SUMO OSM import](https://sumo.dlr.de/docs/Networks/Import/OpenStreetMap.html), and the
+[Nominatim public-service policy](https://operations.osmfoundation.org/policies/nominatim/).
+Maps and images retain [© OpenStreetMap contributors / ODbL](https://www.openstreetmap.org/copyright)
+attribution. Map-only requests remain independent tasks; generated scenarios enter the Core catalog
+only after user confirmation, as specified in ADR-032. Current output is native SUMO scenarios;
+CARLA mirroring is not yet provided.
 
-### 中英文地址定位
+### Rectangular selection API
 
-在高德开放平台申请 **Web 服务**类型 Key，确认拥有地理编码与 POI 搜索权限。
-将 Key 配置为本机用户或系统环境变量 `AMAP_WEB_API_KEY`，或在本机 backend `.env` 中设置，
-不要提交到仓库。Windows 启动器按进程、用户、系统的顺序读取，并传入 WSL 后端子进程。
-配置改变后需重启生成服务；`GET /health` 的 `amap_configured` 表示是否配置高德 Key，
-`geocoder_provider` 表示配置模式（自动分流时为 `auto`），均不返回 Key。
+Add `selected_bounds` to `POST /generate`. The four fields contain WGS84 longitude/latitude in degrees:
 
-`MAP_GEOCODER_PROVIDER=auto` 默认按**原始地点/地址文本**分流：英文用 Photon，中文用高德；
-混合文本含汉字时按中文处理。依据为地点原文引用 `location_quote`，界面语言、需求中的其余
-文字和模型生成的译名不会改变供应商。例如“生成 Stanford University 周边路网”使用 Photon，
-`Generate roads near 北京航空航天大学` 使用高德。Photon 公共接口无需申请 API Key；
-中文地址缺少高德 Key 时会明确报错，不会自动改用 Photon。
+```json
+{
+  "description": "",
+  "selected_bounds": {
+    "west": 116.337,
+    "south": 39.979,
+    "east": 116.363,
+    "north": 39.997
+  },
+  "output_kind": "scenario",
+  "detail_level": "main_roads",
+  "simulation_mode": "traffic",
+  "ui_language": "en",
+  "run_simulation": false,
+  "publish_to_catalog": false
+}
+```
 
-可显式设为 `amap` 或 `photon`，固定使用指定供应商。`MAP_AMAP_CITY` 可选填北京等城市约束，
-仅影响高德查询。具体查询所用服务保存在候选的 `provider` 与来源记录中。高德鉴权、权限、
-配额或网络错误会直接显示，不会静默切换地点供应商。若地理编码已有有效候选，仅 POI 权限
-不足时保留候选并提示原因。
-地点无匹配仍需补充说明，不能保证每个楼栋都已收录。
+Blank `description` uses default scenario settings without a model. You can also add requirements
+such as "Schedule 120 vehicles over 10 minutes". The explicit rectangle always determines the map
+extent. Generation bypasses geocoding and model candidate selection; place names or radii in the
+text do not replace the selection. `output_kind="map"` generates only a network. The desktop uses
+`"scenario"` to continue with an unpublished departure plan and scenario draft.
 
-高德仅提供地点定位，周边道路仍取自 OSM。结果保留实际返回地址、匹配粒度、原 GCJ-02
-坐标及近似 WGS84 转换说明，再供 Overpass 查询。该近似转换不代表测量级精度；地图需用户核对。
-省市区县等粗粒度结果不能替代楼栋。Key 不写入来源记录、缓存、场景文件或错误信息。
-真实地图预览使用红色定位针标注“原始位置”和匹配地点名称；针尖对应查询中心的实际坐标。
-标记按照 SUMO 路网投影及偏移对齐，简化/详细预览及放大图片都保留，不代表车辆出生点。
-未配置真实 Key 时只能完成离线协议和异常处理验证，不能宣称高德查询实测通过。
+Validation rules:
 
-官方文档：[地理编码](https://developer.amap.com/api/webservice/guide/api/georegeo)、
-[地点搜索](https://developer.amap.com/api/webservice/guide/api-advanced/search)、
-[创建 Web 服务 Key](https://lbs.amap.com/api/webservice/create-project-and-key)。
+- All four coordinates must be finite numbers: `-180 ≤ west < east ≤ 180` and `-85 < south < north < 85`. Dateline-crossing areas are unsupported.
+- The diagonal must not exceed `2 × MAP_MAX_RADIUS_M`, which defaults to 6000 m. The client reads `max_diagonal_m` from `GET /map/selection-config`; the backend checks it again before generation. Invalid extents are not automatically clipped down.
+- Do not combine bounds with `source_mode="synthetic"`, `selected_place_id` or `map_task_id`; the request must identify one map source.
+- Without a selected area, a nonempty description is still required. Existing place-plus-radius and roadgen requests keep their behavior.
 
-## 场景工作界面（v1.2）
+The selection directly drives the Overpass rectangular road query and `netconvert` geographic
+filter, retaining complete road segments that intersect the area. Roads can extend slightly
+beyond the rectangle; this is not exact GIS clipping. Map metadata records the bounds, sources and
+actual conversion details. The preview pin marks the **area center**, not a claimed search place.
+The scenario response's `selected_bounds` and later parameter revisions preserve the same area;
+changing vehicle counts does not select a new location or download the map again.
 
-TrafficForge 场景工坊默认使用 **English**。右上角可随时切换为 **简体中文**，保留输入、当前草稿、
-地图和未应用的参数修改；语言切换不会重新生成、发布或运行场景。英文图片中的地点、道路名
-优先使用源 OSM 的 `name:en`，没有英文名称时使用拼音及英文道路/地点类型；中文图片保留原名。
-英文名只用于显示，不改动源 OSM、SUMO 路网或地点坐标。用户原文和来源诊断仍保留原始内容。
-已有真实地图的语言图片在读取时按当前规则更新，避免继续使用旧的中文标注缓存。
-离线拼音转换依赖固定版本的 `pypinyin`，已包含在后端 requirements 和主项目可选依赖锁中。
-Windows 启动 `scripts/dev/start_trafficforge.ps1` 会直接进入英文简洁输入页；
-使用 `-Language zh` 可显式以中文打开。普通流量模式和 L0–L5 自动驾驶模式均支持双语。
+The map dialog uses two read-only endpoints:
 
-默认流程是：**TrafficForge 页填写需求 → 生成预览 → 确认添加到场景 → 进入仿真配置 → 用户启动**。
-生成不会试跑车辆；“拥堵”是目标场景设定，尚未运行时不提供实测车速/密度或拥堵达成结论。
+| Endpoint | Response and purpose |
+|---|---|
+| `GET /map/selection-config` | `{"max_diagonal_m": 6000.0}`; the actual value comes from the backend map configuration |
+| `GET /map/places?q=<place_or_address>` | `candidates` and `warnings`; selects the geocoder from the original query language and moves the viewport after the user chooses a candidate |
 
-本机 Windows 在项目根目录运行：
+Place searches need no model and do not generate roads, publish scenarios or start a simulation.
+Amap credentials remain on the backend. The base map and search candidates only help select a
+geographic extent; the simulation network is compiled from the actual OSM data.
+
+### Chinese and English address lookup
+
+Create a **Web Service** key on the Amap developer platform with geocoding and POI search permissions.
+Set it as `AMAP_WEB_API_KEY` in the local user/system environment or backend `.env`; do not commit it.
+The Windows launcher checks process, user and machine environments in that order and forwards the
+value to the WSL backend child process. Restart the generation service after changing configuration.
+`GET /health` reports key presence in `amap_configured` and the configured routing mode in
+`geocoder_provider` (`auto` for language-based routing). Neither field returns the key.
+
+The default `MAP_GEOCODER_PROVIDER=auto` routes by the **original place/address text**: English
+uses Photon and Chinese uses Amap. Mixed text containing Han characters follows the Chinese route.
+The source is the `location_quote` from the request, not interface language, surrounding instruction
+text or a model-generated translation. For example, `生成 Stanford University 周边路网` uses Photon,
+while `Generate roads near 北京航空航天大学` uses Amap. The public Photon API needs no API key.
+A Chinese address without an Amap key produces an explicit error; it does not fall back to Photon.
+
+Set `amap` or `photon` explicitly to fix the provider. Optional `MAP_AMAP_CITY` supplies a city
+constraint, such as Beijing, for Amap queries only. Candidate `provider` fields and source records
+identify the service actually used. Amap authentication, permission, quota and network errors are
+shown directly without silently switching geocoders. If geocoding has already returned valid
+candidates and only POI permission is missing, candidates are preserved with an explanation.
+No-match results still require more information; not every building is necessarily indexed.
+
+Amap provides location lookup only; nearby roads still come from OSM. Results retain the returned
+address, match granularity, original GCJ-02 coordinates and the approximate WGS84 conversion note
+used for Overpass queries. This approximation is not survey-grade accuracy; the user must inspect
+the map. Province, city or district matches cannot stand in for a building. Keys are not written to
+source records, caches, scenario files or errors. A real-map preview marks the matched place with a
+red "Original location" pin and its name. The tip corresponds to the actual query center, aligned
+using the SUMO projection and offset. Simplified, detailed and enlarged previews retain the marker;
+it is not a vehicle spawn point. Without a real key, only offline protocol and failure handling can
+be validated; a live Amap lookup cannot be claimed.
+
+Official documentation: [Geocoding](https://developer.amap.com/api/webservice/guide/api/georegeo),
+[Place search](https://developer.amap.com/api/webservice/guide/api-advanced/search), and
+[Create a Web Service key](https://lbs.amap.com/api/webservice/create-project-and-key).
+
+## Scenario authoring interface (v1.2)
+
+TrafficForge defaults to **English**. Switch to **简体中文** at the top right without losing input,
+the current draft, map or unapplied edits. Switching language does not regenerate, publish or run a
+scenario. English images prefer source OSM `name:en` labels; absent English names use pinyin with
+English road/place types. Chinese images retain original names. English labels are for display
+only; they do not change source OSM, the SUMO network or coordinates. User text and source
+diagnostics retain their original content. Existing real-map language images are refreshed on read
+using the current rules, avoiding stale Chinese-label caches. Offline transliteration uses a
+pinned `pypinyin` version included in backend requirements and the main project's optional lock.
+`scripts/dev/start_trafficforge.ps1` opens the simple English entry on Windows; use `-Language zh`
+for Chinese. Traffic mode and L0–L5 autonomy mode both support the two languages.
+
+The default workflow is **describe a scenario or select a map area → generate a preview → confirm
+and add → open Simulation setup → start manually**. Generation does not trial-run vehicles.
+"Congestion" is a target setting; without a run, no measured speed/density or congestion verdict is
+presented.
+
+From the project root on Windows:
 
 ```powershell
 ./scripts/dev/start_trafficforge.ps1
 ```
 
-启动器复用已有 WSL roadgen 生成环境、Windows 虚拟环境中的 SUMO 和桌面依赖。
-生成服务使用 8001，Core API 使用 8000；API Key 仍读取环境变量 `OPENAI_API_KEY`。
-进入工作区左侧 TrafficForge，在居中的输入框填写“希望测试拥堵场景下车辆速度”，点击
-“生成预览”或按回车。预览展示真实路网图片、目标交通状态、密度参考值、计划发车数、
-时长、预热与种子。普通交通界面量化车辆总数和发车强度；自动驾驶界面额外显示 L0–L5
-发车比例。计划发车总数不等于同时在网车辆数。待验证要求包含地图和车流两部分，是否适用由用户判断。
-确认前仅保存工作区草稿，不出现在系统场景列表。图像加载失败可以重试；修改需求后须重新生成。
-生成期间按钮显示“正在生成…”。地点未找到或服务失败时，输入框下方突出显示具体原因，
-保留输入并提供“重试生成”；首次失败仍保持简洁入口，首次成功后才展开地图与设定。
-点击“确认，添加到场景”才入库，随后可“进入仿真配置”。重复确认不会创建多个副本。
-点击地图图片或“放大查看”可打开独立查看窗口，支持滚轮缩放、拖拽平移、原始尺寸与适应窗口。
-场景设定支持直接输入车辆总数、目标密度、仿真时长、预热时间、随机种子、每入口车道小时流量、
-总小时流量和密度推算参考速度；自动驾驶界面还可调整 L0–L5 百分比，合计必须为 100%。
-时间以秒编辑，预热必须小于时长。点击“应用修改”统一更新车流 XML、发车计划与 SUMO 配置。
-尚未应用或无效的编辑会阻止确认，失败后保留输入可重试或取消。修改复用路网，不调用模型、
-不重新获取地图、不运行仿真。每次成功修改产生新草稿，原草稿及已添加场景不被覆盖。
+The launcher reuses the WSL roadgen environment, SUMO in the Windows virtual environment and the
+desktop dependencies. The generation service uses port 8001 and the Core API uses 8000. The model
+key is still read from `OPENAI_API_KEY`. Open TrafficForge in the workspace sidebar, enter a request
+such as "Test vehicle speeds in congested traffic", and click **Generate preview** or press Enter.
+The preview shows the actual generated network image, target traffic state, reference density,
+planned departures, duration, warm-up and seed. Traffic mode quantifies vehicle totals and
+departure rates; autonomy mode also shows L0–L5 departure shares. Total planned departures are not
+the number of vehicles simultaneously on the network. Requirements to review include both the map
+and demand; the user judges their suitability.
 
-数量、单车道流量、总流量、密度分为四种编排方式；编辑对应输入时明确切换驱动方式。
-按密度编排使用密度乘参考速度，不再对用户显式值应用默认 10% 轻量系数；
-按总小时流量编排按仿真时长向下取整，车辆总数须在 1–20,000 内。
-修改时长或种子保留当前编排方式。自动驾驶百分比按最大余数分配整数车辆，
-预览的实际车辆数、实际小时流量和实际比例是计算结果。目标密度与拥堵设定仍需运行后验证。
+Before confirmation, only a workspace draft is stored; it is absent from the system scenario list.
+Failed image loads can be retried. Changed requirements require regeneration. During generation,
+the button reads **Generating…**. Missing places or service failures show a prominent reason below
+the input, retain the request and provide **Try again**. A first failure keeps the simple entry;
+the map and settings expand only after the first success. Only **Confirm and add scene** publishes
+the draft, after which **Simulation setup** becomes available. Repeated confirmation does not
+create duplicate copies.
 
-`POST /scenarios/{task_id}/revise` 支持上述字段的部分修改：`vehicle_count`、
-`desired_density_veh_per_km_lane`、`duration_s`、`warmup_s`、`seed`、
-`inflow_veh_per_hour_per_lane`、`total_flow_veh_per_hour`、`reference_speed_kmh`、
-`automation_mix` 和 `demand_mode`（`count/inflow/density/total_flow`）。原数量单字段请求保持兼容；
-未修改字段省略，不能传 `null`，多种驱动量同时出现时必须明确编排方式。
-启动器默认打开普通交通模式；后台服务就绪后，自动驾驶场景入口使用
-`.venv/Scripts/python.exe scripts/dev/open_trafficforge.py --mode autonomy`。
+Click the map image or **Enlarge** for a separate viewer with wheel zoom, drag-to-pan, actual size
+and fit-to-window controls. Scenario settings accept direct edits to vehicle total, target density,
+duration, warm-up, random seed, hourly flow per incoming lane, total hourly flow and the reference
+speed used for density calculations. Autonomy mode also edits L0–L5 percentages, which must sum to
+100%. Times are edited in seconds, and warm-up must be shorter than duration. **Apply all changes**
+updates traffic XML, departure schedules and SUMO configuration together. Unapplied or invalid
+edits block confirmation. Failed edits retain the input for retry or cancellation. Revisions reuse
+the network without model calls, map downloads or simulation. Each successful revision creates a
+new draft; the original draft and published scenarios are not overwritten.
 
-生成预览内可以修改时长并应用，程序会同步重建发车计划；进入后续仿真配置时沿用已确认
-场景的时长，避免仅改截止时间而遗留原发车计划。点击“保存配置”仅建立快照；
-点击“开始仿真”才走现有 Core 的正式运行。
-独立模型需求不支持的要求会明确保留，生成成功不表示这些要求已实现。
+Count, per-lane flow, total flow and density are four distinct demand modes; editing their driving
+inputs explicitly switches modes. Density-based demand uses density × reference speed, without
+the default 10% scale for an explicitly requested value. Total-hourly-flow mode floors the count
+over the simulation duration; vehicle totals must be within 1–20,000. Changing duration or seed
+preserves the current demand mode. Automation percentages allocate integer vehicles using the
+largest-remainder method. Realized counts, hourly flow and shares shown in the preview are computed
+results. Target density and congestion settings still require evaluation after a run.
 
-确认后的场景以输入包保存到 `configs/maps/nl2-<任务ID>/`，系统动态发现，不需要重启。
-`scenario.manifest.json` 保存目标/车流摘要和原始 intent/plan/默认来源；新清单为 2.0 版，
-摘要字段为 `spec.trafficforge`，不复制试运行指标。
-包标为 `scripted`，系统保留生成的路线和发车计划；运行只修改新建副本，源场景不被覆盖。
-原生 SUMO 场景使用二维展示，暂不生成 CARLA 镜像。
+`POST /scenarios/{task_id}/revise` accepts partial edits to `vehicle_count`,
+`desired_density_veh_per_km_lane`, `duration_s`, `warmup_s`, `seed`,
+`inflow_veh_per_hour_per_lane`, `total_flow_veh_per_hour`, `reference_speed_kmh`, `automation_mix`,
+and `demand_mode` (`count/inflow/density/total_flow`). Legacy count-only requests remain supported.
+Omit unchanged fields rather than sending `null`. When multiple demand-driving values are supplied,
+the demand mode must be explicit. The launcher opens traffic mode by default. Once the services
+are ready, open autonomy mode with
+`.venv/Scripts/python.exe scripts/dev/open_trafficforge.py --mode autonomy`.
 
-也可以在项目根目录使用命令行（服务须启动）：
+Duration can be changed and applied in the preview, rebuilding the departure plan accordingly.
+Subsequent Simulation setup keeps the confirmed scenario duration, avoiding an updated end time
+with an old departure schedule. **Save configuration** creates a snapshot only; **Start simulation**
+uses the existing Core run workflow. Requirements unsupported by the standalone model are retained
+explicitly; a successful generation does not mean they have been implemented.
+
+Confirmed scenarios are saved as input packages under `configs/maps/nl2-<task_id>/` and discovered
+dynamically without restarting. `scenario.manifest.json` records target/demand summaries and the
+original intent, plan and default provenance. New manifests are version 2.0 with summaries in
+`spec.trafficforge`; trial metrics are not copied. Packages are marked `scripted`, preserving the
+generated routes and departure plans. Runs modify a newly created copy, leaving the source
+scenario untouched. Native SUMO scenarios use 2D display; no CARLA mirror is generated yet.
+
+The CLI is also available from the project root while the service is running:
 
 ```powershell
-.venv/Scripts/python.exe trafficforge/scene_cli.py generate "希望测试拥堵场景下车辆速度"
-.venv/Scripts/python.exe trafficforge/scene_cli.py publish <生成响应中的任务ID>
+.venv/Scripts/python.exe trafficforge/scene_cli.py generate "Test vehicle speeds in congested traffic"
+.venv/Scripts/python.exe trafficforge/scene_cli.py publish <task_id_from_generation_response>
 .venv/Scripts/python.exe trafficforge/scene_cli.py list
-.venv/Scripts/python.exe trafficforge/scene_cli.py show <任务ID>
+.venv/Scripts/python.exe trafficforge/scene_cli.py show <task_id>
 ```
 
-新草稿及历史任务均需显式执行 `publish <任务ID>` 才导入，仅导入输入与设定。
-`generate --publish` 显式直接添加，`--mode autonomy` 生成自动驾驶等级分配；默认模式为 `traffic`。
-对应生成服务 API 为 `GET /scenarios`、`GET /scenarios/{task_id}`、
-`POST /scenarios/{task_id}/publish`。桌面仍通过 Core `GET /api/v1/maps` 读取目录，
-可选 `generated_scenario` 字段仅表达设定；启动沿用原有保存配置/prepare/start 接口。
+New drafts and historical tasks both require explicit `publish <task_id>` to import their inputs
+and settings. `generate --publish` explicitly adds a scenario directly, and `--mode autonomy`
+generates automation-level assignments; the default mode is `traffic`. The corresponding service
+APIs are `GET /scenarios`, `GET /scenarios/{task_id}` and `POST /scenarios/{task_id}/publish`.
+The desktop continues to read the catalog through Core `GET /api/v1/maps`; optional
+`generated_scenario` contains settings only. Launching retains the existing save-configuration,
+prepare and start interfaces.
 
-修改数量使用 `POST /scenarios/{task_id}/revise`，请求如 `{"vehicle_count": 1200}`。
-响应为新 `ScenarioResult` 草稿，含 `parent_task_id` 和 `manual_overrides`；原需求文字/引用
-保留不变。新草稿仍需独立确认发布。已试运行的旧任务不能直接修改为未运行草稿。
+To change count, call `POST /scenarios/{task_id}/revise`, for example with `{"vehicle_count": 1200}`.
+The response is a new `ScenarioResult` draft with `parent_task_id` and `manual_overrides`; original
+request text and quotes remain unchanged. The new draft needs its own publication confirmation.
+An old task that has already been trial-run cannot be revised directly into an unrun draft.
 
-## 场景生成接口与可选试运行
+## Scenario generation API and optional trial runs
 
-同一入口现在可以生成地图、车流和试运行结果：
+The same entry point can generate a map, demand and optional trial results:
 
 ```json
-{ "description": "希望测试拥堵场景下车辆速度" }
+{ "description": "Test vehicle speeds in congested traffic" }
 ```
 
-`output_kind="auto"` 自动区分只生成地图与仿真目标；可显式选 `map` 或 `scenario`。
-地图请求保留原行为；场景请求由模型抽取目标、交通状态、明确给出的数值参数和指标，
-由程序补齐缺省值并生成 SUMO 路线/车辆，不让模型编造试运行结果。
+`output_kind="auto"` distinguishes map-only requests from simulation objectives; explicitly choose
+`map` or `scenario` to override it. Map requests retain their original behavior. For scenarios,
+the model extracts the objective, traffic state, explicit numerical parameters and metrics. Code
+fills defaults and creates SUMO routes/vehicles; the model does not invent trial results.
 
-- 没给地图：默认通过 roadgen 生成四向信号十字路口，每条支路约 300 米；默认值会记录。
-- 给真实地点：沿用 OSM 路网流程，默认简化主干路，用户要求才细化。
-- 复用已有地图：传 `map_task_id`。若文字要求“当前地图”却没传 ID，返回 `needs_clarification`，
-  不猜测最近任务。场景在新工作区复制路网，不修改源图。
-- `run_simulation=false`（默认）返回 `generated` 草稿，`metrics=null`。
-  `publish_to_catalog=false`（默认）使 `catalog_map_id=null`，通过 `artifact_urls` 查看图片及输入。
-  `POST /scenarios/{task_id}/publish` 确认添加后返回 `map_id`；显式 `publish_to_catalog=true`
-  兼容旧脚本的直接入库行为。显式 `run_simulation=true` 保留一次试运行接口；桌面两个选项均固定 false。
-- `simulation_mode="traffic"` 为普通交通；`autonomy` 未指定配比时默认 L0 100%并披露。
-  完整的 L0–L5 百分比需求必须合计 100%，整数辆数采用最大余数分配，预览显示实际计划比例。
-  例如“L0占70%，L3占30%”；数值与原文不符时返回具体原因。“各半”“其余”等模糊说法
-  需改成明确百分比，或在预览中保留为待验证要求，不能静默当作已实现。
-  等级沿用系统既有 SUMO 行为代理参数，不代表接入真实自动驾驶算法。
+- No map specified: generate a default four-way signalized intersection through roadgen, with branches about 300 m long. Defaults are recorded.
+- Real place specified: use the OSM workflow, simplifying to main roads unless more detail is requested.
+- Reuse an existing map: supply `map_task_id`. A request for the "current map" without an ID returns `needs_clarification` rather than guessing the latest task. The network is copied into a new workspace without modifying the source.
+- `run_simulation=false` (default) returns a `generated` draft with `metrics=null`. `publish_to_catalog=false` (default) leaves `catalog_map_id=null`; inspect images and inputs through `artifact_urls`. Confirm with `POST /scenarios/{task_id}/publish` to receive a `map_id`. Explicit `publish_to_catalog=true` preserves direct publication for older scripts. Explicit `run_simulation=true` retains one optional trial run. The desktop fixes both flags to false.
+- `simulation_mode="traffic"` selects ordinary traffic. In `autonomy`, an unspecified mix defaults to L0 100% and is disclosed. A complete L0–L5 request must sum to 100%; integer counts use largest-remainder allocation and the preview displays realized shares. For example, request "L0 70%, L3 30%". Values inconsistent with the original text produce a specific reason. Ambiguous wording such as "half each" or "the rest" must be replaced by explicit percentages or remain unverified in the preview; it cannot silently count as implemented. Levels use the system's existing SUMO behavior-proxy parameters, not actual autonomous-driving algorithms.
 
-例如复用刚生成的图，明确发车数和时间：
+For example, reuse a generated map with an explicit departure count and duration:
 
 ```json
 {
-  "description": "使用当前地图测试车辆速度，计划发出500辆车，仿真5分钟，预热1分钟",
+  "description": "Use the current map to test vehicle speeds, with 500 planned departures, a 5-minute simulation and 1 minute of warm-up",
   "map_task_id": "20260101_000000_aabbcc",
   "run_simulation": false
 }
 ```
 
-示例 ID 需要替换成实际地图任务 ID。支持明确的总**计划发车数**、每小时每车道流量、
-每公里每车道目标密度、仿真/预热时长、随机种子，以及速度/密度/排队/行程时间指标。
-总发车数与每车道流量不能同时作为控制量。车型比例、天气、控制算法、自定义指标或
-范围不明确的密度/流量会保留为 `unverified_requirements`，不自动声称实现。
+Replace the example ID with a real map task ID. Supported explicit parameters include total
+**planned departures**, hourly flow per lane, target density per kilometer per lane, simulation and
+warm-up durations, seed, and speed/density/queue/travel-time metrics. Total departures and per-lane
+flow cannot simultaneously drive demand. Vehicle-type shares, weather, control algorithms, custom
+metrics and density/flow with unclear scope remain in `unverified_requirements` rather than being
+claimed as implemented.
 
-缺省设置：
+Defaults:
 
-| 设置 | 缺省值及含义 |
+| Setting | Default and meaning |
 |---|---|
-| 仿真时长 / 预热 | 600 秒 / min(120 秒, 时长的 20%) |
-| 种子 / 仿真步长 | 42 / 0.5 秒 |
-| 低/中/拥堵密度提示 | 8 / 22 / 65 辆/公里/车道，工程场景参考值，并非实测 |
-| 发车强度 | 数量、流量和密度均未指定时，按密度 × 参考速度 30 km/h 的 10% 使用轻量默认值；明确给出密度时按完整推算量，明确数量/流量时按用户要求 |
-| 车辆 | 小客车，长 5 m、间距 2.5 m、tau=1 s、sigma=0.5；零速入网、由 SUMO 选择合适插入车道，沿用道路限速与信号程序 |
-| 规模上限 | 最多 20000 辆计划发车、3600 秒；超限报错，不静默缩小 |
+| Simulation duration / warm-up | 600 s / min(120 s, 20% of duration) |
+| Seed / simulation step | 42 / 0.5 s |
+| Low / moderate / congested density reference | 8 / 22 / 65 vehicles/km/lane; engineering scenario references, not measurements |
+| Departure rate | When count, flow and density are all unspecified, use 10% of density × reference speed (30 km/h) as a light default. Explicit density uses the full estimate; explicit count or flow follows the request |
+| Vehicles | Passenger cars: length 5 m, gap 2.5 m, tau=1 s, sigma=0.5; inserted at zero speed into a suitable lane chosen by SUMO, retaining road speed limits and signal programs |
+| Size limits | At most 20000 planned departures and 3600 s; oversized requests fail rather than shrinking silently |
 
-路线只使用实际编译网络中的小客车车道连接，排除掉头；优先边界入口/出口，最多选 12 个
-有效入口，每入口最多 3 个可达出口。没有边界时选可达内部路线。以外部道路的平均车道长度
-求最短路线，再优先选最远的可达终点；路线至少包含两条道路、总长至少 50 米。发车按入口
-车道数加权均匀调度，种子控制入口抽样和路线选择；该分布不是校准的真实 OD。`demand` 公开实际选择范围、
-路线数、计划发车量和全网车道公里。局部未覆盖路段仍计入全网密度分母。
+Routes use passenger-accessible lane connections in the actual compiled network and exclude
+U-turns. Boundary entries/exits are preferred, with at most 12 valid origins and up to 3 reachable
+destinations per origin. If there are no boundary candidates, reachable internal routes are used.
+Shortest paths are computed using average lane lengths of external roads, then the farthest
+reachable destinations are preferred. A route must contain at least two roads and be at least 50 m
+long. Departures are uniformly scheduled with weights proportional to incoming lane counts. The
+seed controls origin sampling and route choice. This distribution is not a calibrated real-world
+OD matrix. `demand` exposes the actual selection scope, route count, planned departures and
+network-wide lane-kilometers. Roads not covered by selected routes still contribute to the
+network-wide density denominator.
 
-每次保存原文引用 `intent`、完整参数 `plan`、默认来源 `defaults_used`、车流 `demand` 和实际结果 `metrics`。
-默认车流可用 `SCENARIO_DEFAULT_DEMAND_SCALE` 配置，默认 `0.1`，设为 `1` 恢复原推算量。
-例如北航18条选定入口车道、10分钟时，默认自由流72辆、普通198辆、拥堵目标585辆。
-缩减只作用于新生成的未指定数值需求；实际形成何种交通状态仍由仿真验证。
-极短的默认场景至少为每入口车道安排一辆车，避免缩减后变成空场景。
-`intent.metrics/plan.metrics` 记录用户关注项；当前固定采集并返回下述全部指标，不作为输出字段筛选器：
+Each task saves quoted-source `intent`, complete parameters in `plan`, default provenance in
+`defaults_used`, traffic demand in `demand`, and actual results in `metrics`. Configure default
+demand through `SCENARIO_DEFAULT_DEMAND_SCALE`, which defaults to `0.1`; set `1` to restore the
+unscaled estimate. For example, a 10-minute Beihang scenario with 18 selected incoming lanes yields
+72 free-flow, 198 moderate or 585 congestion-target departures by default. Scaling only affects
+newly generated requests without explicit numerical demand. The resulting traffic state still
+requires simulation. Very short default scenarios schedule at least one vehicle per incoming lane
+to avoid empty demand after scaling. `intent.metrics/plan.metrics` records user interests; it does
+not filter output fields. The current collector always returns all metrics below:
 
-- `mean_speed_kmh`：预热后每 0.5 秒 SUMO summary 的在网车辆数 × 时间加权速度，包含路口。
-- `mean_external_density_veh_per_km_lane`：外部小客车车道的累计 `sampledSeconds` /
-  观测时长 / 全部外部小客车车道公里；不含内部路口车道，未入网车辆不计入。
-- 排队指标为预热后全网停驶车辆数的时间均值和最大值。
-- 完成行程时间为整个运行中已入网且已到达车辆的 `tripinfo.duration` 算术均值，包含预热阶段；
-  不含入网前等待，也不纳入未完成或未入网车辆，不能代表所有计划车辆的完整出行耗时。
-- 计划发车、已入网、已到达、尚在网、未入网和末尾等待插入的车辆分别记录；
-  末尾等待数与总未入网数可能不同（仍有未到发车步的车辆）。
-- 拥堵的本地判据：相对限速的平均速度 ≤0.5，且停驶车辆占比 ≥20%，
-  这样的时段占预热后时间 ≥30%。返回 `observed/not_observed/no_data/invalid_run`，
-  是这次模型试运行的观察，不是普适定义或真实拥堵预测。碰撞/传送使测试标为无效。
+- `mean_speed_kmh`: post-warm-up speed weighted by active vehicle count × time from SUMO summary records every 0.5 s, including junctions.
+- `mean_external_density_veh_per_km_lane`: accumulated `sampledSeconds` on external passenger lanes / observation duration / all external passenger lane-kilometers. Internal junction lanes and vehicles not yet inserted are excluded.
+- Queue metrics: post-warm-up time mean and maximum of stopped vehicles across the network.
+- Completed trip time: arithmetic mean of `tripinfo.duration` for vehicles that entered and arrived during the whole run, including warm-up. It excludes pre-insertion waiting, unfinished vehicles and vehicles never inserted, so it does not represent full travel time for all planned departures.
+- Planned departures, inserted, arrived, still active, not inserted, and vehicles waiting for insertion at the end are recorded separately. Final waiting count can differ from total uninserted count because some vehicles may not yet have reached their departure step.
+- Local congestion criterion: mean speed relative to the speed limit ≤0.5 and stopped-vehicle share ≥20%, for at least 30% of post-warm-up time. Results are `observed/not_observed/no_data/invalid_run`. This is an observation from the current model trial, not a universal definition or real-world congestion prediction. Collisions/teleports invalidate the test.
 
-`success` 表示运行和数据生成完成，并且请求拥堵时观察到了该判据；`needs_adjustment`
-表示未观察到请求的拥堵、没有有效车辆数据或有碰撞/传送。不会通过降低限速、改信号或隐藏
-入口积压来假装拥堵成功。其他交通状态暂不自动验证达成，`target_state=not_requested`，只提供观测。`user_review=pending`
-保留用户判断是否符合研究用途。目标密度也不是初始/持续密度控制器，不保证等于实际密度。
+`success` means the run and data generation completed and, when congestion was requested, the
+criterion was observed. `needs_adjustment` means requested congestion was not observed, valid
+vehicle data is missing, or a collision/teleport occurred. The service does not reduce speed
+limits, change signals or hide insertion backlogs to manufacture a successful congestion result.
+Other traffic states are not yet automatically judged as achieved: `target_state=not_requested`
+and only observations are provided. `user_review=pending` leaves suitability for research to the
+user. Target density is not an initial or sustained density controller and need not equal measured
+density.
 
-生成工作区包含 `network.net.xml`、`traffic.rou.xml`、`scenario.sumocfg`、`metrics.add.xml`、
-`scenario.json`、地图预览和检查记录。只有显式试运行后才生成
-`summary.xml/lane_metrics.xml/tripinfo.xml/statistics.xml`、`metrics.json` 和速度/排队 `timeseries.csv`。
-进入输出目录执行 `sumo -c scenario.sumocfg` 可复现；手动重新运行会覆盖该目录的原生观测文件，
-Python 派生的 `metrics.json` 需重新调用采集逻辑，建议 API 新建场景以保留旧结果。
+The generated workspace contains `network.net.xml`, `traffic.rou.xml`, `scenario.sumocfg`,
+`metrics.add.xml`, `scenario.json`, map previews and check records. Only an explicit trial produces
+`summary.xml/lane_metrics.xml/tripinfo.xml/statistics.xml`, `metrics.json` and speed/queue
+`timeseries.csv`. Run `sumo -c scenario.sumocfg` in the output directory to reproduce the simulation.
+A manual rerun overwrites native observation files in that directory, while Python-derived
+`metrics.json` needs the collector to run again. Prefer a new API scenario to preserve earlier results.
 
-v0.5 已接入 Core 原生 SUMO 场景目录与桌面手动启动；显式试运行仍是独立 SUMO CLI。
-没有 CARLA 镜像或新控制器。SUMO 字段含义参考
-[Summary](https://sumo.dlr.de/docs/Simulation/Output/Summary.html) 和
-[Lane/Edge Measures](https://sumo.dlr.de/docs/Simulation/Output/Lane-_or_Edge-based_Traffic_Measures.html)。
+Since v0.5, scenarios integrate with Core's native SUMO catalog and manual desktop launch. Explicit
+trial runs still use the independent SUMO CLI. There is no CARLA mirror or new controller. See
+SUMO's [Summary](https://sumo.dlr.de/docs/Simulation/Output/Summary.html) and
+[Lane/Edge Measures](https://sumo.dlr.de/docs/Simulation/Output/Lane-_or_Edge-based_Traffic_Measures.html)
+documentation for field definitions.
 
-## V2 计划（保留）
+## V2 roadmap (deferred)
 
-- 定义项目自己的受约束 RoadSpec JSON，并将自然语言解析和地图编译分离。
-- 基于 RoadSpec 生成 OpenDRIVE，再按需求生成 SUMO 和 CARLA 所需的同源地图资产；
-  联仿前验证车道、坐标配准和信号灯绑定。
+- Define a project-specific constrained RoadSpec JSON and separate natural-language interpretation from map compilation.
+- Generate OpenDRIVE from RoadSpec, then derive matching SUMO and CARLA map assets as needed. Validate lanes, coordinate registration and signal bindings before co-simulation.

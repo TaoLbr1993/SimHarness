@@ -10,6 +10,7 @@ from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QWidget
 
+from ui.localization import language
 from ui.models import TrafficLight, Vehicle
 
 
@@ -61,7 +62,9 @@ class MapLibreDeckMapWidget(QWebEngineView):
         self._dispatch("setMaximizeEnabled", show_maximize)
         if load_page:
             page = Path(__file__).resolve().parents[1] / "web/map/index.html"
-            self.load(QUrl.fromLocalFile(str(page)))
+            url = QUrl.fromLocalFile(str(page))
+            url.setQuery(f"language={language()}")
+            self.load(url)
 
     @Slot(object)
     def set_network(self, geojson: object) -> None:

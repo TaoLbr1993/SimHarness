@@ -6,6 +6,7 @@ import unicodedata
 from collections.abc import Sequence
 from typing import Literal
 
+from map_area import SelectedBounds
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -14,6 +15,7 @@ from pydantic import (
     model_serializer,
     model_validator,
 )
+from road_display import DisplayLevel, MapOperation
 
 TrafficState = Literal["free_flow", "moderate", "congested"]
 Metric = Literal["speed", "density", "queue", "travel_time"]
@@ -420,6 +422,12 @@ class ScenarioRevision(BaseModel):
 ScenarioCountRevision = ScenarioRevision
 
 
+class AppliedMapEdit(BaseModel):
+    instruction: str
+    operation: MapOperation
+    edge_ids: list[str] = Field(default_factory=list)
+
+
 class ScenarioResult(BaseModel):
     status: Literal[
         "success",
@@ -430,11 +438,14 @@ class ScenarioResult(BaseModel):
         "scenario_error",
     ]
     output_kind: Literal["scenario"] = "scenario"
+    selected_bounds: SelectedBounds | None = None
     description: str
     task_id: str
     catalog_map_id: str | None = None
     parent_task_id: str | None = Field(default=None, pattern=r"^\d{8}_\d{6}_[0-9a-f]{6}$")
     manual_overrides: ScenarioRevision | None = None
+    map_edits: list[AppliedMapEdit] = Field(default_factory=list)
+    display_level: DisplayLevel | None = None
     intent: ScenarioIntent | None = None
     map_task_id: str | None = None
     map_defaulted: bool = False

@@ -9,18 +9,20 @@ from PySide6.QtGui import QColor, QEnterEvent
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
-    QLabel,
     QLayout,
-    QLineEdit,
     QListWidget,
     QListWidgetItem,
-    QPushButton,
     QScrollArea,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
+from ui.localized_widgets import (
+    QLabel,
+    QLineEdit,
+    QPushButton,
+)
 from ui.models import TRAFFIC_SCENARIO_PRESETS, ReplaySummary, WorkspaceSummary
 from ui.scene_language import normalize_language
 from ui.views.element_plus_icons import ICON_SIZE, render_element_plus_icon, render_svg_pixmap
@@ -196,6 +198,7 @@ class NavigationRail(QWidget):
         self.set_active("live")
 
     def set_workspace(self, name: str) -> None:
+        self.workspace_name.setProperty("literalText", True)
         self.workspace_name.setText(name)
         self.workspace_name.setToolTip(name)
 
@@ -476,7 +479,9 @@ class _WorkspaceListRow(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(10, 3, 4, 3)
         layout.setSpacing(6)
-        self.name_label = QLabel(workspace.name)
+        self.name_label = QLabel()
+        self.name_label.setProperty("literalText", True)
+        self.name_label.setText(workspace.name)
         self.name_label.setObjectName("workspaceListName")
         self.name_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         layout.addWidget(self.name_label, 1)

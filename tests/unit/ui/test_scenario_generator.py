@@ -7,6 +7,7 @@ from PySide6.QtCore import QByteArray
 from PySide6.QtNetwork import QNetworkReply
 from PySide6.QtWidgets import QApplication
 from ui.api_client.scenario_generator import ScenarioGeneratorClient
+from ui.models.map_selection import MapSelectionBounds
 
 
 def _draft() -> dict[str, Any]:
@@ -27,6 +28,38 @@ def _draft() -> dict[str, Any]:
             "output/map_preview.png": "/artifacts/20261104_100000_aabbcc/map_preview.png"
         },
     }
+
+
+def test_area_request_is_explicit_and_response_must_preserve_bounds() -> None:
+    app = QApplication.instance() or QApplication([])
+    assert app is not None
+    bounds = MapSelectionBounds(west=116.34, south=39.97, east=116.36, north=39.99)
+    with patch("ui.api_client.scenario_generator.QNetworkAccessManager") as manager:
+        reply = MagicMock(spec=QNetworkReply)
+        reply.error.return_value = QNetworkReply.NetworkError.NoError
+        manager.return_value.post.return_value = reply
+        client = ScenarioGeneratorClient()
+        failures: list[str] = []
+        drafts: list[object] = []
+        client.failed.connect(failures.append)
+        client.draft_ready.connect(drafts.append)
+        client.generate("", selected_bounds=bounds)
+        body = json.loads(manager.return_value.post.call_args.args[1])
+        assert body["selected_bounds"] == bounds.model_dump()
+        assert body["description"] == ""
+        assert body["source_mode"] == "real_map"
+        assert body["run_simulation"] is False
+        assert body["publish_to_catalog"] is False
+        reply.readAll.return_value = QByteArray(json.dumps(_draft()).encode())
+        client._finish(reply)
+        assert len(failures) == 1 and "area" in failures[0]
+        assert not drafts and not manager.return_value.get.called
+        client.generate("", selected_bounds=bounds)
+        payload = _draft()
+        payload["selected_bounds"] = bounds.model_dump()
+        reply.readAll.return_value = QByteArray(json.dumps(payload).encode())
+        client._finish(reply)
+        assert len(drafts) == 1 and manager.return_value.get.called
 
 
 @pytest.mark.parametrize(
@@ -278,6 +311,28 @@ def test_revision_preserves_source_on_failure_and_accepts_only_matching_new_draf
         assert manager.return_value.get.call_args.args[0].url().path() == (
             f"/artifacts/{changed['task_id']}/map_preview.png"
         )
+
+
+def test_map_edit_posts_instruction_and_rejects_unchanged_history() -> None:
+    app = QApplication.instance() or QApplication([])
+    assert app is not None
+    with patch("ui.api_client.scenario_generator.QNetworkAccessManager") as manager:
+        reply = MagicMock(spec=QNetworkReply)
+        reply.error.return_value = QNetworkReply.NetworkError.NoError
+        manager.return_value.post.return_value = reply
+        client = ScenarioGeneratorClient()
+        source = _draft()
+        client.generate(source["description"])
+        reply.readAll.return_value = QByteArray(json.dumps(source).encode())
+        client._finish(reply)
+        client.revise(source["task_id"], {"map_instruction": "增加东西路"})
+        request, body = manager.return_value.post.call_args.args
+        assert request.url().path() == f"/scenarios/{source['task_id']}/map-edits"
+        assert json.loads(body) == {"instruction": "增加东西路", "ui_language": "en"}
+        child = dict(source, parent_task_id=source["task_id"], task_id="20261115_120001_fedcba")
+        reply.readAll.return_value = QByteArray(json.dumps(child).encode())
+        client._finish(reply, revision_of=source["task_id"], expected_map_edit="增加东西路")
+        assert client._draft is not None and client._draft.task_id == source["task_id"]
 
 
 def test_revision_checks_all_requested_settings_before_replacing_preview() -> None:

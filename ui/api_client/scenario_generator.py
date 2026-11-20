@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from PySide6.QtCore import QObject, QUrl, Signal
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 
+from ui.models.map_selection import MapSelectionBounds
 from ui.models.protocol import GeneratedAutomationShare
 from ui.models.scenario_revision import (
     DemandMode,
@@ -51,6 +52,7 @@ class GenerationResponse(BaseModel):
     status: str
     task_id: str = Field(pattern=_TASK_PATTERN)
     description: str
+    selected_bounds: MapSelectionBounds | None = None
     catalog_map_id: str | None = None
     parent_task_id: str | None = Field(default=None, pattern=_TASK_PATTERN)
     plan: PreviewPlan | None = None
@@ -84,6 +86,7 @@ class ScenarioGeneratorClient(QObject):
     ) -> None:
         super().__init__(parent)
         self._language = normalize_language(language)
+        self._requested_bounds: MapSelectionBounds | None = None
         self._base_url = (
             base_url
             or os.getenv("TRAFFICFORGE_API_URL", "").strip()
@@ -107,13 +110,20 @@ class ScenarioGeneratorClient(QObject):
         if self._draft is not None:
             self.load_preview(self._draft.task_id)
 
-    def generate(self, description: str, *, simulation_mode: str = "traffic") -> None:
+    def generate(
+        self,
+        description: str,
+        *,
+        simulation_mode: str = "traffic",
+        selected_bounds: MapSelectionBounds | None = None,
+    ) -> None:
         if self._pending is not None:
             return
         self._draft = None
+        self._requested_bounds = selected_bounds
         if self._preview_pending is not None:
             self._preview_pending.abort()
-        payload = {
+        payload: dict[str, object] = {
             "description": description,
             "output_kind": "scenario",
             "run_simulation": False,
@@ -121,6 +131,9 @@ class ScenarioGeneratorClient(QObject):
             "simulation_mode": simulation_mode,
             "ui_language": self._language,
         }
+        if selected_bounds is not None:
+            payload["selected_bounds"] = selected_bounds.model_dump(mode="json")
+            payload["source_mode"] = "real_map"
         reply = self._post("/generate", payload, timeout=600_000)
         reply.finished.connect(lambda: self._finish(reply))
 
@@ -151,6 +164,20 @@ class ScenarioGeneratorClient(QObject):
                     "当前草稿已变化，请先查看当前预览再修改。",
                     "The draft has changed. Review the current preview before editing it.",
                 )
+            )
+            return
+        if isinstance(revision, dict) and set(revision) == {"map_instruction"}:
+            instruction = revision["map_instruction"]
+            if not isinstance(instruction, str) or not instruction.strip():
+                self.revision_failed.emit(self._text("请输入地图修改要求。", "Enter a map edit."))
+                return
+            reply = self._post(
+                f"/scenarios/{task_id}/map-edits",
+                {"instruction": instruction, "ui_language": self._language},
+                timeout=180_000,
+            )
+            reply.finished.connect(
+                lambda: self._finish(reply, revision_of=task_id, expected_map_edit=instruction)
             )
             return
         try:
@@ -187,16 +214,18 @@ class ScenarioGeneratorClient(QObject):
         revision_of: str | None = None,
         expected_count: int | None = None,
         expected_revision: ScenarioRevisionRequest | None = None,
+        expected_map_edit: str | None = None,
     ) -> None:
         self._pending = None
         failure = self.revision_failed if revision_of is not None else self.failed
         try:
             if reply.error() != QNetworkReply.NetworkError.NoError:
-                action = (
-                    self._text("更新场景设定失败：", "Could not update scene settings: ")
-                    if revision_of is not None
-                    else self._text("场景生成失败：", "Could not generate the scene: ")
-                )
+                if expected_map_edit is not None:
+                    action = self._text("地图修改失败：", "Could not edit the map: ")
+                elif revision_of is not None:
+                    action = self._text("更新场景设定失败：", "Could not update scene settings: ")
+                else:
+                    action = self._text("场景生成失败：", "Could not generate the scene: ")
                 failure.emit(action + self._error(reply))
                 return
             payload = json.loads(bytes(reply.readAll().data()))
@@ -221,6 +250,20 @@ class ScenarioGeneratorClient(QObject):
                     )
                 )
                 return
+            expected_bounds = (
+                self._draft.selected_bounds
+                if revision_of is not None and self._draft is not None
+                else self._requested_bounds
+            )
+            if result.selected_bounds != expected_bounds:
+                failure.emit(
+                    self._text(
+                        "服务返回的地图范围与选区不一致，请更新服务后重试。",
+                        "The returned map area does not match your selection. "
+                        "Update the generation service and try again.",
+                    )
+                )
+                return
             if result.catalog_map_id is not None:
                 failure.emit(
                     self._text(
@@ -230,6 +273,20 @@ class ScenarioGeneratorClient(QObject):
                     )
                 )
                 return
+            if expected_map_edit is not None:
+                history = payload.get("map_edits")
+                if (
+                    not isinstance(history, list)
+                    or not history
+                    or not isinstance(history[-1], dict)
+                    or history[-1].get("instruction") != expected_map_edit
+                ):
+                    failure.emit(
+                        self._text(
+                            "地图修改未生效，请重试。", "Map edit was not applied. Please retry."
+                        )
+                    )
+                    return
             if revision_of is not None and (
                 result.parent_task_id != revision_of
                 or result.task_id == revision_of

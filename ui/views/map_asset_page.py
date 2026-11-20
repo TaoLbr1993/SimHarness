@@ -6,13 +6,15 @@ from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
-    QLabel,
-    QPushButton,
     QSplitter,
     QVBoxLayout,
     QWidget,
 )
 
+from ui.localized_widgets import (
+    QLabel,
+    QPushButton,
+)
 from ui.models import MapManifest, MapSummary
 from ui.models.assets import AssetDirectoryEntry, map_asset_entry
 from ui.views.components import PAGE_CONTENT_MARGIN, page_header
@@ -166,6 +168,7 @@ class MapAssetPage(QWidget):
         summary = self._maps[map_id]
         manifest = self._manifests.get(map_id)
         entry: AssetDirectoryEntry = map_asset_entry(summary, manifest)
+        self.asset_name.setProperty("literalText", True)
         self.asset_name.setText(summary.display_name or summary.carla_map or map_id)
         runtime = (
             f"CARLA {summary.carla_version}"

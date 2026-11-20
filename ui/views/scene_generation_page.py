@@ -21,6 +21,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QComboBox,
+    QDialog,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -34,9 +35,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ui.models.map_selection import MapSelectionBounds
 from ui.scene_language import Language, normalize_language, text
 from ui.views.theme import ThemeMode, load_scene_studio_colors
 from ui.widgets.image_preview_dialog import ImagePreviewDialog
+from ui.widgets.map_area_dialog import MapAreaDialog
 from ui.widgets.scenario_settings_editor import (
     DemandMode,
     ScenarioSettingsEditor,
@@ -47,6 +50,9 @@ _STATE_NAMES = {"free_flow": "自由流", "moderate": "常规交通", "congested
 _STYLE_PATH = Path(__file__).with_name("styles") / "scene-generation.qss"
 
 _COPY = {
+    "地图选区": "Select map area",
+    "更改选区": "Change area",
+    "移除选区": "Remove area",
     "场景工坊": "SCENE AUTHORING",
     "描述需求  /  预览场景  /  确认添加": "Describe  /  Preview  /  Add scene",
     "让每一个交通想法，成为场景": "Turn an idea into a traffic scene",
@@ -204,6 +210,14 @@ _COPY.update(
     }
 )
 
+_COPY.update(
+    {
+        "应用地图修改": "Apply map edit",
+        "重新输入场景需求": "Edit original request",
+        "正在修改当前地图…": "Updating the current map…",
+        "地图修改": "Map edit",
+    }
+)
 _SOURCE_COPY = {value: key for key, value in _COPY.items()}
 
 
@@ -409,6 +423,9 @@ class SceneGenerationPage(QWidget):
         self._image_ready = False
         self._published_map_id: str | None = None
         self._submitted_description = ""
+        self._selected_bounds: MapSelectionBounds | None = None
+        self._draft_input_description: str | None = None
+        self._map_edit_pending = False
         layout = QVBoxLayout(self)
         layout.setContentsMargins(30, 24, 30, 24)
         layout.setSpacing(16)
@@ -485,7 +502,57 @@ class SceneGenerationPage(QWidget):
         search_layout.addWidget(self.generate_button)
         search_row.addWidget(self.search_card, 12)
         search_row.addStretch()
-        hero_layout.addLayout(search_row)
+        self.original_request = QWidget()
+        original_layout = QVBoxLayout(self.original_request)
+        original_layout.setContentsMargins(0, 0, 0, 0)
+        original_layout.addLayout(search_row)
+
+        area_row = QHBoxLayout()
+        area_row.addStretch()
+        self.area_button = QPushButton("地图选区")
+        self.area_button.setObjectName("studioAreaButton")
+        self.area_button.setProperty("studioRole", "example")
+        self.area_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.area_button.clicked.connect(self._choose_area)
+        area_row.addWidget(self.area_button)
+        self.area_label = _label("", "caption", wrap=True)
+        self.area_label.setMaximumWidth(650)
+        area_row.addWidget(self.area_label)
+        self.clear_area_button = QPushButton("移除选区")
+        self.clear_area_button.setProperty("studioRole", "example")
+        self.clear_area_button.clicked.connect(lambda: self.set_selected_bounds(None))
+        self.clear_area_button.hide()
+        area_row.addWidget(self.clear_area_button)
+        area_row.addStretch()
+        original_layout.addLayout(area_row)
+        self.map_edit_bar = QWidget()
+        edit_layout = QHBoxLayout(self.map_edit_bar)
+        edit_layout.setContentsMargins(0, 0, 0, 0)
+        edit_layout.addStretch()
+        self.map_instruction = QLineEdit()
+        self.map_instruction.setObjectName("studioMapInstruction")
+        self.map_instruction.setMinimumHeight(44)
+        self.map_instruction.setMaximumWidth(700)
+        self.map_instruction.setMaxLength(2000)
+        self.map_instruction.returnPressed.connect(self._request_map_edit)
+        self.map_instruction.textChanged.connect(self._update_actions)
+        edit_layout.addWidget(self.map_instruction, 8)
+        self.map_edit_button = QPushButton("应用地图修改")
+        self.map_edit_button.clicked.connect(self._request_map_edit)
+        edit_layout.addWidget(self.map_edit_button)
+        self.original_button = QPushButton("重新输入场景需求")
+        self.original_button.setCheckable(True)
+        self.original_button.toggled.connect(self.original_request.setVisible)
+        self.original_button.toggled.connect(self._update_actions)
+        edit_layout.addWidget(self.original_button)
+        edit_layout.addStretch()
+        self.map_edit_bar.hide()
+        hero_layout.addWidget(self.map_edit_bar)
+        self.map_edit_summary = _label("", "caption", wrap=True)
+        self.map_edit_summary.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.map_edit_summary.hide()
+        hero_layout.addWidget(self.map_edit_summary)
+        hero_layout.addWidget(self.original_request)
 
         self.examples = QWidget()
         self.examples.setObjectName("studioExamples")
@@ -566,6 +633,44 @@ class SceneGenerationPage(QWidget):
         """Return the current interface language without changing the request language."""
         return self._language
 
+    @property
+    def selected_bounds(self) -> MapSelectionBounds | None:
+        """Return the explicitly selected geographic extent for the next request."""
+        return self._selected_bounds
+
+    def set_selected_bounds(self, bounds: MapSelectionBounds | None) -> None:
+        """Update the input extent without generating or changing the current draft."""
+        if self._busy or self._publishing or self._revising:
+            return
+        self._selected_bounds = bounds
+        self._retranslate()
+        self._description_changed()
+
+    def _choose_area(self) -> None:
+        dialog = MapAreaDialog(self, language=self._language, selected_bounds=self._selected_bounds)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.set_selected_bounds(dialog.selected_bounds)
+        dialog.deleteLater()
+
+    def _render_area(self) -> None:
+        bounds = self._selected_bounds
+        self._set_text(self.area_button, "更改选区" if bounds else "地图选区")
+        self.clear_area_button.setVisible(bounds is not None)
+        self.area_label.setVisible(bounds is not None)
+        if bounds is None:
+            return
+        self.area_label.setText(
+            self._t("已选区域", "Selected area")
+            + f" · {bounds.south:.4f}, {bounds.west:.4f} → "
+            + f"{bounds.north:.4f}, {bounds.east:.4f}"
+        )
+        self.description.setPlaceholderText(
+            self._t(
+                "可选：补充车辆数量、拥堵或仿真时长，路网范围以选区为准…",
+                "Optional: vehicles, traffic or duration. Roads will use your selected area…",
+            )
+        )
+
     def _t(self, source: str, english: str | None = None) -> str:
         return text(
             self._language, source, english if english is not None else _COPY.get(source, source)
@@ -620,6 +725,14 @@ class SceneGenerationPage(QWidget):
             )
         )
         self.description.setAccessibleName(self._t("场景需求", "Scene requirements"))
+        self.map_instruction.setAccessibleName(self._t("地图修改"))
+        self.map_instruction.setPlaceholderText(
+            self._t(
+                "修改当前地图，例如：增加东西路、删除南北路、只显示主干道…",
+                "Edit this map, e.g. add an east-west road or show only main roads…",
+            )
+        )
+        self._render_area()
         self.error_card.setAccessibleName(
             self._t("场景生成失败原因", "Scene generation error details")
         )
@@ -808,6 +921,7 @@ class SceneGenerationPage(QWidget):
         return results
 
     def _fill_example(self, text: str) -> None:
+        self.set_selected_bounds(None)
         self.description.setText(text)
         self.description.setFocus()
 
@@ -849,9 +963,23 @@ class SceneGenerationPage(QWidget):
         self.set_revision_state(True, "正在按新设定更新场景和发车计划……")
         self.revision_requested.emit(str(self._draft["task_id"]), revision)
 
+    def _request_map_edit(self) -> None:
+        if self._draft is None or not self.map_edit_button.isEnabled():
+            return
+        self._map_edit_pending = True
+        self.set_revision_state(True, "正在修改当前地图…")
+        self.revision_requested.emit(
+            str(self._draft["task_id"]), {"map_instruction": self.map_instruction.text().strip()}
+        )
+
     def set_revision_state(self, busy: bool, message: str) -> None:
         self._revising = busy
-        self._set_text(self.edit_status, message)
+        if self._map_edit_pending:
+            self._set_text(self.status_label, "正在修改当前地图…" if busy else message)
+            if not busy:
+                self._map_edit_pending = False
+        else:
+            self._set_text(self.edit_status, message)
         self.progress.setVisible(busy or self._busy)
         self._update_actions()
 
@@ -859,7 +987,7 @@ class SceneGenerationPage(QWidget):
         description = self.description.text().strip()
         if self._busy or self._publishing or self._revising:
             return
-        if not description:
+        if not description and self._selected_bounds is None:
             self._set_text(self.status_label, "先写一句场景需求，例如“生成一个十字路口”。")
             self.description.setFocus()
             return
@@ -881,7 +1009,13 @@ class SceneGenerationPage(QWidget):
     def _matches_draft(self) -> bool:
         return (
             self._draft is not None
-            and self.description.text().strip() == str(self._draft.get("description", "")).strip()
+            and self.description.text().strip() == (self._draft_input_description or "").strip()
+            and self._draft.get("selected_bounds")
+            == (
+                self._selected_bounds.model_dump(mode="json")
+                if self._selected_bounds is not None
+                else None
+            )
         )
 
     def _request_publication(self) -> None:
@@ -922,7 +1056,21 @@ class SceneGenerationPage(QWidget):
         self.scroll_area.ensureWidgetVisible(self.error_card)
 
     def set_draft(self, draft: dict[str, Any]) -> None:
+        revised = self._draft is not None and draft.get("parent_task_id") == self._draft.get(
+            "task_id"
+        )
+        if not revised:
+            self._draft_input_description = (
+                self._submitted_description
+                if self._busy and self._selected_bounds is not None
+                else str(draft.get("description", ""))
+            )
         self._draft = draft
+        self._map_edit_pending = False
+        self.map_instruction.clear()
+        self.original_button.setChecked(False)
+        self.original_request.hide()
+        self.map_edit_bar.show()
         self._draft_current = True
         self._busy = False
         self._publishing = False
@@ -1007,6 +1155,17 @@ class SceneGenerationPage(QWidget):
         if self._draft is None:
             return
         draft = self._draft
+        history = draft.get("map_edits") or []
+        self.map_edit_summary.setVisible(bool(history))
+        if history:
+            last = history[-1]
+            summary = self._t("已应用", "Applied") + " · " + str(last["instruction"])
+            if last.get("edge_ids"):
+                summary += self._t(
+                    f"（涉及 {len(last['edge_ids'])} 个有向路段）",
+                    f" ({len(last['edge_ids'])} directed segments)",
+                )
+            self.map_edit_summary.setText(summary)
         plan, demand = draft.get("plan") or {}, draft.get("demand") or {}
         count = int(demand.get("planned_vehicles", 0))
         self._set_text(self.stat_values["vehicles"], f"{count:,} " + self._t("辆", "vehicles"))
@@ -1143,6 +1302,12 @@ class SceneGenerationPage(QWidget):
         idle = not self._busy and not self._publishing and not self._revising
         dirty = self._count_dirty()
         editable = idle and self._draft_current and self._matches_draft()
+        pending_text = bool(self.map_instruction.text().strip())
+        editing_map = editable and not dirty and not self.original_button.isChecked()
+        self.map_instruction.setEnabled(editing_map)
+        self.map_edit_button.setEnabled(editing_map and pending_text)
+        self.original_button.setEnabled(idle and not pending_text)
+        editable = editable and not pending_text
         self.settings_editor.setEnabled(editable)
         self.apply_count_button.setEnabled(
             editable and dirty and self.settings_editor.validation_error() is None
@@ -1151,6 +1316,8 @@ class SceneGenerationPage(QWidget):
         self.zoom_button.setEnabled(self._image_ready)
         self.generate_button.setEnabled(idle)
         self.description.setEnabled(idle)
+        self.area_button.setEnabled(idle)
+        self.clear_area_button.setEnabled(idle)
         self.examples.setEnabled(idle)
         self.preview_retry_button.setEnabled(idle and self._draft_current)
         self.publish_button.setEnabled(
@@ -1160,8 +1327,11 @@ class SceneGenerationPage(QWidget):
             and self._matches_draft()
             and not self._published_map_id
             and not dirty
+            and not pending_text
         )
-        self.configure_button.setEnabled(idle and bool(self._published_map_id) and not dirty)
+        self.configure_button.setEnabled(
+            idle and bool(self._published_map_id) and not dirty and not pending_text
+        )
 
     def set_theme(self, theme: str) -> None:
         dark = theme == "dark"

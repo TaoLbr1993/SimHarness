@@ -112,7 +112,9 @@ def _review_options() -> dict:
     return {}
 
 
-def interpret_map_request(description: str, force_real: bool = False) -> MapIntent:
+def interpret_map_request(
+    description: str, force_real: bool = False, *, area_selected: bool = False
+) -> MapIntent:
     """Extract place intent; geographic coordinates must come from a provider, never the LLM."""
     client = OpenAI(base_url=config.MODEL_BASE_URL, api_key=config.MODEL_API_KEY, timeout=60)
     messages = [
@@ -164,6 +166,10 @@ def interpret_map_request(description: str, force_real: bool = False) -> MapInte
                 "extra_requirements 逐项引用除地点/半径/详细度/导入SUMO/测试用途"
                 "之外的所有要求，"
                 "包括道路/车道/信控/交通量/CARLA输出/道路修改/精确裁剪/可达性，不能遗漏或自行满足。"
+                "如果 area_selected=true，用户已通过地图框选确定区域，不需要地名或半径。"
+                "此时 source_mode=real_map，place_query/location_quote/radius_quote 留空，"
+                "radius_m=null；"
+                "只提取车流、测试目标、详细度和其他要求，不能改变已选区域，use_existing_map=false。"
                 "reason 用中文解释分类。只返回符合以下 JSON schema 的对象："
                 + json.dumps(MapIntent.model_json_schema(), ensure_ascii=False)
             ),
@@ -171,7 +177,12 @@ def interpret_map_request(description: str, force_real: bool = False) -> MapInte
         {
             "role": "user",
             "content": json.dumps(
-                {"description": description, "force_real_map": force_real}, ensure_ascii=False
+                {
+                    "description": description,
+                    "force_real_map": force_real,
+                    "area_selected": area_selected,
+                },
+                ensure_ascii=False,
             ),
         },
     ]
@@ -187,9 +198,16 @@ def interpret_map_request(description: str, force_real: bool = False) -> MapInte
         raw = response.choices[0].message.content or ""
         try:
             intent = MapIntent.model_validate_json(raw)
-            if force_real and intent.source_mode != "real_map":
+            if force_real and not area_selected and intent.source_mode != "real_map":
                 raise ValueError("real_map 模式需要真实地点，请补充城市、地名或校区")
-            intent.validate_sources(description)
+            intent.validate_sources(description, area_selected=area_selected)
+            if area_selected:
+                intent.source_mode = "real_map"
+                intent.place_query = intent.alternate_query = intent.location_quote = ""
+                intent.radius_m = None
+                intent.radius_quote = ""
+                if intent.scenario is not None:
+                    intent.scenario.use_existing_map = False
             return intent
         except ValueError as exc:
             if attempt == 1:
@@ -247,6 +265,40 @@ def choose_map_place(description: str, candidates: list[PlaceCandidate]) -> Plac
     if choice.selected_id is not None and choice.selected_id not in {c.id for c in candidates}:
         raise ValueError("模型选择了不存在的地图候选")
     return choice
+
+
+def interpret_road_edit(instruction: str) -> str:
+    """Translate a paraphrase into one supported operation; qualifiers must be respected."""
+    client = OpenAI(
+        base_url=config.MODEL_BASE_URL, api_key=config.MODEL_API_KEY, timeout=30, max_retries=0
+    )
+    response = client.chat.completions.create(
+        model=config.MODEL_NAME,
+        temperature=0,
+        max_tokens=512,
+        response_format={"type": "json_object"},
+        **_review_options(),
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    'Return exactly {"operation":"...","reason":"..."} as a JSON object. '
+                    "add_ew/add_ns: add one two-way east-west/north-south road at a junction. "
+                    "remove_ew/remove_ns: remove the last added road of that orientation, "
+                    "otherwise one central corridor. show_main/show_all: display main roads "
+                    "or all roads already in this map. "
+                    "For a specific display class: show_motorway, show_trunk, show_primary, "
+                    "show_secondary, show_tertiary, show_local. "
+                    "For ambiguous, negated, compound or unsupported requests, return clarify "
+                    "with a concrete reason in the user's language. This includes locations, "
+                    "named roads, counts, lane changes and other unhandled qualifiers. "
+                    "Never discard qualifiers or infer a missing axis. Never generate code."
+                ),
+            },
+            {"role": "user", "content": instruction},
+        ],
+    )
+    return response.choices[0].message.content or ""
 
 
 def generate_code(description: str, feedback: list[dict] | None = None) -> str:

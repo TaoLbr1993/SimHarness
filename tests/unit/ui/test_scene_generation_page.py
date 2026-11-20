@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from typing import Any, cast
+from unittest.mock import patch
 
 from PySide6.QtCore import QBuffer, QIODevice, Qt
 from PySide6.QtGui import QColor, QImage, QImageWriter
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QLabel, QPushButton
+from ui.models.map_selection import MapSelectionBounds
 from ui.views.scene_generation_page import SceneGenerationPage
 
 
@@ -57,6 +59,80 @@ def _ready_page(*, traffic_mode: bool = True) -> SceneGenerationPage:
     page.set_draft(draft)
     page.set_preview_image(_image())
     return page
+
+
+def test_area_alone_generates_and_changed_area_requires_a_new_preview() -> None:
+    _application()
+    page = SceneGenerationPage(traffic_mode=True)
+    bounds = MapSelectionBounds(west=116.34, south=39.97, east=116.36, north=39.99)
+    requests: list[str] = []
+    page.generation_requested.connect(requests.append)
+    page.set_selected_bounds(bounds)
+    assert page.results.isHidden()
+    assert "Optional" in page.description.placeholderText()
+    page.generate_button.click()
+    assert requests == [""]
+    assert not page.area_button.isEnabled()
+    draft = _draft()
+    draft["description"] = "Generate a scene in the selected map area."
+    draft["selected_bounds"] = bounds.model_dump()
+    page.set_draft(draft)
+    page.set_preview_image(_image())
+    assert page.publish_button.isEnabled()
+    page.set_selected_bounds(bounds.model_copy(update={"east": 116.365}))
+    assert not page.publish_button.isEnabled()
+    assert not page.settings_editor.isEnabled()
+    page.set_selected_bounds(bounds)
+    assert page.publish_button.isEnabled()
+    page.set_language("zh")
+    assert page.selected_bounds == bounds
+    assert page.publish_button.isEnabled()
+    page.clear_area_button.click()
+    assert cast(object, page.selected_bounds) is None
+    assert not page.publish_button.isEnabled()
+    assert "可选" not in page.description.placeholderText()
+    page.close()
+
+
+def test_cancelling_area_dialog_preserves_current_selection_and_text() -> None:
+    _application()
+    page = SceneGenerationPage(traffic_mode=True)
+    bounds = MapSelectionBounds(west=116.34, south=39.97, east=116.36, north=39.99)
+    page.set_selected_bounds(bounds)
+    page.description.setText("100 vehicles")
+    with patch("ui.views.scene_generation_page.MapAreaDialog") as dialog:
+        dialog.return_value.exec.return_value = 0
+        page.area_button.click()
+    assert page.selected_bounds == bounds
+    assert page.description.text() == "100 vehicles"
+    assert page.results.isHidden()
+    page._fill_example("Generate a four-way intersection")
+    assert cast(object, page.selected_bounds) is None
+    assert "Optional" not in page.description.placeholderText()
+    page.close()
+
+
+def test_numeric_revision_preserves_area_only_input_matching() -> None:
+    _application()
+    page = SceneGenerationPage(traffic_mode=True)
+    bounds = MapSelectionBounds(west=116.34, south=39.97, east=116.36, north=39.99)
+    page.set_selected_bounds(bounds)
+    page.generate_button.click()
+    draft = _draft()
+    draft["description"] = "Generate a scene in the selected map area."
+    draft["selected_bounds"] = bounds.model_dump()
+    page.set_draft(draft)
+    page.set_preview_image(_image())
+    revised = dict(draft)
+    revised["parent_task_id"] = draft["task_id"]
+    revised["task_id"] = "20261106_100000_aabbcc"
+    page.set_revision_state(True, "Updating")
+    page.set_draft(revised)
+    page.set_preview_image(_image())
+    assert page.description.text() == ""
+    assert page.selected_bounds == bounds
+    assert page.publish_button.isEnabled()
+    page.close()
 
 
 def test_generation_is_explicit_and_duplicate_submission_is_prevented() -> None:
@@ -134,6 +210,32 @@ def test_draft_waits_for_image_and_explicit_confirmation_then_cannot_be_added_tw
     assert not page.publish_button.isEnabled()
     page.configure_button.click()
     assert configured == ["nl2-" + draft["task_id"]]
+    page.close()
+
+
+def test_map_edits_follow_current_preview_and_retain_failed_instruction() -> None:
+    page = _ready_page()
+    requests: list[tuple[str, object]] = []
+    page.revision_requested.connect(lambda parent, edit: requests.append((parent, edit)))
+    assert not page.map_edit_bar.isHidden() and page.original_request.isHidden()
+    page.map_instruction.setText("增加东西路")
+    assert not page.publish_button.isEnabled()
+    page.map_instruction.returnPressed.emit()
+    assert requests == [(_draft()["task_id"], {"map_instruction": "增加东西路"})]
+    assert not page.map_edit_button.isEnabled()
+    page.set_revision_state(False, "无法接入路网")
+    assert page.map_instruction.text() == "增加东西路"
+    assert "无法接入路网" in page.status_label.text()
+    page.map_edit_button.click()
+    updated = _draft()
+    updated.update(parent_task_id=updated["task_id"], task_id="20261115_120001_fedcba")
+    page.set_draft(updated)
+    assert not page.map_instruction.text() and not page.publish_button.isEnabled()
+    page.set_preview_image(_image())
+    assert page.publish_button.isEnabled()
+    page.map_instruction.setText("删除东西路")
+    page.map_edit_button.click()
+    assert requests[-1] == (updated["task_id"], {"map_instruction": "删除东西路"})
     page.close()
 
 

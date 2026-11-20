@@ -4,19 +4,22 @@ from __future__ import annotations
 
 from PySide6.QtCore import Signal, Slot
 from PySide6.QtWidgets import (
-    QCheckBox,
-    QComboBox,
-    QFormLayout,
     QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QPushButton,
     QScrollArea,
-    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
 
+from ui.localization import language as interface_language
+from ui.localized_widgets import (
+    QCheckBox,
+    QComboBox,
+    QFormLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QSpinBox,
+)
 from ui.views.components import PAGE_CONTENT_MARGIN, page_header, panel
 
 
@@ -59,7 +62,9 @@ class SystemSettingsPage(QWidget):
         content = QWidget()
         form = QFormLayout(content)
         language = QComboBox()
-        language.addItem("简体中文")
+        language.addItem("English" if interface_language() == "en" else "简体中文")
+        language.setEnabled(False)
+        language.setToolTip("traffic-ui: 简体中文 / traffic-ui-en: English")
         self.theme_combo = QComboBox()
         self.theme_combo.setObjectName("themeModeCombo")
         self.theme_combo.addItem("浅色模式", "light")

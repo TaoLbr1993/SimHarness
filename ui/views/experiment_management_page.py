@@ -5,13 +5,16 @@ from __future__ import annotations
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
-    QLabel,
-    QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
+from ui.localization import tr
+from ui.localized_widgets import (
+    QLabel,
+    QTableWidget,
+)
 from ui.views.components import PAGE_CONTENT_MARGIN, metric_card, page_header, panel
 
 
@@ -47,7 +50,7 @@ class ExperimentManagementPage(QWidget):
         table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         values = ("当前核心运行", "未创建", "0.00 秒")
         for column, value in enumerate(values):
-            table.setItem(0, column, QTableWidgetItem(value))
+            table.setItem(0, column, QTableWidgetItem(tr(value)))
         self.table = table
         return panel("仿真记录", table, kicker="历史仿真")
 
@@ -55,14 +58,14 @@ class ExperimentManagementPage(QWidget):
         self._metric_value(self.status_card).setText(status)
         item = self.table.item(0, 1)
         if item is not None:
-            item.setText(status)
+            item.setText(tr(status))
 
     def set_time(self, simulation_time_ms: int) -> None:
         value = f"{simulation_time_ms / 1000:.2f} 秒"
         self._metric_value(self.time_card).setText(value)
         item = self.table.item(0, 2)
         if item is not None:
-            item.setText(value)
+            item.setText(tr(value))
 
     @staticmethod
     def _metric_value(card: QFrame) -> QLabel:

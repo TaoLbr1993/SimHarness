@@ -33,6 +33,7 @@ from ui.models import (
     WorkspaceSummary,
     WorldState,
 )
+from ui.models.map_selection import MapSelectionBounds
 from ui.scene_language import Language, normalize_language, text
 
 _AUTOMATION_LEVELS = ("L0", "L1", "L2", "L3", "L4", "L5")
@@ -182,11 +183,17 @@ class RunViewModel(QObject):
     def _scene_text(self, zh: str, en: str) -> str:
         return text(self._scene_language, zh, en)
 
-    def generate_scene(self, description: str, *, simulation_mode: str = "traffic") -> None:
+    def generate_scene(
+        self,
+        description: str,
+        *,
+        simulation_mode: str = "traffic",
+        selected_bounds: MapSelectionBounds | None = None,
+    ) -> None:
         """Generate a private preview; only confirmation adds it to the catalog."""
         if self._generation_busy:
             return
-        if not description.strip():
+        if not description.strip() and selected_bounds is None:
             self.generation_state_changed.emit(
                 False, self._scene_text("请先填写场景描述。", "Describe the scene first.")
             )
@@ -203,7 +210,14 @@ class RunViewModel(QObject):
                 "Interpreting your request and building the map and traffic plan…",
             ),
         )
-        self._generator.generate(description.strip(), simulation_mode=simulation_mode)
+        if selected_bounds is None:
+            self._generator.generate(description.strip(), simulation_mode=simulation_mode)
+        else:
+            self._generator.generate(
+                description.strip(),
+                simulation_mode=simulation_mode,
+                selected_bounds=selected_bounds,
+            )
 
     def _scene_draft_ready(self, payload: object) -> None:
         if not isinstance(payload, dict) or not isinstance(payload.get("task_id"), str):

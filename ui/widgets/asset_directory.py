@@ -8,14 +8,17 @@ from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
-    QLabel,
-    QLineEdit,
     QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
+from ui.localization import tr
+from ui.localized_widgets import (
+    QLabel,
+    QLineEdit,
+)
 from ui.models.assets import AssetDirectoryEntry
 
 _ASSET_ID_ROLE = int(Qt.ItemDataRole.UserRole)
@@ -56,7 +59,7 @@ class AssetDirectoryWidget(QFrame):
         self.tree = QTreeWidget()
         self.tree.setObjectName("assetDirectoryTree")
         self.tree.setColumnCount(2)
-        self.tree.setHeaderLabels(("目录 / 文件", "格式 / 兼容"))
+        self.tree.setHeaderLabels((tr("目录 / 文件"), tr("格式 / 兼容")))
         self.tree.setColumnWidth(0, 210)
         self.tree.setIndentation(16)
         self.tree.setUniformRowHeights(True)
@@ -73,7 +76,7 @@ class AssetDirectoryWidget(QFrame):
         self.tree.clear()
         for asset in self._assets:
             status = "已验证" if asset.validated else "待验证"
-            platforms = " · ".join(asset.compatibility) or status
+            platforms = " · ".join(asset.compatibility) or tr(status)
             directory = QTreeWidgetItem((f"{asset.name}/", platforms))
             directory.setData(0, _ASSET_ID_ROLE, asset.asset_id)
             directory.setToolTip(0, asset.asset_id)

@@ -2,20 +2,23 @@
 
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import (
-    QComboBox,
     QFrame,
     QGridLayout,
     QHBoxLayout,
-    QLabel,
     QListWidget,
     QListWidgetItem,
     QPlainTextEdit,
-    QPushButton,
     QScrollArea,
     QVBoxLayout,
     QWidget,
 )
 
+from ui.localization import tr
+from ui.localized_widgets import (
+    QComboBox,
+    QLabel,
+    QPushButton,
+)
 from ui.models.agent_decision import DecisionRecord, DecisionSummary
 from ui.models.decision_text import (
     OUTCOME_LABELS,
@@ -112,6 +115,7 @@ class AgentDecisionCards(QWidget):
         vehicle_row = QHBoxLayout()
         vehicle_row.addWidget(_label("车辆输入", "decisionCardTitle"))
         self.vehicle = QComboBox()
+        self.vehicle.setProperty("literalItems", True)
         self.vehicle.setMinimumWidth(160)
         self.vehicle.currentIndexChanged.connect(self._show_vehicle)
         vehicle_row.addWidget(self.vehicle)
@@ -170,9 +174,9 @@ class AgentDecisionCards(QWidget):
         self.vehicle.blockSignals(False)
         self.vehicle.setEnabled(False)
         for label in (self.observation, self.memory, self.skill, self.action):
-            label.setText("等待本轮输入…")
+            label.setText(tr("等待本轮输入…"))
         self.preview_note.setText("")
-        self.output.setPlainText("模型返回后显示响应摘要。")
+        self.output.setPlainText(tr("模型返回后显示响应摘要。"))
         self.batch_actions.setText("暂无动作。")
 
     def set_summaries(self, items: tuple[DecisionSummary, ...], selected: int | None) -> None:
@@ -183,10 +187,12 @@ class AgentDecisionCards(QWidget):
         self.rounds.clear()
         for summary in items:
             item = QListWidgetItem(
-                f"第 {summary.sequence} 帧 · {summary.group_name}\n"
-                f"{summary.model_id}\n"
-                f"{STATE_LABELS.get(summary.state, summary.state)} · "
-                f"{OUTCOME_LABELS.get(summary.outcome, summary.outcome)}"
+                tr(
+                    f"第 {summary.sequence} 帧 · {summary.group_name}\n"
+                    f"{summary.model_id}\n"
+                    f"{STATE_LABELS.get(summary.state, summary.state)} · "
+                    f"{OUTCOME_LABELS.get(summary.outcome, summary.outcome)}"
+                )
             )
             item.setData(Qt.ItemDataRole.UserRole, summary.record_id)
             item.setSizeHint(QSize(168, 94))
@@ -287,7 +293,7 @@ class AgentDecisionCards(QWidget):
         index = self.vehicle.currentIndex()
         if not record or not record.input_preview or index < 0:
             for label in (self.observation, self.memory, self.skill, self.action):
-                label.setText("暂无车辆概要，请查看原始详情。")
+                label.setText(tr("暂无车辆概要，请查看原始详情。"))
             return
         item = record.input_preview.vehicles[index]
         lines = [
@@ -317,12 +323,13 @@ class AgentDecisionCards(QWidget):
                 f"\n第 {turn.sequence} 帧 · {action_text(decode_text(turn.action_text))}\n{result}"
             )
         self.memory.setText(memory)
+        self.skill.setProperty("literalText", True)
         self.skill.setText(
             "\n\n".join(
-                f"{SKILL_LABELS.get(skill.name, skill.name)}\n{skill.content}"
+                f"{tr(SKILL_LABELS.get(skill.name, skill.name))}\n{skill.content}"
                 for skill in item.skills
             )
-            or "本轮未加入 Skill。"
+            or tr("本轮未加入 Skill。")
         )
         if record.state == "running":
             action = "模型正在推理，尚未生成本轮动作。"

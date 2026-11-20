@@ -1,0 +1,7 @@
+html, body, #map { height: 100%; margin: 0; font-family: "Segoe UI", sans-serif; }
+body { background: #edf1f5; }
+#hint { position: absolute; top: 14px; left: 58px; z-index: 800; pointer-events: none;
+  padding: 9px 14px; background: #fffffff0; color: #253454; border-radius: 10px;
+  box-shadow: 0 2px 12px #1e2f5620; font-size: 13px; max-width: 65%; }
+.leaflet-container.drawing { cursor: crosshair; }
+.leaflet-control-attribution { font-size: 11px; }

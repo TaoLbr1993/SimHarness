@@ -31,7 +31,7 @@ SimHarness 是一个面向交通仿真的 **Agent Native Harness**。通过一�
 - **外部智能体接入**：支持在场景级或单车级接入 Agent API 或 Jev 类决策模型。
 - **Memory 与 Skill**：接入 Memory，为每辆车记录和调用驾驶记忆；接入 Skill，定义智能体的驾驶风格。
 - **可视化与回放**：通过桌面界面查看交通仿真，支持保存、查看和回放正式仿真结果。
-- **[TrafficForge 场景工坊](trafficforge/README.md)**：通过自然语言描述交通场景，生成合成或真实地点的路网与交通需求。
+- **[TrafficForge 场景工坊](trafficforge/README.zh-CN.md)**：通过自然语言描述交通场景，生成合成或真实地点的路网与交通需求。
 
 ### 系统架构
 

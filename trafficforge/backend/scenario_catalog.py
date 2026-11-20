@@ -115,6 +115,8 @@ def publish_scenario(result: ScenarioResult, output: Path) -> ScenarioDraft:
                     "plan": plan.model_dump(mode="json"),
                     "map_task_id": result.map_task_id,
                     "map_defaulted": result.map_defaulted,
+                    "map_edits": [edit.model_dump() for edit in result.map_edits],
+                    "display_level": result.display_level,
                     "parent_task_id": result.parent_task_id,
                     "manual_overrides": result.manual_overrides.model_dump(mode="json")
                     if result.manual_overrides is not None

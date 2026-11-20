@@ -8,14 +8,17 @@ from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QHBoxLayout,
-    QLabel,
-    QPushButton,
     QScrollArea,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
+from ui.localization import tr
+from ui.localized_widgets import (
+    QLabel,
+    QPushButton,
+)
 from ui.models import TRAFFIC_SCENARIO_PRESETS, MapSummary, TrafficScenarioPreset
 from ui.models.traffic_scenario import scenario_preview_vehicles
 from ui.views.components import PAGE_CONTENT_MARGIN, PAGE_TEXT_MARGIN
@@ -194,7 +197,9 @@ class _CollisionBarChart(_AutomationLevelChart):
         label_font.setBold(False)
         painter.setFont(label_font)
         painter.setPen(muted)
-        painter.drawText(QRectF(0.0, 50.0, 78.0, 34.0), Qt.AlignmentFlag.AlignLeft, "起\n累计碰撞")
+        painter.drawText(
+            QRectF(0.0, 50.0, 78.0, 34.0), Qt.AlignmentFlag.AlignLeft, tr("起\n累计碰撞")
+        )
 
         chart_left = 86.0
         chart_width = max(60.0, self.width() - chart_left)

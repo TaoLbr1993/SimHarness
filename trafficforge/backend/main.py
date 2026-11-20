@@ -12,11 +12,13 @@ Pipeline：
 import os
 import re
 import shutil
+import tempfile
 from pathlib import Path
 from typing import Literal
 
 import agent
 import config
+import map_edits
 import map_sources
 import preview_refresh
 import realmap
@@ -25,11 +27,13 @@ import runner
 import scenario_catalog
 import scenario_pipeline
 import scenario_revision
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
+from map_area import SelectedBounds
+from pydantic import BaseModel, Field, model_validator
+from realmap_models import MapIntent, PlaceCandidate
 from scenario_models import ScenarioDraft, ScenarioResult, ScenarioRevision
 
 app = FastAPI(
@@ -60,7 +64,8 @@ def custom_docs():
 
 
 class GenerateRequest(BaseModel):
-    description: str = Field(..., min_length=1, description="对路网的自然语言描述")
+    description: str = Field("", description="对路网的自然语言描述")
+    selected_bounds: SelectedBounds | None = None
     review_mode: Literal["rules_and_image", "image_and_facts", "image_only"] = Field(
         "rules_and_image", description="默认 XML 规则优先、图像辅助；其余模式用于对照实验"
     )
@@ -87,6 +92,49 @@ class GenerateRequest(BaseModel):
     publish_to_catalog: bool = Field(
         False, description="默认生成独立草稿，确认后调用 publish；true 兼容显式自动入库"
     )
+
+    @model_validator(mode="after")
+    def validate_selection(self) -> "GenerateRequest":
+        if self.selected_bounds is None:
+            if not self.description.strip():
+                raise ValueError("Describe a scene or select a map area.")
+        else:
+            self.selected_bounds.validate_extent(2 * config.REAL_MAP.max_radius_m)
+            if self.source_mode == "synthetic" or self.selected_place_id or self.map_task_id:
+                raise ValueError(
+                    "Selected bounds cannot be combined with a synthetic map, "
+                    "existing map, or place ID."
+                )
+        return self
+
+
+class MapSelectionConfig(BaseModel):
+    max_diagonal_m: float
+
+
+class MapPlacesResponse(BaseModel):
+    candidates: list[PlaceCandidate]
+    warnings: list[str] = Field(default_factory=list)
+
+
+@app.get("/map/selection-config", response_model=MapSelectionConfig)
+def map_selection_config() -> MapSelectionConfig:
+    """Expose the configured map selection size limit, without credentials."""
+    return MapSelectionConfig(max_diagonal_m=2 * config.REAL_MAP.max_radius_m)
+
+
+@app.get("/map/places", response_model=MapPlacesResponse)
+def map_places(q: str = Query(min_length=1, max_length=240)) -> MapPlacesResponse:
+    """Find locations for a human to choose; this never generates or publishes a scene."""
+    query = q.strip()
+    if not query:
+        raise HTTPException(422, "Enter a place or address to search.")
+    try:
+        with tempfile.TemporaryDirectory(prefix="trafficforge-places-") as temporary:
+            result = map_sources.geocode(query, "", Path(temporary), location_quote=query)
+            return MapPlacesResponse(candidates=result.candidates[:10], warnings=result.warnings)
+    except (ValueError, OSError) as exc:
+        raise HTTPException(503, str(exc)) from exc
 
 
 @app.get("/")
@@ -173,6 +221,64 @@ def revise_scenario_task(task_id: str, request: ScenarioRevision) -> ScenarioRes
         raise HTTPException(503, "暂时无法更新场景草稿，请检查工作区是否可读写后重试") from exc
 
 
+@app.post("/scenarios/{task_id}/map-edits", response_model=ScenarioResult)
+def edit_scenario_map(task_id: str, request: map_edits.MapEditRequest) -> ScenarioResult:
+    """Edit the current draft and return a new preview for confirmation."""
+    from subprocess import TimeoutExpired
+
+    from openai import OpenAIError
+
+    try:
+        return scenario_revision.revise_map(task_id, request)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except (OSError, OpenAIError, TimeoutExpired) as exc:
+        raise HTTPException(
+            503, "Map editing service unavailable. 请稍后重试，原草稿已保留。"
+        ) from exc
+
+
+def _generate_selected_area(req: GenerateRequest, base: dict[str, object]) -> dict[str, object]:
+    """Keep the caller's explicit rectangle authoritative across intent and scene creation."""
+    description = req.description.strip() or (
+        "生成框选区域内的交通场景。"
+        if req.ui_language == "zh"
+        else "Generate a scene in the selected map area."
+    )
+    try:
+        intent = (
+            agent.interpret_map_request(description, area_selected=True)
+            if req.description.strip()
+            else MapIntent(source_mode="real_map", reason="Explicit user-selected WGS84 bounds")
+        )
+    except Exception as exc:
+        return {
+            **base,
+            "status": "agent_error",
+            "error": f"Intent parsing failed: {exc}",
+            "attempts": [],
+        }
+    intent.source_mode = "real_map"
+    if req.output_kind == "map":
+        return realmap.generate_real_map(
+            description,
+            intent,
+            selected_bounds=req.selected_bounds,
+            detail_level=None if req.detail_level == "auto" else req.detail_level,
+            ui_language=req.ui_language,
+        ).model_dump(mode="json")
+    return scenario_pipeline.generate_scenario(
+        description,
+        intent,
+        selected_bounds=req.selected_bounds,
+        detail_level=None if req.detail_level == "auto" else req.detail_level,
+        run_simulation=req.run_simulation,
+        publish_to_catalog=req.publish_to_catalog,
+        simulation_mode=req.simulation_mode,
+        ui_language=req.ui_language,
+    ).model_dump(mode="json")
+
+
 @app.post("/generate")
 def generate(req: GenerateRequest):
     base = {
@@ -181,8 +287,14 @@ def generate(req: GenerateRequest):
         "review_mode": req.review_mode,
         "model_configured": config.MODEL_CONFIGURED,
     }
-    if not config.MODEL_CONFIGURED:
-        return {**base, "status": "agent_error", "error": "模型未配置", "attempts": []}
+    if not config.MODEL_CONFIGURED and (req.selected_bounds is None or req.description.strip()):
+        message = (
+            "请配置生成服务的文本模型，或仅框选地图区域并留空描述。"
+            if req.ui_language == "zh"
+            else "Configure the generation service's text model, or select a map area "
+            "and leave the description blank."
+        )
+        return {**base, "status": "agent_error", "error": message, "attempts": []}
     if not shutil.which("netconvert"):
         return {
             **base,
@@ -190,6 +302,9 @@ def generate(req: GenerateRequest):
             "error": "未找到 SUMO netconvert",
             "attempts": [],
         }
+
+    if req.selected_bounds is not None:
+        return _generate_selected_area(req, base)
 
     if req.source_mode != "synthetic" or req.output_kind != "map":
         try:

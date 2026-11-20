@@ -15,6 +15,7 @@ from urllib.request import Request, urlopen
 
 import amap_source
 import config
+from map_area import SelectedBounds
 from pydantic import BaseModel, TypeAdapter
 from realmap_models import GeocodingResult, PlaceCandidate, SourceRecord
 
@@ -175,13 +176,25 @@ def _photon_geocode(place_query: str, alternate_query: str, output: Path) -> Geo
     return GeocodingResult(list(candidates.values()), records, warnings)
 
 
-def fetch_roads(place: PlaceCandidate, radius_m: float, output: Path) -> SourceRecord:
+def fetch_roads(
+    place: PlaceCandidate,
+    radius_m: float | None,
+    output: Path,
+    *,
+    selected_bounds: SelectedBounds | None = None,
+) -> SourceRecord:
     """Select nearby ways and restriction relations, preserving whole OSM ways."""
-    if not 100 <= radius_m <= config.REAL_MAP.max_radius_m:
-        raise ValueError(f"半径须为 100–{config.REAL_MAP.max_radius_m:g} 米，未自动缩放")
+    if selected_bounds is not None:
+        selected_bounds.validate_extent(2 * config.REAL_MAP.max_radius_m)
+        area = selected_bounds
+        selector = f"{area.south:.7f},{area.west:.7f},{area.north:.7f},{area.east:.7f}"
+    else:
+        if radius_m is None or not 100 <= radius_m <= config.REAL_MAP.max_radius_m:
+            raise ValueError(f"半径须为 100–{config.REAL_MAP.max_radius_m:g} 米，未自动缩放")
+        selector = f"around:{radius_m:g},{place.latitude:.7f},{place.longitude:.7f}"
     query = (
         "[out:xml][timeout:50][maxsize:33554432];\n"
-        f'way(around:{radius_m:g},{place.latitude:.7f},{place.longitude:.7f})["highway"]->.roads;\n'
+        f'way({selector})["highway"]->.roads;\n'
         '(.roads; rel(bw.roads)["type"="restriction"];)->.selected;\n'
         "(.selected; >;); out body;\n"
     )

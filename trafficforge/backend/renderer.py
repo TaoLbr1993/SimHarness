@@ -5,9 +5,11 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Literal
 
+from map_area import SelectedBounds
 from PIL import Image, ImageDraw, ImageFont
 from preview_labels import english_name, osm_english_names
 from preview_location import MapOriginMarker, project_origin
+from road_display import CLASS_LABELS, DisplayLevel, visible_roads
 
 
 def _points(shape: str) -> list[tuple[float, float]]:
@@ -69,9 +71,27 @@ def _draw_signal(
         painter.ellipse((x - 5, y + dy - 5, x + 5, y + dy + 5), fill=color)
 
 
-def render_network(network_path: str, output_path: str, *, osm_source: bool = False) -> None:
+def render_network(
+    network_path: str,
+    output_path: str,
+    *,
+    osm_source: bool = False,
+    display_level: DisplayLevel | None = None,
+    ui_language: str = "en",
+) -> None:
     """Draw geometry and schematic signal-controlled lane markers from compiled SUMO."""
     root = ET.parse(network_path).getroot()
+    if display_level not in (None, "all"):
+        visible = set(
+            visible_roads([e for e in root.findall("edge") if "from" in e.attrib], display_level)
+        )
+        visible_nodes = {e.attrib[k] for e in visible for k in ("from", "to")}
+        for edge in root.findall("edge"):
+            if edge not in visible:
+                root.remove(edge)
+        for junction in root.findall("junction"):
+            if junction.get("id") not in visible_nodes:
+                root.remove(junction)
     signal_lanes = _signal_lanes(root)
     lanes = []
     for edge in root.findall("edge"):
@@ -104,12 +124,20 @@ def render_network(network_path: str, output_path: str, *, osm_source: bool = Fa
     title = "SUMO network geometry - compiled output"
     if osm_source:
         title = "OSM-derived SUMO network | (c) OpenStreetMap contributors (ODbL)"
-    draw.text((25, 18), title, fill="#172334", font=_font(25))
+    if ui_language == "zh":
+        title = "SUMO 路网几何"
+    if display_level not in (None, "all"):
+        title += (
+            " · " + CLASS_LABELS.get(display_level, ("主干道", "Main roads"))[ui_language == "en"]
+        )
+    draw.text((25, 18), title, fill="#172334", font=_map_font(25))
     for left, title, box in (
         (30, "Full network", bounds),
         (820, "Busiest junction detail", detail),
     ):
-        draw.text((left, 61), title, fill="#172334", font=_font(19))
+        if ui_language == "zh":
+            title = "全图" if left == 30 else "路口细节"
+        draw.text((left, 61), title, fill="#172334", font=_map_font(19))
         side = 740
         top = 98
         draw.rectangle((left, top, left + side, top + side), fill="#f6f8fa", outline="#cbd5e1")
@@ -180,16 +208,20 @@ def render_network(network_path: str, output_path: str, *, osm_source: bool = Fa
         draw.rectangle((left, top, left + side, top + side), outline="#cbd5e1")
     draw.text(
         (30, 850),
-        "Blue: lane direction  |  Purple: SUMO internal lanes  |  Geometry from .net.xml",
+        "蓝：车道方向  |  紫：路口内部车道"
+        if ui_language == "zh"
+        else "Blue: lane direction  |  Purple: SUMO internal lanes  |  Geometry from .net.xml",
         fill="#334155",
-        font=_font(17),
+        font=_map_font(17),
     )
     draw.text(
         (30, 882),
-        "Traffic-light icons: signal-controlled incoming lanes "
+        "信号灯标记表示受控进口车道，颜色仅为示意。"
+        if ui_language == "zh"
+        else "Traffic-light icons: signal-controlled incoming lanes "
         "(schematic placement; not live colors)",
         fill="#334155",
-        font=_font(17),
+        font=_map_font(17),
     )
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     image.save(output_path, format="PNG")
@@ -271,15 +303,18 @@ def render_map_overview(
     output_path: str,
     *,
     title: str,
-    radius_m: float,
+    radius_m: float | None,
     detailed: bool = False,
     origin: MapOriginMarker | None = None,
     ui_language: Literal["en", "zh"] = "en",
     source_osm_path: str | None = None,
+    selected_bounds: SelectedBounds | None = None,
+    display_level: DisplayLevel | None = None,
 ) -> None:
     """Render localized display names and scale from compiled SUMO XY, with OSM attribution."""
     root = ET.parse(network_path).getroot()
     edges = [e for e in root.findall("edge") if e.get("function") != "internal"]
+    edges = visible_roads(edges, display_level)
     geometries = [
         (e, _points(lane.get("shape", ""))) for e in edges if (lane := e.find("lane")) is not None
     ]
@@ -312,7 +347,23 @@ def render_map_overview(
         if ui_language == "en"
         else ("详细路网" if detailed else "主干道路网")
     )
+    if display_level is not None and display_level in CLASS_LABELS:
+        label = CLASS_LABELS[display_level][ui_language == "en"]
     heading = display_name(title) + " · " + label
+    if selected_bounds is not None:
+        extent = (
+            "Selected rectangular area · North up"
+            if ui_language == "en"
+            else "地图框选区域 · 北向上"
+        )
+    elif radius_m is not None:
+        extent = (
+            f"Approx. {radius_m / 1000:g} km radius · North up"
+            if ui_language == "en"
+            else f"周边约 {radius_m / 1000:g} 公里 · 北向上"
+        )
+    else:
+        raise ValueError("Preview needs a radius or selected bounds")
     heading_font = _map_font(30)
     # Romanized names can be considerably longer than the source Chinese name.
     while len(heading) > 1 and draw.textlength(heading, font=heading_font) > 1390:
@@ -320,9 +371,7 @@ def render_map_overview(
     draw.text((42, 20), heading, fill="#172334", font=heading_font)
     draw.text(
         (42, 65),
-        f"Approx. {radius_m / 1000:g} km radius · North up"
-        if ui_language == "en"
-        else f"周边约 {radius_m / 1000:g} 公里 · 北向上",
+        extent,
         fill="#475569",
         font=_map_font(20),
     )

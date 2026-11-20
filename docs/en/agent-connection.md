@@ -4,6 +4,8 @@
 
 The **智能体接入** (Agent Connection) page assigns models, vehicles, memory, and skills to the current experiment. Model inference runs in the SimHarness backend; the desktop configures and monitors the session. A separate Agent CLI process is not required.
 
+Start the English desktop with `uv run simharness traffic-ui-en`. The Chinese labels below identify the same controls in `traffic-ui`.
+
 ## Start a session
 
 1. Follow [Getting Started](getting-started.md) to start the backend and general traffic UI. Restart older processes after updating to this version.

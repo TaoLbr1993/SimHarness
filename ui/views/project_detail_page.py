@@ -21,16 +21,19 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QHeaderView,
-    QLabel,
-    QPushButton,
     QScrollArea,
-    QTableWidget,
     QTableWidgetItem,
-    QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
+from ui.localization import tr
+from ui.localized_widgets import (
+    QLabel,
+    QPushButton,
+    QTableWidget,
+    QToolButton,
+)
 from ui.models import WorkspaceOverview, WorkspaceSummary
 from ui.models.protocol import WorkspaceRecentSimulation
 from ui.views.components import PAGE_CONTENT_MARGIN, PANEL_CONTENT_MARGIN, page_header
@@ -181,6 +184,10 @@ class ProjectDetailPage(QWidget):
     def set_workspace(self, workspace: WorkspaceSummary | None) -> None:
         previous_id = self._workspace.workspace_id if self._workspace is not None else None
         self._workspace = workspace
+        self.name_field.value_label.setProperty("literalText", workspace is not None)
+        self.description_field.value_label.setProperty(
+            "literalText", bool(workspace and workspace.description)
+        )
         self.name_field.value_label.setText(
             workspace.name if workspace is not None else "未命名项目"
         )
@@ -277,7 +284,7 @@ class ProjectDetailPage(QWidget):
             )
             for column, value in enumerate(values):
                 self.simulation_table.setItem(row, column, QTableWidgetItem(value))
-            status = QLabel(f"●  {status_label}")
+            status = QLabel(f"●  {tr(status_label)}")
             status.setObjectName("projectSimulationStatus")
             status.setProperty("state", status_state)
             status.setAccessibleName(f"仿真状态：{status_label}")

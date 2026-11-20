@@ -9,14 +9,17 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
-    QLabel,
-    QMainWindow,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
 
 from ui.api_client import RestApiClient
+from ui.localization import tr
+from ui.localized_widgets import (
+    QLabel,
+    QMainWindow,
+)
 from ui.models import (
     TRAFFIC_SCENARIO_PRESETS,
     ControlAvailability,
@@ -236,7 +239,9 @@ class MainWindow(QMainWindow):
         self.scene_page.generation_page_requested.connect(self._open_scene_generator)
         self.generation_page.generation_requested.connect(
             lambda description: vm.generate_scene(
-                description, simulation_mode=self._generation_mode
+                description,
+                simulation_mode=self._generation_mode,
+                selected_bounds=self.generation_page.selected_bounds,
             )
         )
         self.generation_page.publish_requested.connect(vm.publish_scene)
@@ -411,9 +416,9 @@ class MainWindow(QMainWindow):
         default_name = str(Path.home() / f"simharness-simulation-{run_id}.zip")
         target, _ = QFileDialog.getSaveFileName(
             self,
-            "导出仿真结果",
+            tr("导出仿真结果"),
             default_name,
-            "ZIP 压缩包 (*.zip)",
+            tr("ZIP 压缩包 (*.zip)"),
         )
         if not target:
             return
@@ -661,7 +666,7 @@ class MainWindow(QMainWindow):
     def _choose_map(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
             self,
-            "导入 OpenDRIVE 地图",
+            tr("导入 OpenDRIVE 地图"),
             str(Path.home()),
             "OpenDRIVE (*.xodr)",
         )

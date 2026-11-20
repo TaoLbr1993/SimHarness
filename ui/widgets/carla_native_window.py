@@ -7,7 +7,14 @@ from collections.abc import Callable
 
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QCloseEvent, QWindow
-from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QVBoxLayout,
+    QWidget,
+)
+
+from ui.localized_widgets import (
+    QLabel,
+)
 
 
 class CarlaWindowEmbedError(RuntimeError):

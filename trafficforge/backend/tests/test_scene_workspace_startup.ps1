@@ -4,7 +4,7 @@ $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../..'))
 $names = @('OPENAI_API_KEY','MODEL_API_KEY','AMAP_WEB_API_KEY','MAP_GEOCODER_PROVIDER','MAP_AMAP_CITY','WSLENV')
 $saved = @{}
 foreach ($name in $names) { $saved[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
-$capture = [pscustomobject]@{ HealthCalls=0; Forwarded=@(); MapKeyReachedChild=$false }
+$capture = [pscustomobject]@{ HealthCalls=0; Forwarded=@(); MapKeyReachedChild=$false; ModelKeyReachedChild=$false }
 function Invoke-RestMethod {
     param($Uri, $TimeoutSec)
     if ($Uri -eq 'http://127.0.0.1:8001/health') {
@@ -18,6 +18,7 @@ function Start-Process {
     param($FilePath,$ArgumentList,$WindowStyle,$RedirectStandardOutput,$RedirectStandardError,[switch]$PassThru)
     if ($FilePath -ne 'wsl.exe') { throw 'Unexpected service launch' }
     $capture.Forwarded = $env:WSLENV -split ':'
+    $capture.ModelKeyReachedChild = $env:MODEL_API_KEY -eq 'offline-test-model-key'
     $capture.MapKeyReachedChild = $env:AMAP_WEB_API_KEY -eq 'offline-test-map-key'
     return [System.Diagnostics.Process]::GetCurrentProcess()
 }
@@ -32,7 +33,7 @@ try {
     if ($capture.Forwarded -match '^(AMAP_WEB_API_KEY|MAP_GEOCODER_PROVIDER|MAP_AMAP_CITY)(/|$)') {
         throw 'Absent map configuration was exported into WSL'
     }
-    if ('MODEL_API_KEY/u' -notin $capture.Forwarded -or 'EXISTING/u' -notin $capture.Forwarded) {
+    if (-not $capture.ModelKeyReachedChild -or 'MODEL_API_KEY/u' -notin $capture.Forwarded -or 'EXISTING/u' -notin $capture.Forwarded) {
         throw 'Required or unrelated forwarding was lost'
     }
     $env:AMAP_WEB_API_KEY = 'offline-test-map-key'
@@ -49,7 +50,17 @@ try {
     if (-not $capture.MapKeyReachedChild -or $env:WSLENV -ne $beforeWslEnv) {
         throw 'Credential forwarding or environment restoration failed'
     }
-    Write-Output 'PASS: absent/present map configuration, forwarding deduplication and restoration'
+    # A blank process override isolates this test from any real user or machine key.
+    $env:OPENAI_API_KEY = ' '
+    $env:MODEL_API_KEY = ' '
+    $env:WSLENV = 'MODEL_API_KEY/u:EXISTING/u'
+    $capture.HealthCalls = 0
+    & (Join-Path $repo 'scripts/dev/start_trafficforge.ps1') -NoUi | Out-Null
+    if ($capture.HealthCalls -lt 2 -or 'MODEL_API_KEY/u' -in $capture.Forwarded -or
+        'EXISTING/u' -notin $capture.Forwarded -or $env:WSLENV -ne 'MODEL_API_KEY/u:EXISTING/u') {
+        throw 'Keyless startup failed or an empty Windows key would override the WSL configuration'
+    }
+    Write-Output 'PASS: keyless startup, model and map configuration forwarding and restoration'
 } finally {
     foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $saved[$name], 'Process') }
 }

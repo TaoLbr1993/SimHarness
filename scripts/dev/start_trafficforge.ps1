@@ -29,7 +29,6 @@ if (-not (Read-ServiceHealth 'http://127.0.0.1:8001/health')) {
     $apiKey = [Environment]::GetEnvironmentVariable('OPENAI_API_KEY', 'Process')
     if (-not $apiKey) { $apiKey = [Environment]::GetEnvironmentVariable('OPENAI_API_KEY', 'User') }
     if (-not $apiKey) { $apiKey = [Environment]::GetEnvironmentVariable('OPENAI_API_KEY', 'Machine') }
-    if (-not $apiKey) { throw 'OPENAI_API_KEY is not configured.' }
     $previousModelKey = $env:MODEL_API_KEY
     $previousWslEnv = $env:WSLENV
     $mapEnvironmentNames = @('AMAP_WEB_API_KEY','MAP_GEOCODER_PROVIDER','MAP_AMAP_CITY')
@@ -38,20 +37,21 @@ if (-not (Read-ServiceHealth 'http://127.0.0.1:8001/health')) {
         $previousMapEnvironment[$mapEnvironmentName] = [Environment]::GetEnvironmentVariable($mapEnvironmentName, 'Process')
     }
     try {
-        $env:MODEL_API_KEY = $apiKey
-        $forwardedMapNames = @()
+        $forwarded = @()
+        if (-not [string]::IsNullOrWhiteSpace($apiKey)) { $env:MODEL_API_KEY = $apiKey }
+        if (-not [string]::IsNullOrWhiteSpace($env:MODEL_API_KEY)) { $forwarded += 'MODEL_API_KEY' }
         foreach ($mapEnvironmentName in $mapEnvironmentNames) {
             $mapEnvironmentValue = [Environment]::GetEnvironmentVariable($mapEnvironmentName, 'Process')
             if (-not $mapEnvironmentValue) { $mapEnvironmentValue = [Environment]::GetEnvironmentVariable($mapEnvironmentName, 'User') }
             if (-not $mapEnvironmentValue) { $mapEnvironmentValue = [Environment]::GetEnvironmentVariable($mapEnvironmentName, 'Machine') }
             if (-not [string]::IsNullOrWhiteSpace($mapEnvironmentValue)) {
                 [Environment]::SetEnvironmentVariable($mapEnvironmentName, $mapEnvironmentValue, 'Process')
-                $forwardedMapNames += $mapEnvironmentName
+                $forwarded += $mapEnvironmentName
             }
         }
         $forwardedNames = @('MODEL_API_KEY') + $mapEnvironmentNames
         $forwardedPattern = '^(' + (($forwardedNames | ForEach-Object { [regex]::Escape($_) }) -join '|') + ')(/|$)'
-        $env:WSLENV = (@($previousWslEnv -split ':' | Where-Object { $_ -and $_ -notmatch $forwardedPattern }) + @((@('MODEL_API_KEY') + $forwardedMapNames) | ForEach-Object { $_ + '/u' })) -join ':'
+        $env:WSLENV = (@($previousWslEnv -split ':' | Where-Object { $_ -and $_ -notmatch $forwardedPattern }) + @($forwarded | ForEach-Object { $_ + '/u' })) -join ':'
         $backend = Join-Path $repoRoot 'trafficforge/backend'
         $arguments = @('-d','SimHarness-Ubuntu','-u','nl2map','--cd',('"'+$backend+'"'),'--','/opt/nl2map-venv/bin/python','-m','uvicorn','main:app','--host','127.0.0.1','--port','8001')
         $generator = Start-Process -FilePath 'wsl.exe' -ArgumentList $arguments -WindowStyle Hidden -RedirectStandardOutput (Join-Path $logs 'generator.stdout.log') -RedirectStandardError (Join-Path $logs 'generator.stderr.log') -PassThru

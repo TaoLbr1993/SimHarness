@@ -6,24 +6,28 @@ from collections.abc import Callable
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
-    QDialog,
     QDialogButtonBox,
     QFrame,
     QGridLayout,
     QHBoxLayout,
-    QLabel,
-    QLineEdit,
     QProgressBar,
-    QPushButton,
     QScrollArea,
+    QSizePolicy,
     QStackedWidget,
-    QTableWidget,
     QTableWidgetItem,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
+from ui.localization import tr
+from ui.localized_widgets import (
+    QDialog,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QTableWidget,
+)
 from ui.models import TRAFFIC_SCENARIO_PRESETS, MapSummary, WorkspaceOverview, WorkspaceSummary
 from ui.views.components import PAGE_CONTENT_MARGIN, empty_state, metric_card, panel
 from ui.widgets import MapLibreDeckMapWidget
@@ -68,7 +72,7 @@ class WorkspaceEditDialog(QDialog):
         layout.addWidget(description_label)
         self.description_input = QTextEdit()
         self.description_input.setObjectName("workspaceDescriptionInput")
-        self.description_input.setPlaceholderText(f"请输入{entity_label}描述…")
+        self.description_input.setPlaceholderText(tr(f"请输入{entity_label}描述…"))
         self.description_input.setFixedHeight(110)
         if workspace is not None:
             self.description_input.setPlainText(workspace.description)
@@ -77,8 +81,8 @@ class WorkspaceEditDialog(QDialog):
         self.buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Ok
         )
-        self.buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("取消")
-        self.buttons.button(QDialogButtonBox.StandardButton.Ok).setText("确定")
+        self.buttons.button(QDialogButtonBox.StandardButton.Cancel).setText(tr("取消"))
+        self.buttons.button(QDialogButtonBox.StandardButton.Ok).setText(tr("确定"))
         self.buttons.button(QDialogButtonBox.StandardButton.Ok).setObjectName("primaryButton")
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
@@ -131,9 +135,9 @@ class WorkspaceDeleteDialog(QDialog):
         self.buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Ok
         )
-        self.buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("取消")
+        self.buttons.button(QDialogButtonBox.StandardButton.Cancel).setText(tr("取消"))
         delete = self.buttons.button(QDialogButtonBox.StandardButton.Ok)
-        delete.setText("删除")
+        delete.setText(tr("删除"))
         delete.setObjectName("dangerButton")
         delete.clicked.connect(self._attempt_delete)
         self.buttons.rejected.connect(self.reject)
@@ -194,6 +198,8 @@ class WorkspaceOverviewPage(QWidget):
     def set_workspace(self, workspace: WorkspaceSummary | None) -> None:
         self._workspace = workspace
         available = workspace is not None
+        self.title.setProperty("literalText", workspace is not None)
+        self.description.setProperty("literalText", bool(workspace and workspace.description))
         self.title.setText(workspace.name if workspace is not None else "工作区")
         self.description.setText(
             workspace.description
@@ -240,7 +246,7 @@ class WorkspaceOverviewPage(QWidget):
             progress = QProgressBar()
             progress.setRange(0, maximum)
             progress.setValue(sample.simulations)
-            progress.setFormat(f"{sample.simulations} 次")
+            progress.setFormat(tr(f"{sample.simulations} 次"))
             self.activity_table.setCellWidget(row, 1, progress)
         self.recent_table.setRowCount(len(overview.recent_simulations))
         status_labels = {"SUCCEEDED": "成功", "WARNING": "警告", "FAILED": "失败"}
@@ -248,7 +254,7 @@ class WorkspaceOverviewPage(QWidget):
             duration_minutes = simulation.duration_ms // 60_000
             row_values = (
                 simulation.name,
-                status_labels[simulation.status],
+                tr(status_labels[simulation.status]),
                 f"{duration_minutes // 60:02d}:{duration_minutes % 60:02d}",
                 simulation.automation_summary,
             )
@@ -282,7 +288,9 @@ class WorkspaceOverviewPage(QWidget):
         self.enter_button.setProperty("role", "primaryAction")
         self.enter_button.clicked.connect(self.enter_requested)
         for button in (self.rename_button, self.delete_button, self.enter_button):
-            button.setFixedSize(112, 36)
+            button.setMinimumWidth(112)
+            button.setFixedHeight(36)
+            button.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         layout.addWidget(self.rename_button)
         layout.addWidget(self.delete_button)
         layout.addWidget(self.enter_button)

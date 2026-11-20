@@ -135,6 +135,7 @@ def _build_parser() -> argparse.ArgumentParser:
     for command, help_text in (
         ("ui", "open the mixed-automation desktop UI"),
         ("traffic-ui", "open the general-traffic desktop UI"),
+        ("traffic-ui-en", "open the general-traffic desktop UI in English"),
     ):
         ui = subcommands.add_parser(command, help=help_text)
         ui.add_argument(
@@ -359,7 +360,12 @@ def _run_ui(args: argparse.Namespace) -> int:
         ):
             _fail("UI dependencies are unavailable; run 'uv sync --extra ui'")
         raise
-    return run(args.api_url, args.scenario_id, traffic_mode=args.command == "traffic-ui")
+    return run(
+        args.api_url,
+        args.scenario_id,
+        traffic_mode=args.command in {"traffic-ui", "traffic-ui-en"},
+        language="en" if args.command == "traffic-ui-en" else "zh",
+    )
 
 
 def _run_serve(args: argparse.Namespace) -> int:
@@ -523,7 +529,7 @@ def main(argv: list[str] | None = None) -> int:
             return _run_carla_doctor(args)
         if args.command == "carla" and args.carla_command == "smoke":
             return _run_carla_smoke(args)
-        if args.command in {"ui", "traffic-ui"}:
+        if args.command in {"ui", "traffic-ui", "traffic-ui-en"}:
             return _run_ui(args)
         if args.command == "serve":
             return _run_serve(args)

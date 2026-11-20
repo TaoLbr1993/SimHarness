@@ -3,7 +3,17 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
+
+from ui.localized_widgets import (
+    QLabel,
+)
 
 PAGE_CONTENT_MARGIN = 18
 PANEL_CONTENT_MARGIN = 14

@@ -20,6 +20,23 @@ import {
   vehicleModelSpec
 } from "./vehicle_models.mjs";
 
+const english = new URLSearchParams(window.location.search).get("language") === "en";
+const label = (zh, en) => english ? en : zh;
+if (english) {
+  document.documentElement.lang = "en";
+  document.title = "SimHarness Global Map";
+  document.getElementById("map-hud").setAttribute("aria-label", "Map legend");
+  document.getElementById("view-controls").setAttribute("aria-label", "Map controls");
+  document.getElementById("reset-view").textContent = "Reset";
+  document.querySelectorAll(".legend-item").forEach((item) => {
+    for (const node of item.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        node.textContent = node.textContent.replace("车辆", "Vehicles").replace("交通信号", "Traffic signals");
+      }
+    }
+  });
+}
+
 const EARTH_RADIUS_M = 6378137;
 const RAD_TO_DEG = 180 / Math.PI;
 const EMPTY_NETWORK = {type: "FeatureCollection", features: []};
@@ -89,8 +106,8 @@ class MapMaximizeControl {
     this.container.hidden = true;
     this.button = document.createElement("button");
     this.button.type = "button";
-    this.button.setAttribute("aria-label", "最大化地图");
-    this.button.title = "最大化地图";
+    this.button.setAttribute("aria-label", label("最大化地图", "Maximize map"));
+    this.button.title = label("最大化地图", "Maximize map");
     this.icon = document.createElement("span");
     this.icon.className = "trafficverse-maximize-icon";
     this.icon.setAttribute("aria-hidden", "true");
@@ -111,9 +128,11 @@ class MapMaximizeControl {
       return;
     }
     this.container.hidden = !state.maximizeEnabled;
-    const label = state.maximized ? "还原地图" : "最大化地图";
-    this.button.setAttribute("aria-label", label);
-    this.button.title = label;
+    const buttonLabel = state.maximized
+      ? label("还原地图", "Restore map")
+      : label("最大化地图", "Maximize map");
+    this.button.setAttribute("aria-label", buttonLabel);
+    this.button.title = buttonLabel;
     this.button.classList.toggle("is-maximized", state.maximized);
   }
 }
@@ -133,7 +152,7 @@ try {
     antialias: true
   });
 } catch (error) {
-  setStatus(`地图初始化失败：${error.message}`, true);
+  setStatus(`${label("地图初始化失败：", "Map initialization failed: ")}${error.message}`, true);
   throw error;
 }
 
@@ -212,12 +231,12 @@ function vehicleTooltip(vehicle) {
     return null;
   }
   if (isStaticObstacle(vehicle)) {
-    return `${vehicle.vehicle_id}\n固定道路障碍物`;
+    return `${vehicle.vehicle_id}\n${label("固定道路障碍物", "Fixed road obstacle")}`;
   }
   const speedKmh = Number.isFinite(vehicle.speed_mps) ? vehicle.speed_mps * 3.6 : 0;
-  const identity = isAmbulance(vehicle) ? "救护车" :
-    state.trafficPresentation ? "车辆" : `等级 ${vehicle.automation_level}`;
-  return `${vehicle.vehicle_id}\n${identity} · ${speedKmh.toFixed(1)} km/h\n车道 ${vehicle.lane_id}`;
+  const identity = isAmbulance(vehicle) ? label("救护车", "Ambulance") :
+    state.trafficPresentation ? label("车辆", "Vehicle") : `${label("等级", "Level")} ${vehicle.automation_level}`;
+  return `${vehicle.vehicle_id}\n${identity} · ${speedKmh.toFixed(1)} km/h\n${label("车道", "Lane")} ${vehicle.lane_id}`;
 }
 
 function laneWidthM(feature) {
@@ -832,7 +851,7 @@ function updateMapStatus() {
   const vehicleCount = state.authoritativeVehicles.length;
   const collisionCount = state.collisionVehicleIds.size;
   setStatus(
-    `车道 ${roadCount} · 信号 ${signalCount} · 车辆 ${vehicleCount} · 碰撞 ${collisionCount}`
+    `${label("车道", "Lanes")} ${roadCount} · ${label("信号", "Signals")} ${signalCount} · ${label("车辆", "Vehicles")} ${vehicleCount} · ${label("碰撞", "Collisions")} ${collisionCount}`
   );
 }
 
@@ -1150,13 +1169,13 @@ window.TrafficVerseMap = {
 
 function connectQtBridge() {
   if (!window.qt || !window.QWebChannel) {
-    setStatus("地图已就绪 · 浏览器预览模式");
+    setStatus(label("地图已就绪 · 浏览器预览模式", "Map ready · Browser preview"));
     return;
   }
   new window.QWebChannel(window.qt.webChannelTransport, (channel) => {
     state.bridge = channel.objects.trafficVerseBridge;
     state.bridge.mapReady();
-    setStatus("地图已就绪");
+    setStatus(label("地图已就绪", "Map ready"));
   });
 }
 
@@ -1180,7 +1199,7 @@ document.addEventListener("keydown", (event) => {
   }
 });
 map.on("error", (event) => {
-  const message = event?.error?.message ?? "未知错误";
-  setStatus(`地图资源加载失败：${message}`, true);
+  const message = event?.error?.message ?? label("未知错误", "Unknown error");
+  setStatus(`${label("地图资源加载失败：", "Map resource loading failed: ")}${message}`, true);
 });
 map.once("remove", cancelVehicleAnimation);

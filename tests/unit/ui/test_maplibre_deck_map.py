@@ -13,7 +13,7 @@ MAP_WEB_ROOT = Path(__file__).resolve().parents[3] / "ui/web/map"
 
 def test_both_desktop_entries_accept_the_same_connection_options() -> None:
     parser = _build_parser()
-    for command in ("ui", "traffic-ui"):
+    for command in ("ui", "traffic-ui", "traffic-ui-en"):
         args = parser.parse_args([command, "--api-url", "http://127.0.0.1:9000"])
         assert args.command == command
         assert args.api_url == "http://127.0.0.1:9000"
@@ -173,8 +173,8 @@ def test_live_map_exposes_a_maximize_control_above_navigation_and_resizes_in_pla
     host = (MAP_WEB_ROOT.parents[1] / "widgets/maplibre_deck_map.py").read_text(encoding="utf-8")
 
     assert "class MapMaximizeControl" in source
-    assert 'aria-label", "最大化地图"' in source
-    assert 'title = "最大化地图"' in source
+    assert 'aria-label", label("最大化地图", "Maximize map")' in source
+    assert 'title = label("最大化地图", "Maximize map")' in source
     assert "state.bridge.toggleMapMaximize()" in source
     assert "setMaximizeEnabled(enabled)" in source
     assert "setMaximized(maximized)" in source

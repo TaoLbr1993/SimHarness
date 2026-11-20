@@ -1,0 +1,378 @@
+[
+  {
+    "pattern": "(.*?)：Skill\\ (.*?)\\ 不可用，运行时将忽略",
+    "target": "{0}: skill {1} is unavailable and will be omitted",
+    "translate": []
+  },
+  {
+    "pattern": "(.*?)：后端运行器未读取到环境变量\\ (.*?)",
+    "target": "{0}: the backend runner cannot read environment variable {1}",
+    "translate": []
+  },
+  {
+    "pattern": "有效动作\\ (.*?)，其余\\ (.*?)\\ 辆使用\\ SUMO",
+    "target": "Valid actions: {0}; {1} other vehicles use SUMO",
+    "translate": []
+  },
+  {
+    "pattern": "第\\ (.*?)\\ 帧：提交\\ (.*?)\\ 个动作，其余车辆由\\ SUMO\\ 控制",
+    "target": "Frame {0}: submitted {1} actions; other vehicles use SUMO",
+    "translate": []
+  },
+  {
+    "pattern": "正在推理：第\\ (.*?)\\ 帧，仿真等待模型",
+    "target": "Inferring frame {0}; simulation is waiting for the model",
+    "translate": []
+  },
+  {
+    "pattern": "概要展示\\ (.*?)\\ /\\ (.*?)\\ 辆车，每车最多\\ 3\\ 辆邻车、2\\ 轮记忆、3\\ 个\\ Skill；部分内容已省略。",
+    "target": "Previewing {0} / {1} vehicles, with up to 3 neighbors, 2 memory steps and 3 skills per vehicle; some content is omitted.",
+    "translate": []
+  },
+  {
+    "pattern": "场景\\ (.*?)\\ 已保存，但系统尚未加载有效场景信息。请检查两服务的场景目录并刷新列表。",
+    "target": "Scenario {0} was saved, but valid scenario information has not loaded. Check the two services' scenario directories and refresh.",
+    "translate": []
+  },
+  {
+    "pattern": "第\\ (.*?)\\ 帧\\ ·\\ (.*?)\\\n(.*?)\\\n(.*?)\\ ·\\ (.*?)",
+    "target": "Frame {0} · {1}\n{2}\n{3} · {4}",
+    "translate": [
+      3,
+      4
+    ]
+  },
+  {
+    "pattern": "未设置\\ (.*?)；请以窗口模式启动\\ CARLA，设置其原生窗口\\ ID\\ 后重试",
+    "target": "Missing {0}; start CARLA in windowed mode, set its native window ID and retry",
+    "translate": []
+  },
+  {
+    "pattern": "第\\ (.*?)\\ 帧\\ ·\\ (.*?)\\ ·\\ (.*?)\\ ·\\ (.*?)",
+    "target": "Frame {0} · {1} · {2} · {3}",
+    "translate": []
+  },
+  {
+    "pattern": "共\\ (.*?)\\ 条控制组决策记录\\ ·\\ 每页最多\\ 20\\ 条",
+    "target": "{0} group decisions · Up to 20 per page",
+    "translate": []
+  },
+  {
+    "pattern": "已加入\\ (.*?)\\ 轮历史\\ ·\\ 展示最近\\ (.*?)\\ 轮",
+    "target": "Included {0} history steps · Showing the latest {1}",
+    "translate": []
+  },
+  {
+    "pattern": "感知半径\\ (.*?)\\ m\\ ·\\ 周边\\ (.*?)\\ 辆车",
+    "target": "Perception radius {0} m · Nearby: {1} vehicles",
+    "translate": []
+  },
+  {
+    "pattern": "当前实验：(.*?)\\ \\ ·\\ \\ 第\\ (.*?)\\ 帧",
+    "target": "Experiment: {0}  ·  Frame {1}",
+    "translate": []
+  },
+  {
+    "pattern": "\\\n第\\ (.*?)\\ 帧\\ ·\\ (.*?)\\\n(.*?)",
+    "target": "\nFrame {0} · {1}\n{2}",
+    "translate": []
+  },
+  {
+    "pattern": "(.*?)\\ \\ ·\\ \\ 仿真时间\\ (.*?)\\ s",
+    "target": "{0}  ·  Simulation time {1} s",
+    "translate": []
+  },
+  {
+    "pattern": "模型返回\\ (.*?)\\ 个候选动作（以校验结果为准）",
+    "target": "The model returned {0} candidate actions (subject to validation)",
+    "translate": []
+  },
+  {
+    "pattern": "场景\\ ID：(.*?)\\ \\ ·\\ \\ (.*?)",
+    "target": "Scenario ID: {0}  ·  {1}",
+    "translate": []
+  },
+  {
+    "pattern": "确定要删除“(.*?)”工作区吗？此操作无法撤销。",
+    "target": "Delete workspace “{0}”? This cannot be undone.",
+    "translate": []
+  },
+  {
+    "pattern": "复制自“(.*?)”。原仿真参数摘要：(.*?)",
+    "target": "Copied from “{0}”. Original settings: {1}",
+    "translate": []
+  },
+  {
+    "pattern": "计划发车：(.*?)\\ 辆；发车强度：(.*?)",
+    "target": "Planned departures: {0} vehicles; departure rate: {1}",
+    "translate": []
+  },
+  {
+    "pattern": "工作区名称不匹配，请输入完整名称“(.*?)”。",
+    "target": "Workspace name does not match. Enter the full name “{0}”。",
+    "translate": []
+  },
+  {
+    "pattern": "(.*?)\\ (.*?)%（(.*?)\\ 辆）",
+    "target": "{0} {1}%（{2} vehicles)",
+    "translate": []
+  },
+  {
+    "pattern": "正在停止当前仿真，随后启动“(.*?)”……",
+    "target": "Stopping the current simulation, then starting “{0}”……",
+    "translate": []
+  },
+  {
+    "pattern": "目标密度参考值：(.*?)\\ 辆/公里/车道",
+    "target": "Reference target density: {0} vehicles/km/lane",
+    "translate": []
+  },
+  {
+    "pattern": "预热：(.*?)\\ 秒；随机种子：(.*?)",
+    "target": "Warm-up: {0} s; seed: {1}",
+    "translate": []
+  },
+  {
+    "pattern": "第\\ (.*?)\\ 帧\\ ·\\ (.*?)",
+    "target": "Frame {0} · {1}",
+    "translate": []
+  },
+  {
+    "pattern": "CARLA\\ 三维视图不可用\\\n(.*?)",
+    "target": "CARLA 3D view unavailable\n{0}",
+    "translate": []
+  },
+  {
+    "pattern": "(.*?)：请填写服务地址和模型\\ ID",
+    "target": "{0}: Enter a service URL and model ID",
+    "translate": []
+  },
+  {
+    "pattern": "(.*?)：请选择车辆或填写车辆\\ ID",
+    "target": "{0}: Select vehicles or enter their IDs",
+    "translate": []
+  },
+  {
+    "pattern": "正在准备“(.*?)”并进入仿真运行……",
+    "target": "Preparing “{0}” and opening Live Simulation…",
+    "translate": []
+  },
+  {
+    "pattern": "“(.*?)”的(.*?)接口尚未接入。",
+    "target": "“{0}”: {1} API is not connected yet.",
+    "translate": []
+  },
+  {
+    "pattern": "服务器返回了无法解析的数据：(.*?)",
+    "target": "The server returned unreadable data: {0}",
+    "translate": []
+  },
+  {
+    "pattern": "已复制“(.*?)”，可继续调整参数。",
+    "target": "Copied “{0}”. You can adjust its settings.",
+    "translate": []
+  },
+  {
+    "pattern": "已加载“(.*?)”的仿真配置。",
+    "target": "Loaded settings for “{0}”.",
+    "translate": []
+  },
+  {
+    "pattern": "打开\\ (.*?)\\ 的仿真结果",
+    "target": "Open results for {0}",
+    "translate": []
+  },
+  {
+    "pattern": "(.*?)\\ 辆/小时/入口车道",
+    "target": "{0} vehicles/hour/entry lane",
+    "translate": []
+  },
+  {
+    "pattern": "后续速度\\ (.*?)\\ m/s",
+    "target": "Next speed {0} m/s",
+    "translate": []
+  },
+  {
+    "pattern": "时长\\ ·\\ (.*?)\\ s",
+    "target": "Duration · {0} s",
+    "translate": []
+  },
+  {
+    "pattern": "车辆\\ ·\\ (.*?)\\ 辆",
+    "target": "Vehicles · {0} vehicles",
+    "translate": []
+  },
+  {
+    "pattern": "无法读取地图文件：(.*?)",
+    "target": "Cannot read map file: {0}",
+    "translate": []
+  },
+  {
+    "pattern": "无法写入导出文件：(.*?)",
+    "target": "Cannot write export file: {0}",
+    "translate": []
+  },
+  {
+    "pattern": "导出文件写入失败：(.*?)",
+    "target": "Failed to write export file: {0}",
+    "translate": []
+  },
+  {
+    "pattern": "无法处理实时消息：(.*?)",
+    "target": "Cannot process realtime message: {0}",
+    "translate": []
+  },
+  {
+    "pattern": "(.*?)仿真\\ (.*?)",
+    "target": "{0}Simulation {1}",
+    "translate": []
+  },
+  {
+    "pattern": "区域预览\\ ·\\ (.*?)",
+    "target": "Area Preview · {0}",
+    "translate": []
+  },
+  {
+    "pattern": "当前帧在场车辆：(.*?)",
+    "target": "Vehicles in the current frame: {0}",
+    "translate": []
+  },
+  {
+    "pattern": "实时协议错误：(.*?)",
+    "target": "Realtime protocol error: {0}",
+    "translate": []
+  },
+  {
+    "pattern": "命令发送失败：(.*?)",
+    "target": "Failed to send command: {0}",
+    "translate": []
+  },
+  {
+    "pattern": "结果已导出到：(.*?)",
+    "target": "Results exported to: {0}",
+    "translate": []
+  },
+  {
+    "pattern": "删除工作区\\ (.*?)",
+    "target": "Delete workspace {0}",
+    "translate": []
+  },
+  {
+    "pattern": "打开交通场景：(.*?)",
+    "target": "Open traffic scenario: {0}",
+    "translate": []
+  },
+  {
+    "pattern": "目标交通状态：(.*?)",
+    "target": "Target traffic state: {0}",
+    "translate": []
+  },
+  {
+    "pattern": "已选\\ (.*?)\\ 项",
+    "target": "{0} selected",
+    "translate": []
+  },
+  {
+    "pattern": "目标速度\\ (.*?)",
+    "target": "Target speed {0}",
+    "translate": []
+  },
+  {
+    "pattern": "请输入(.*?)描述…",
+    "target": "Enter a value{0}Description…",
+    "translate": [
+      0
+    ]
+  },
+  {
+    "pattern": "(.*?)\\ 个地图包",
+    "target": "{0} map packages",
+    "translate": []
+  },
+  {
+    "pattern": "加速度\\ (.*?)",
+    "target": "Acceleration {0}",
+    "translate": []
+  },
+  {
+    "pattern": "操作失败：(.*?)",
+    "target": "Operation failed: {0}",
+    "translate": []
+  },
+  {
+    "pattern": "控制组\\ (.*?)",
+    "target": "Control group {0}",
+    "translate": []
+  },
+  {
+    "pattern": "(.*?)\\ 个文件",
+    "target": "{0} files",
+    "translate": []
+  },
+  {
+    "pattern": "仿真状态：(.*?)",
+    "target": "Simulation status: {0}",
+    "translate": [
+      0
+    ]
+  },
+  {
+    "pattern": "请输入(.*?)名称",
+    "target": "Enter a value{0}Name",
+    "translate": [
+      0
+    ]
+  },
+  {
+    "pattern": "(.*?)\\ 副本",
+    "target": "{0} copy",
+    "translate": []
+  },
+  {
+    "pattern": "车道\\ (.*?)",
+    "target": "Lane {0}",
+    "translate": []
+  },
+  {
+    "pattern": "(.*?)\\ 秒",
+    "target": "{0} s",
+    "translate": []
+  },
+  {
+    "pattern": "(.*?)\\ 辆",
+    "target": "{0} vehicles",
+    "translate": []
+  },
+  {
+    "pattern": "总计：(.*?)",
+    "target": "Total: {0}",
+    "translate": []
+  },
+  {
+    "pattern": "(.*?)\\ 次",
+    "target": "{0} runs",
+    "translate": []
+  },
+  {
+    "pattern": "展开(.*?)",
+    "target": "Expand {0}",
+    "translate": []
+  },
+  {
+    "pattern": "编辑(.*?)",
+    "target": "Edit{0}",
+    "translate": []
+  },
+  {
+    "pattern": "(.*?)智驾",
+    "target": "{0}Automation",
+    "translate": []
+  },
+  {
+    "pattern": "(.*?)名称",
+    "target": "{0}Name",
+    "translate": [
+      0
+    ]
+  }
+]

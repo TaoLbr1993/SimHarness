@@ -8,16 +8,10 @@ from pydantic import ValidationError
 from PySide6.QtCore import Property, QPoint, Qt, QTime, Signal, Slot
 from PySide6.QtGui import QColor, QPainter, QPaintEvent, QPalette, QPen, QPolygon
 from PySide6.QtWidgets import (
-    QCheckBox,
-    QComboBox,
     QFrame,
     QGridLayout,
     QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QPushButton,
     QScrollArea,
-    QSpinBox,
     QStyle,
     QStyleOptionSpinBox,
     QTextEdit,
@@ -26,6 +20,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ui.localization import tr
+from ui.localized_widgets import (
+    QCheckBox,
+    QComboBox,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QSpinBox,
+)
 from ui.models import (
     AutomationDemand,
     MapSummary,
@@ -220,7 +223,7 @@ class SceneConfigurationPage(QWidget):
         name_label = self._field_label("场景名称", required=True)
         self.scene_name = QLineEdit()
         self.scene_name.setObjectName("sceneNameInput")
-        self.scene_name.setText("未命名场景")
+        self.scene_name.setText(tr("未命名场景"))
         self.scene_name.setPlaceholderText("请输入场景名称")
         self.scene_name.setClearButtonEnabled(True)
         self.scene_name.setAccessibleName("仿真场景名称")
@@ -230,7 +233,7 @@ class SceneConfigurationPage(QWidget):
         description_label = self._field_label("场景描述")
         self.description = QTextEdit()
         self.description.setObjectName("sceneDescriptionInput")
-        self.description.setPlaceholderText("请输入场景描述")
+        self.description.setPlaceholderText(tr("请输入场景描述"))
         self.description.setAccessibleName("仿真场景描述")
         self.description.setFixedHeight(88)
         layout.addWidget(description_label)
@@ -273,6 +276,7 @@ class SceneConfigurationPage(QWidget):
         self.engine_combo.addItem("HighwayEnv", "highway")
         self.engine_combo.currentIndexChanged.connect(self._engine_changed)
         self.map_combo = QComboBox()
+        self.map_combo.setProperty("literalItems", True)
         self.map_combo.setObjectName("simulationMapCombo")
         self.map_combo.setMinimumContentsLength(24)
         self.map_combo.currentIndexChanged.connect(self._select_map)
@@ -303,6 +307,8 @@ class SceneConfigurationPage(QWidget):
         layout.addWidget(automation)
         self.generated_summary = QLabel()
         self.generated_summary.setObjectName("generatedScenarioSummary")
+        # Translate built-in copy before composing it with verbatim user requirements.
+        self.generated_summary.setProperty("literalText", True)
         self.generated_summary.setWordWrap(True)
         self.generated_summary.setTextFormat(Qt.TextFormat.PlainText)
         self.generated_summary.hide()
@@ -374,7 +380,7 @@ class SceneConfigurationPage(QWidget):
 
     @staticmethod
     def _field_label(text: str, *, required: bool = False) -> QLabel:
-        label = QLabel(f"{text} *" if required else text)
+        label = QLabel(f"{tr(text)} *" if required else text)
         label.setObjectName("simulationFieldLabel")
         label.setProperty("required", required)
         return label
@@ -495,9 +501,9 @@ class SceneConfigurationPage(QWidget):
 
     def apply_simulation_copy(self, simulation_name: str, parameter_summary: str) -> None:
         """Prefill editable fields from a simulation record."""
-        self.scene_name.setText(f"{simulation_name} 副本")
+        self.scene_name.setText(tr(f"{simulation_name} 副本"))
         self.description.setPlainText(
-            f"复制自“{simulation_name}”。原仿真参数摘要：{parameter_summary}"
+            tr(f"复制自“{simulation_name}”。原仿真参数摘要：{parameter_summary}")
         )
 
     def apply_traffic_scenario(self, preset: TrafficScenarioPreset) -> bool:
@@ -547,29 +553,29 @@ class SceneConfigurationPage(QWidget):
             return
         states = {"free_flow": "低流量", "moderate": "中等流量", "congested": "拥堵"}
         flow = (
-            f"{scene.inflow_veh_per_hour_per_lane:g} 辆/小时/入口车道"
+            tr(f"{scene.inflow_veh_per_hour_per_lane:g} 辆/小时/入口车道")
             if scene.inflow_veh_per_hour_per_lane is not None
-            else "按计划总车辆数调度"
+            else tr("按计划总车辆数调度")
         )
         details = [
-            "场景设定（非实测）· 生成时未启动仿真",
-            f"目标交通状态：{states[scene.traffic_state]}",
-            f"目标密度参考值：{scene.desired_density_veh_per_km_lane:g} 辆/公里/车道",
-            f"计划发车：{scene.planned_vehicles} 辆；发车强度：{flow}",
-            f"预热：{scene.warmup_s} 秒；随机种子：{scene.seed}",
-            "时长与车流计划保持一致；修改时长请在描述中指定后重新生成。",
-            "保留原场景的车辆路线与发车计划。实际车速、密度和拥堵程度在运行后观测。",
+            tr("场景设定（非实测）· 生成时未启动仿真"),
+            tr("目标交通状态：") + tr(states[scene.traffic_state]),
+            tr(f"目标密度参考值：{scene.desired_density_veh_per_km_lane:g} 辆/公里/车道"),
+            tr(f"计划发车：{scene.planned_vehicles} 辆；发车强度：{flow}"),
+            tr(f"预热：{scene.warmup_s} 秒；随机种子：{scene.seed}"),
+            tr("时长与车流计划保持一致；修改时长请在描述中指定后重新生成。"),
+            tr("保留原场景的车辆路线与发车计划。实际车速、密度和拥堵程度在运行后观测。"),
         ]
         if not self._traffic_mode and scene.automation_mix:
             details.append(
-                "自动驾驶等级发车计划："
+                tr("自动驾驶等级发车计划：")
                 + "；".join(
-                    f"{item.level} {item.share_percent:g}%（{item.vehicle_count} 辆）"
+                    tr(f"{item.level} {item.share_percent:g}%（{item.vehicle_count} 辆）")
                     for item in scene.automation_mix
                 )
             )
         if scene.unverified_requirements:
-            details.append("待核对要求：" + "；".join(scene.unverified_requirements))
+            details.append(tr("待核对要求：") + "；".join(scene.unverified_requirements))
         self.generated_summary.setText("\n".join(details))
         if self._applied_generated_id != map_id:
             self.scene_name.setText(selected.display_name or map_id)

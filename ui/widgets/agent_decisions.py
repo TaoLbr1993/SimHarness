@@ -6,19 +6,22 @@ from uuid import UUID
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QCheckBox,
     QHBoxLayout,
     QHeaderView,
-    QLabel,
     QPlainTextEdit,
-    QPushButton,
-    QTableWidget,
     QTableWidgetItem,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
+from ui.localization import tr
+from ui.localized_widgets import (
+    QCheckBox,
+    QLabel,
+    QPushButton,
+    QTableWidget,
+    QTabWidget,
+)
 from ui.models.agent_decision import DecisionPage, DecisionRecord
 from ui.models.decision_text import OUTCOME_LABELS as _OUTCOME
 from ui.models.decision_text import STATE_LABELS as _STATE
@@ -136,7 +139,7 @@ class AgentDecisionsWidget(QWidget):
                 f"{item.action_count} / {item.fallback_count}",
             )
             for column, text in enumerate(cells):
-                cell = QTableWidgetItem(text)
+                cell = QTableWidgetItem(tr(text) if column == 3 else text)
                 cell.setData(Qt.ItemDataRole.UserRole, item.record_id)
                 self.table.setItem(row, column, cell)
             if selected == item.record_id:
@@ -182,8 +185,8 @@ class AgentDecisionsWidget(QWidget):
         self._detail_signature = signature
         self.cards.set_record(value)
         note = (
-            f"第 {value.sequence} 帧 · {value.group_name} · {value.message} · "
-            f"{_OUTCOME.get(value.outcome, value.outcome)}"
+            f"第 {value.sequence} 帧 · {value.group_name} · {tr(value.message)} · "
+            f"{tr(_OUTCOME.get(value.outcome, value.outcome))}"
         )
         if value.truncated:
             note += " · 大体积内容已截断（每栏最多 128,000 字符）"
@@ -193,7 +196,7 @@ class AgentDecisionsWidget(QWidget):
             with suppress(ValueError, TypeError):
                 content = json.dumps(json.loads(content), ensure_ascii=False, indent=2)
             if not content:
-                content = "等待模型返回…" if value.state == "running" else "本轮无此内容"
+                content = tr("等待模型返回…" if value.state == "running" else "本轮无此内容")
             if editor.toPlainText() != content:
                 position = editor.verticalScrollBar().value()
                 editor.setPlainText(content)

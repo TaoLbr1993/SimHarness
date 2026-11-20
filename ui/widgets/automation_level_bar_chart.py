@@ -9,6 +9,8 @@ from PySide6.QtCore import Property, QLineF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPaintEvent, QPalette, QPen
 from PySide6.QtWidgets import QSizePolicy, QWidget
 
+from ui.localization import tr
+
 LEVELS = ("L0", "L1", "L2", "L3", "L4", "L5")
 
 
@@ -142,7 +144,7 @@ class AutomationLevelBarChart(QWidget):
         painter.drawText(
             QRectF(plot.left(), 0.0, plot.width(), 14.0),
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop,
-            self._unit,
+            tr(self._unit),
         )
 
     def _axis_maximum(self) -> float:

@@ -3,18 +3,21 @@
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QHideEvent, QShowEvent
 from PySide6.QtWidgets import (
-    QDoubleSpinBox,
-    QFormLayout,
     QHBoxLayout,
-    QLabel,
-    QPushButton,
     QScrollArea,
-    QSpinBox,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
+from ui.localization import tr
+from ui.localized_widgets import (
+    QDoubleSpinBox,
+    QFormLayout,
+    QLabel,
+    QPushButton,
+    QSpinBox,
+    QTabWidget,
+)
 from ui.models import AgentApiSummary
 from ui.models.agent_session import AgentSessionConfig, AgentSessionView
 from ui.views.components import PAGE_CONTENT_MARGIN, page_header, panel
@@ -73,6 +76,7 @@ class AgentConnectionPage(QWidget):
         toolbar.addWidget(self.add_button)
         layout.addLayout(toolbar)
         self.tabs = QTabWidget()
+        self.tabs.setProperty("literalItems", True)
         self.tabs.setTabsClosable(True)
         self.tabs.tabCloseRequested.connect(self.remove_group)
         layout.addWidget(self.tabs)
@@ -136,14 +140,14 @@ class AgentConnectionPage(QWidget):
 
     def add_group(self) -> None:
         self._group_number += 1
-        editor = AgentGroupEditor(f"控制组 {self._group_number}")
+        editor = AgentGroupEditor(tr(f"控制组 {self._group_number}"))
         editor.set_assets(self._assets)
         if self._view:
             editor.set_vehicles(self._view.vehicle_ids)
         editor.selection_changed.connect(self._update_controls)
-        index = self.tabs.addTab(editor, f"控制组 {self._group_number}")
+        index = self.tabs.addTab(editor, editor.name_input.text())
         editor.name_input.textChanged.connect(
-            lambda name: self.tabs.setTabText(self.tabs.indexOf(editor), name or "未命名控制组")
+            lambda name: self.tabs.setTabText(self.tabs.indexOf(editor), name or tr("未命名控制组"))
         )
         self.tabs.setCurrentIndex(index)
         self._update_controls()
@@ -213,7 +217,7 @@ class AgentConnectionPage(QWidget):
         if self._view:
             view = self._view
             self.experiment.setText(f"当前实验：{view.experiment_id}  ·  第 {view.sequence} 帧")
-            self.status.setText(f"{_LABELS.get(view.status, view.status)} · {view.message}")
+            self.status.setText(f"{tr(_LABELS.get(view.status, view.status))} · {tr(view.message)}")
             if not view.external_stepping:
                 self.status.setText("此实验未开启外部步进，请创建勾选“等待外部 Agent 控制”的仿真。")
             for editor in self.groups():

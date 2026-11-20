@@ -15,6 +15,7 @@ from ui.models import (
     ReplayWindow,
     SimulationConfigurationDraft,
 )
+from ui.models.map_selection import MapSelectionBounds
 from ui.models.scenario_revision import ScenarioRevisionRequest
 from ui.viewmodels import RunViewModel
 
@@ -191,11 +192,19 @@ class FakeGenerator(ScenarioGeneratorClient):
         self.descriptions: list[str] = []
         self.publications: list[str] = []
         self.modes: list[str] = []
+        self.bounds: list[MapSelectionBounds | None] = []
         self.revisions: list[tuple[str, ScenarioRevisionRequest | dict[str, object] | int]] = []
 
-    def generate(self, description: str, *, simulation_mode: str = "traffic") -> None:
+    def generate(
+        self,
+        description: str,
+        *,
+        simulation_mode: str = "traffic",
+        selected_bounds: MapSelectionBounds | None = None,
+    ) -> None:
         self.descriptions.append(description)
         self.modes.append(simulation_mode)
+        self.bounds.append(selected_bounds)
 
     def publish(self, task_id: str) -> None:
         self.publications.append(task_id)
@@ -204,6 +213,22 @@ class FakeGenerator(ScenarioGeneratorClient):
         self, task_id: str, revision: ScenarioRevisionRequest | dict[str, object] | int
     ) -> None:
         self.revisions.append((task_id, revision))
+
+
+def test_explicit_area_allows_empty_text_without_publishing_or_starting() -> None:
+    _app()
+    rest, realtime, generator = FakeRest(), FakeRealtime(), FakeGenerator()
+    vm = RunViewModel(rest, realtime, SCENARIO_ID, generator=generator)  # type: ignore[arg-type]
+    bounds = MapSelectionBounds(west=116.34, south=39.97, east=116.36, north=39.99)
+    vm.generate_scene("")
+    assert not generator.descriptions
+    vm.generate_scene("", selected_bounds=bounds)
+    vm.generate_scene("", selected_bounds=bounds)
+    assert generator.descriptions == [""]
+    assert generator.bounds == [bounds]
+    assert not generator.publications
+    assert not rest.calls
+    assert vm.experiment_id is None
 
 
 def test_late_previous_selection_cannot_replace_current_scene_network() -> None:

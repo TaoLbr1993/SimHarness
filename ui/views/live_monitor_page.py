@@ -8,16 +8,18 @@ from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QHBoxLayout,
-    QLabel,
     QLayout,
-    QLineEdit,
-    QPushButton,
     QScrollArea,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
+from ui.localized_widgets import (
+    QLabel,
+    QLineEdit,
+    QPushButton,
+)
 from ui.models import ControlAvailability, LiveMetrics, ReplayFrame
 from ui.views.components import (
     PAGE_CONTENT_MARGIN,

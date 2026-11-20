@@ -11,10 +11,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import config
+import map_edits
+import preview_refresh
+import renderer
 from PIL import Image
 from pydantic import ValidationError
+from review_models import ReviewPlan
 from scenario_demand import build_demand, write_simulation_config
 from scenario_models import (
+    AppliedMapEdit,
     AutomationMixShare,
     DemandMode,
     ScenarioPlan,
@@ -22,6 +27,7 @@ from scenario_models import (
     ScenarioRevision,
     ScenarioSettings,
 )
+from xml_checks import check_network
 
 _TASK_PATTERN = re.compile(r"\d{8}_\d{6}_[0-9a-f]{6}")
 _MAP_FILES = ("network.net.xml", "map_preview.png")
@@ -211,10 +217,6 @@ def revise_scenario(task_id: str, revision: ScenarioRevision) -> ScenarioResult:
         raise ValueError("场景设定无效，请检查数值范围、预热时间与等级配比") from exc
     source_dir, source = _read_source(task_id)
     settings = _source_settings(source_dir)
-    assert source.plan is not None
-    new_task_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:6]
-    root = Path(config.WORKSPACES_DIR).resolve()
-    destination = root / new_task_id
     plan, cumulative = _revise_plan(source, revision, settings)
     notes = [
         item
@@ -230,11 +232,47 @@ def revise_scenario(task_id: str, revision: ScenarioRevision) -> ScenarioResult:
             f"{_SETTINGS_NOTE_PREFIX}参考速度仅用于按密度推算车流；"
             "当前按数量或流量编排，因此该参考值不会更改发车数量或车辆限速。"
         )
+    return _derive(source_dir, source, plan, cumulative, settings, notes)
+
+
+def revise_map(task_id: str, edit: map_edits.MapEditRequest) -> ScenarioResult:
+    source_dir, source = _read_source(task_id)
+    assert source.plan is not None
+    operation = map_edits.interpret(edit.instruction)
+    applied = AppliedMapEdit(instruction=edit.instruction, operation=operation)
+    return _derive(
+        source_dir,
+        source,
+        source.plan,
+        source.manual_overrides,
+        _source_settings(source_dir),
+        [*source.notes, edit.instruction],
+        applied,
+        edit.ui_language,
+    )
+
+
+def _derive(
+    source_dir: Path,
+    source: ScenarioResult,
+    plan: ScenarioPlan,
+    cumulative: ScenarioRevision | None,
+    settings: ScenarioSettings,
+    notes: list[str],
+    edit: AppliedMapEdit | None = None,
+    language: str = "en",
+) -> ScenarioResult:
+    new_task_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:6]
+    root = Path(config.WORKSPACES_DIR).resolve()
+    destination = root / new_task_id
     result = ScenarioResult(
         status="generated",
         description=source.description,
+        selected_bounds=source.selected_bounds,
         task_id=new_task_id,
-        parent_task_id=task_id,
+        parent_task_id=source.task_id,
+        display_level=source.display_level,
+        map_edits=list(source.map_edits),
         manual_overrides=cumulative,
         intent=source.intent,
         map_task_id=source.map_task_id,
@@ -256,13 +294,66 @@ def revise_scenario(task_id: str, revision: ScenarioRevision) -> ScenarioResult:
         ):
             if filename in _MAP_FILES or (source_dir / filename).exists():
                 _copy_source_metadata(source_dir, output, filename)
-        try:
-            result.demand = build_demand(output / "network.net.xml", output, plan, settings)
-        except ET.ParseError as exc:
-            raise ValueError("源草稿路网 XML 已损坏，请重新生成场景") from exc
-        write_simulation_config(output, plan, settings)
+        if edit is not None:
+            network = output / "network.net.xml"
+            if edit.operation.startswith("show_"):
+                result.display_level = (
+                    "main_roads"
+                    if edit.operation == "show_main"
+                    else edit.operation.removeprefix("show_")
+                )
+            else:
+                edit.edge_ids = map_edits.change_roads(
+                    source_dir / network.name,
+                    network,
+                    edit.operation,
+                    new_task_id,
+                    source.map_edits,
+                )
+                checks = check_network(
+                    str(network),
+                    ReviewPlan(rules=[], visual_requirements=[], unverified_requirements=[]),
+                )
+                if not checks.passed:
+                    failures = [check for check in checks.checks if check.status != "pass"]
+                    raise ValueError("Edited network failed XML validation: " + str(failures))
+                (output / "network_checks.json").write_text(
+                    checks.model_dump_json(indent=2), encoding="utf-8"
+                )
+            result.map_edits.append(edit)
+            metadata = output / "source_map_metadata.json"
+            if metadata.is_file() and result.display_level:
+                data = json.loads(metadata.read_text(encoding="utf-8"))
+                data["display_level"] = result.display_level
+                metadata.write_text(
+                    json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+                )
+            for lang in ("en", "zh"):
+                filename = f"map_preview.{lang}.png"
+                if preview_refresh.refreshed_preview(output, filename) is None:
+                    renderer.render_network(
+                        str(network),
+                        str(output / filename),
+                        display_level=result.display_level,
+                        ui_language=lang,
+                    )
+            shutil.copyfile(output / f"map_preview.{language}.png", output / "map_preview.png")
+        if edit is not None and edit.operation.startswith("show_"):
+            for filename in ("traffic.rou.xml", "metrics.add.xml", "scenario.sumocfg"):
+                shutil.copyfile(_source_file(source_dir, filename), output / filename)
+            result.demand = source.demand
+        else:
+            try:
+                result.demand = build_demand(output / "network.net.xml", output, plan, settings)
+            except ET.ParseError as exc:
+                raise ValueError("源草稿路网 XML 已损坏，请重新生成场景") from exc
+            write_simulation_config(output, plan, settings)
         result.artifacts = sorted(
-            {f"output/{path.name}" for path in output.iterdir() if path.is_file()}
+            {
+                f"output/{path.name}"
+                for path in output.iterdir()
+                if path.is_file() and not path.name.startswith(".")
+            }
             | {"output/scenario.json"}
         )
         result.artifact_urls = {

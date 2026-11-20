@@ -4,6 +4,8 @@ import json
 import math
 from typing import cast
 
+from ui.localization import tr
+
 STATE_LABELS = {
     "running": "正在推理",
     "completed": "已返回",
@@ -48,17 +50,17 @@ def action_text(value: object) -> str:
     fields = object_fields(value)
     parts = []
     if speed := number(fields.get("desired_speed_mps"), "m/s"):
-        parts.append(f"目标速度 {speed}")
+        parts.append(tr(f"目标速度 {speed}"))
     if acceleration := number(fields.get("desired_acceleration_mps2"), "m/s²"):
-        parts.append(f"加速度 {acceleration}")
+        parts.append(tr(f"加速度 {acceleration}"))
     lane = str(fields.get("lane_change", "")).lower()
     if lane in {"left", "right"}:
-        parts.append("向左换道" if lane == "left" else "向右换道")
+        parts.append(tr("向左换道" if lane == "left" else "向右换道"))
     if fields.get("stop_requested") is True:
-        parts.append("请求停车")
+        parts.append(tr("请求停车"))
     if fields.get("takeover_requested") is True:
-        parts.append("请求接管")
-    return " · ".join(parts) or "无外部动作"
+        parts.append(tr("请求接管"))
+    return " · ".join(parts) or tr("无外部动作")
 
 
 def action_rows(text: str) -> tuple[tuple[str, str], ...] | None:
@@ -77,7 +79,7 @@ def action_rows(text: str) -> tuple[tuple[str, str], ...] | None:
 def response_excerpt(text: str, *, running: bool = False) -> str:
     """Unwrap chat responses without inventing reasoning or parsing Jev batch IDs as cars."""
     if not text:
-        return "模型正在推理，返回后会自动更新。" if running else "本轮没有模型响应。"
+        return tr("模型正在推理，返回后会自动更新。" if running else "本轮没有模型响应。")
     fields = object_fields(decode_text(text))
     choices = fields.get("choices")
     if isinstance(choices, list) and choices:
@@ -88,11 +90,11 @@ def response_excerpt(text: str, *, running: bool = False) -> str:
     actions = fields.get("actions")
     if isinstance(actions, list):
         rows = action_rows(json.dumps(actions)) or ()
-        lines = [f"模型返回 {len(actions)} 个候选动作（以校验结果为准）"]
+        lines = [tr(f"模型返回 {len(actions)} 个候选动作（以校验结果为准）")]
         for vehicle, action in rows[:30]:
             lines.append(f"{vehicle}  →  {action}")
         if len(rows) > 30:
-            lines.append("仅展示前 30 个候选动作；其余见原始详情。")
+            lines.append(tr("仅展示前 30 个候选动作；其余见原始详情。"))
         # Only show explanations explicitly present in the response.
         reason = fields.get("reason") or fields.get("reasoning") or fields.get("explanation")
         if isinstance(reason, str):
@@ -107,11 +109,11 @@ def response_excerpt(text: str, *, running: bool = False) -> str:
             "stop": "停车",
             "sumo": "交由 SUMO 控制",
         }
-        lines = ["Jev 返回的批次内选择（实际车辆动作见校验结果）"]
+        lines = [tr("Jev 返回的批次内选择（实际车辆动作见校验结果）")]
         for key, answer in list(answers.items())[:30]:
             choice = str(object_fields(answer).get("choice", "未知选择"))
-            lines.append(f"{key}  →  {labels.get(choice, choice)}")
+            lines.append(f"{key}  →  {tr(labels[choice]) if choice in labels else choice}")
         if len(answers) > 30:
-            lines.append("其余选择见原始详情。")
+            lines.append(tr("其余选择见原始详情。"))
         text = "\n".join(lines)
-    return text[:6000] + ("\n…摘要已省略，请查看原始详情。" if len(text) > 6000 else "")
+    return text[:6000] + (tr("\n…摘要已省略，请查看原始详情。") if len(text) > 6000 else "")

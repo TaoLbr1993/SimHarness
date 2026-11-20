@@ -7,10 +7,12 @@ from typing import Literal
 
 import config
 import renderer
+from map_area import SelectedBounds
 from preview_location import MapOriginMarker
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from road_display import DisplayLevel
 
-_RENDERER_VERSION = "english-place-and-road-labels-v1"
+_RENDERER_VERSION = "english-place-and-road-labels-v2-area"
 _LANGUAGES: dict[str, Literal["en", "zh"]] = {
     "map_preview.en.png": "en",
     "map_preview.zh.png": "zh",
@@ -29,8 +31,10 @@ class _DisplayMetadata(BaseModel):
     source_mode: Literal["real_map"]
     task_id: str = Field(pattern=r"^\d{8}_\d{6}_[0-9a-f]{6}$")
     place: _Place
-    radius_m: float = Field(gt=0, allow_inf_nan=False)
+    radius_m: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    selected_bounds: SelectedBounds | None = None
     detail_level: Literal["main_roads", "detailed"] = "main_roads"
+    display_level: DisplayLevel | None = None
 
 
 class _CacheEntry(BaseModel):
@@ -130,14 +134,30 @@ def refreshed_preview(output: Path, filename: str) -> Path | None:
         renderer.render_map_overview(
             str(network),
             str(generated),
-            title=metadata.place.name,
+            title=(
+                ("框选区域" if language == "zh" else "Selected area")
+                if metadata.selected_bounds is not None
+                else metadata.place.name
+            ),
             radius_m=metadata.radius_m,
-            detailed=metadata.detail_level == "detailed",
+            detailed=(
+                metadata.display_level != "main_roads"
+                if metadata.display_level
+                else metadata.detail_level == "detailed"
+            ),
+            **({"display_level": metadata.display_level} if metadata.display_level else {}),
             origin=MapOriginMarker(
-                metadata.place.name, metadata.place.longitude, metadata.place.latitude
+                (
+                    ("区域中心" if language == "zh" else "Area center")
+                    if metadata.selected_bounds is not None
+                    else metadata.place.name
+                ),
+                metadata.place.longitude,
+                metadata.place.latitude,
             ),
             ui_language=language,
             source_osm_path=str(osm) if osm is not None else None,
+            selected_bounds=metadata.selected_bounds,
         )
         cache = _CacheEntry(version=_RENDERER_VERSION, inputs=inputs, preview=_signature(generated))
         cache_path = staging / "labels.json"

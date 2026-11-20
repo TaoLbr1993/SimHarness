@@ -79,6 +79,24 @@ class PreviewRefreshTest(unittest.TestCase):
         for name, original in immutable.items():
             self.assertEqual((self.output / name).read_bytes(), original)
 
+    def test_selected_area_preview_refresh_keeps_rectangle_labels_and_center(self):
+        self.metadata["selected_bounds"] = {
+            "west": 116.99,
+            "south": -0.01,
+            "east": 117.01,
+            "north": 0.01,
+        }
+        self.metadata["radius_m"] = None
+        self.write_metadata()
+        with patch.object(
+            ImageDraw.ImageDraw, "text", autospec=True, side_effect=ImageDraw.ImageDraw.text
+        ) as draw:
+            preview_refresh.refreshed_preview(self.output, "map_preview.en.png")
+        labels = [call.args[2] for call in draw.call_args_list]
+        self.assertIn("Selected rectangular area · North up", labels)
+        self.assertTrue(any("Area center" in label for label in labels))
+        self.assertFalse(any("radius" in label for label in labels))
+
     def test_cache_avoids_redraw_and_invalidates_when_source_names_change(self):
         with patch.object(
             renderer, "render_map_overview", wraps=renderer.render_map_overview

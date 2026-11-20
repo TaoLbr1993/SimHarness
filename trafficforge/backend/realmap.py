@@ -16,6 +16,7 @@ import config
 import map_sources
 import renderer
 import runner
+from map_area import SelectedBounds
 from preview_location import MapOriginMarker
 from pydantic import BaseModel, Field
 from realmap_models import (
@@ -85,7 +86,8 @@ class RealMapResult(BaseModel):
     place: PlaceCandidate | None = None
     place_choice: PlaceChoice | None = None
     candidates: list[PlaceCandidate] = Field(default_factory=list)
-    radius_m: float
+    radius_m: float | None
+    selected_bounds: SelectedBounds | None = None
     radius_defaulted: bool
     extent_policy: str = "圆形选路并以 36 点近似圆筛选 SUMO 道路段，保留完整段；边缘可能超出半径"
     sources: list[SourceRecord] = Field(default_factory=list)
@@ -192,12 +194,24 @@ def _tool_environment() -> dict[str, str]:
 
 
 def compile_network(
-    output: Path, place: PlaceCandidate, radius_m: float, detail_level: DetailLevel = "main_roads"
+    output: Path,
+    place: PlaceCandidate,
+    radius_m: float | None,
+    detail_level: DetailLevel = "main_roads",
+    *,
+    selected_bounds: SelectedBounds | None = None,
 ) -> ImportValidation:
     """Deterministic conversion and full-network checks, with logs retained on failure."""
     for executable in ("netconvert", "sumo"):
         if not shutil.which(executable):
             raise ValueError(f"未找到 {executable}，请安装 SUMO 并加入 PATH")
+    if selected_bounds is not None:
+        selected_bounds.validate_extent(2 * config.REAL_MAP.max_radius_m)
+        boundary = selected_bounds.geo_boundary()
+    else:
+        if radius_m is None:
+            raise ValueError("A radius or selected bounds is required")
+        boundary = _selection_polygon(place, radius_m)
     command = [
         "netconvert",
         "--osm-files",
@@ -221,7 +235,7 @@ def compile_network(
         "--keep-edges.postload",
         "true",
     ]
-    command.extend(["--keep-edges.in-geo-boundary", _selection_polygon(place, radius_m)])
+    command.extend(["--keep-edges.in-geo-boundary", boundary])
     if detail_level == "main_roads":
         command.extend(["--keep-edges.by-type", ",".join(MAIN_ROAD_TYPES)])
     trim_command = [
@@ -231,7 +245,7 @@ def compile_network(
         "--output-file",
         "validated.net.xml",
         "--keep-edges.in-geo-boundary",
-        _selection_polygon(place, radius_m),
+        boundary,
         "--geometry.remove",
         "true",
         "--output.street-names",
@@ -336,67 +350,96 @@ def generate_real_map(
     *,
     detail_level: DetailLevel | None = None,
     ui_language: Literal["en", "zh"] = "en",
+    selected_bounds: SelectedBounds | None = None,
 ) -> RealMapResult:
     """Resolve a real place, preserve its OSM evidence, compile and inspect the imported network."""
     task_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:6]
     output = Path(config.WORKSPACES_DIR) / task_id / "output"
     output.mkdir(parents=True)
-    radius = intent.radius_m if intent.radius_m is not None else config.REAL_MAP.default_radius_m
+    radius: float | None = (
+        intent.radius_m if intent.radius_m is not None else config.REAL_MAP.default_radius_m
+    )
+    if selected_bounds is not None:
+        radius = None
     result = RealMapResult(
         status="source_error",
         task_id=task_id,
         description=description,
         intent=intent,
         radius_m=radius,
-        radius_defaulted=intent.radius_m is None,
+        radius_defaulted=selected_bounds is None and intent.radius_m is None,
+        selected_bounds=selected_bounds,
         detail_level=detail_level or intent.detail_level,
         unverified_requirements=intent.extra_requirements,
     )
     stage = "source"
     try:
-        if not 100 <= radius <= config.REAL_MAP.max_radius_m:
-            result.status = "needs_clarification"
-            result.error = f"半径须为 100–{config.REAL_MAP.max_radius_m:g} 米，未自动缩放"
-            return _finish(result, output)
-        geocoding = map_sources.geocode(
-            intent.place_query, intent.alternate_query, output, location_quote=intent.location_quote
-        )
-        result.sources.extend(geocoding.records)
-        result.warnings.extend(geocoding.warnings)
-        result.candidates = geocoding.candidates
-        if not geocoding.candidates:
-            result.status = "needs_clarification"
-            result.error = "没有找到匹配地点，请补充城市、校区或更完整的地名"
-            return _finish(result, output)
-        if selected_place_id:
-            if selected_place_id not in {c.id for c in geocoding.candidates}:
-                result.status = "needs_clarification"
-                result.error = "所选地点不在本次候选中，请从 candidates 重新选择"
-                return _finish(result, output)
-            choice = PlaceChoice(
-                selected_id=selected_place_id,
-                needs_clarification=False,
-                reason="调用方显式选择地图候选",
+        if selected_bounds is not None:
+            selected_bounds.validate_extent(2 * config.REAL_MAP.max_radius_m)
+            place = PlaceCandidate(
+                id="selected-area",
+                name="Selected area",
+                longitude=(selected_bounds.west + selected_bounds.east) / 2,
+                latitude=(selected_bounds.south + selected_bounds.north) / 2,
+                provider="selection",
+                source_crs="WGS84",
+                coordinate_note="User-selected WGS84 rectangle; marker denotes its center.",
+            )
+            result.place = place
+            result.extent_policy = (
+                "User-selected WGS84 rectangle; complete road segments intersecting the area are "
+                "retained, so some endpoints may extend beyond the selected boundary."
             )
         else:
-            choice = agent.choose_map_place(description, geocoding.candidates)
-        result.place_choice = choice
-        if choice.needs_clarification:
-            result.status = "needs_clarification"
-            result.error = "；".join([choice.reason, *geocoding.warnings])
-            return _finish(result, output)
-        place = next(c for c in geocoding.candidates if c.id == choice.selected_id)
-        result.place = place
-        if place.coordinate_note and place.coordinate_note not in result.warnings:
-            result.warnings.append(place.coordinate_note)
-        if place.provider == "amap":
-            result.attribution = (
-                "地点检索：高德地图；道路：© OpenStreetMap contributors, ODbL: "
-                "https://www.openstreetmap.org/copyright"
+            if radius is None or not 100 <= radius <= config.REAL_MAP.max_radius_m:
+                result.status = "needs_clarification"
+                result.error = f"半径须为 100–{config.REAL_MAP.max_radius_m:g} 米，未自动缩放"
+                return _finish(result, output)
+            geocoding = map_sources.geocode(
+                intent.place_query,
+                intent.alternate_query,
+                output,
+                location_quote=intent.location_quote,
             )
-        result.sources.append(map_sources.fetch_roads(place, radius, output))
+            result.sources.extend(geocoding.records)
+            result.warnings.extend(geocoding.warnings)
+            result.candidates = geocoding.candidates
+            if not geocoding.candidates:
+                result.status = "needs_clarification"
+                result.error = "没有找到匹配地点，请补充城市、校区或更完整的地名"
+                return _finish(result, output)
+            if selected_place_id:
+                if selected_place_id not in {c.id for c in geocoding.candidates}:
+                    result.status = "needs_clarification"
+                    result.error = "所选地点不在本次候选中，请从 candidates 重新选择"
+                    return _finish(result, output)
+                choice = PlaceChoice(
+                    selected_id=selected_place_id,
+                    needs_clarification=False,
+                    reason="调用方显式选择地图候选",
+                )
+            else:
+                choice = agent.choose_map_place(description, geocoding.candidates)
+            result.place_choice = choice
+            if choice.needs_clarification:
+                result.status = "needs_clarification"
+                result.error = "；".join([choice.reason, *geocoding.warnings])
+                return _finish(result, output)
+            place = next(c for c in geocoding.candidates if c.id == choice.selected_id)
+            result.place = place
+            if place.coordinate_note and place.coordinate_note not in result.warnings:
+                result.warnings.append(place.coordinate_note)
+            if place.provider == "amap":
+                result.attribution = (
+                    "地点检索：高德地图；道路：© OpenStreetMap contributors, ODbL: "
+                    "https://www.openstreetmap.org/copyright"
+                )
+        area_kwargs = {"selected_bounds": selected_bounds} if selected_bounds is not None else {}
+        result.sources.append(map_sources.fetch_roads(place, radius, output, **area_kwargs))
         stage = "validation"
-        result.validation = compile_network(output, place, radius, result.detail_level)
+        result.validation = compile_network(
+            output, place, radius, result.detail_level, **area_kwargs
+        )
         if not result.validation.passed:
             result.status = "validation_error"
             result.error = "完整 XML 检查或 SUMO 加载失败，详见 validation 与日志"
@@ -410,14 +453,23 @@ def generate_real_map(
             renderer.render_map_overview(
                 str(output / "validated.net.xml"),
                 str(output / f"map_preview.{language}.png"),
-                title=place.name,
+                title=("框选区域" if language == "zh" else "Selected area")
+                if selected_bounds is not None
+                else place.name,
                 radius_m=radius,
                 detailed=result.detail_level == "detailed",
                 origin=MapOriginMarker(
-                    name=place.name, longitude=place.longitude, latitude=place.latitude
+                    name=(
+                        ("区域中心" if language == "zh" else "Area center")
+                        if selected_bounds is not None
+                        else place.name
+                    ),
+                    longitude=place.longitude,
+                    latitude=place.latitude,
                 ),
                 ui_language=language,
                 source_osm_path=str(output / "source.osm.xml"),
+                selected_bounds=selected_bounds,
             )
         shutil.copyfile(output / f"map_preview.{ui_language}.png", output / "map_preview.png")
         result.warnings.extend(

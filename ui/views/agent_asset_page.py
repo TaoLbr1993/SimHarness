@@ -8,19 +8,21 @@ from uuid import UUID
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
-    QFormLayout,
     QFrame,
     QHBoxLayout,
     QHeaderView,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
+from ui.localized_widgets import (
+    QFormLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QTableWidget,
+)
 from ui.models import AgentApiSummary
 from ui.views.components import PAGE_CONTENT_MARGIN, page_header, panel
 

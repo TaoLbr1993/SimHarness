@@ -12,14 +12,17 @@ from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QHBoxLayout,
-    QLabel,
-    QPushButton,
     QScrollArea,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
+from ui.localization import tr
+from ui.localized_widgets import (
+    QLabel,
+    QPushButton,
+)
 from ui.models import ReplayMetric, ReplayRecord, ReplayRoadResult, ReplayTrend
 from ui.views.components import PAGE_CONTENT_MARGIN
 
@@ -157,7 +160,7 @@ class _RoadResultCanvas(QFrame):
         canvas = QRectF(self.rect()).adjusted(18.0, 18.0, -18.0, -38.0)
         if not self._roads:
             painter.setPen(self.palette().mid().color())
-            painter.drawText(canvas, Qt.AlignmentFlag.AlignCenter, "暂无可用的实际路网结果")
+            painter.drawText(canvas, Qt.AlignmentFlag.AlignCenter, tr("暂无可用的实际路网结果"))
             return
         values = {
             edge_id: value
@@ -190,7 +193,7 @@ class _RoadResultCanvas(QFrame):
         painter.drawText(
             QRectF(canvas.left(), canvas.bottom() + 8.0, canvas.width(), 22.0),
             Qt.AlignmentFlag.AlignLeft,
-            label,
+            tr(label),
         )
 
     def _transform(self, canvas: QRectF) -> Callable[[tuple[float, float]], QPointF]:
@@ -345,7 +348,7 @@ class DataReplayPage(QWidget):
     def set_record(self, record: ReplayRecord) -> None:
         self._record = record
         self.timestamp_badge.setText(self._datetime_text(record.created_at))
-        status = _STATUS_LABELS[record.status.value]
+        status = tr(_STATUS_LABELS[record.status.value])
         self.status_badge.setText(f"●  {status}")
         self.status_badge.setProperty("status", record.status.value)
         self.status_badge.style().unpolish(self.status_badge)
@@ -360,6 +363,7 @@ class DataReplayPage(QWidget):
             "status": status,
         }
         for key, value in summary.items():
+            self._summary_values[key].setProperty("literalText", key in {"map", "scenario"})
             self._summary_values[key].setText(value)
         for index, card in enumerate(self._metric_cards):
             if index < len(record.metrics):

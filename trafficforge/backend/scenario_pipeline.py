@@ -14,6 +14,7 @@ import realmap
 import renderer
 import review_pipeline
 import scenario_catalog
+from map_area import SelectedBounds
 from realmap_models import DetailLevel, MapIntent
 from review_models import ReviewPlan
 from scenario_demand import build_demand, write_simulation_config
@@ -46,6 +47,7 @@ def generate_scenario(
     publish_to_catalog: bool = False,
     simulation_mode: Literal["traffic", "autonomy"] = "traffic",
     ui_language: Literal["en", "zh"] = "en",
+    selected_bounds: SelectedBounds | None = None,
 ) -> ScenarioResult:
     """Build an unpublished preview; publication and SUMO trials require explicit opt-in."""
     task_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:6]
@@ -54,6 +56,7 @@ def generate_scenario(
     scene = intent.scenario or ScenarioIntent(objective=description)
     result = ScenarioResult(
         status="scenario_error",
+        selected_bounds=selected_bounds,
         description=description,
         task_id=task_id,
         intent=scene,
@@ -77,6 +80,7 @@ def generate_scenario(
                     selected_place_id,
                     detail_level=detail_level,
                     ui_language=ui_language,
+                    **({"selected_bounds": selected_bounds} if selected_bounds is not None else {}),
                 ).model_dump(mode="json")
                 candidate_id = map_result.get("task_id")
             else:
