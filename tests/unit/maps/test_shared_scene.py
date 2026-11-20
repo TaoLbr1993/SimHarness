@@ -6,11 +6,21 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from trafficverse.domain.errors import TrafficVerseError
 from trafficverse.domain.models.shared_scene import SceneLane, SceneVehicle, SharedScene
-from trafficverse.maps.shared_scene import convert_sumo_scene
+from trafficverse.maps.shared_scene import convert_sumo_scene, shared_highway_config
 from trafficverse.maps.sumo_package import load_sumo_package
 
 ROOT = Path(__file__).resolve().parents[3]
+
+
+def test_shared_highway_clock_preserves_or_rejects_source_step() -> None:
+    source = ROOT / "configs/maps/mixed-automation-obstacle/mixed-automation-obstacle.sumocfg"
+    package = load_sumo_package(source, allowed_root=source.parent)
+
+    assert shared_highway_config(replace(package, step_ms=125), 2000).step_ms == 125
+    with pytest.raises(TrafficVerseError, match="400 ms"):
+        shared_highway_config(replace(package, step_ms=400), 2000)
 
 
 def test_empty_demand_is_valid_but_unknown_route_is_rejected() -> None:

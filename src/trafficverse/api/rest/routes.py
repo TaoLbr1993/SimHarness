@@ -92,9 +92,20 @@ def build_router(dependencies: ApiDependencies) -> APIRouter:
             response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return ReadinessResponse(ready=is_ready, components=components)
 
-    @router.get("/maps", response_model=tuple[MapSummary, ...])
-    async def maps() -> tuple[MapSummary, ...]:
-        return dependencies.maps.list_maps()
+    @router.get("/maps", response_model=tuple[MapSummary, ...], response_model_exclude_unset=True)
+    async def maps(
+        include_engine_metadata: Annotated[
+            bool, Query(description="Include native engine presets and engine timing fields")
+        ] = False,
+    ) -> tuple[MapSummary, ...]:
+        summaries = dependencies.maps.list_maps()
+        # Older clients validate both the kind enum and the exact set of response fields.
+        excluded = set() if include_engine_metadata else {"engine_step_ms", "engine_duration_ms"}
+        return tuple(
+            MapSummary.model_validate(summary.model_dump(exclude=excluded))
+            for summary in summaries
+            if include_engine_metadata or summary.kind != "highway"
+        )
 
     @router.get("/workspaces", response_model=tuple[WorkspaceView, ...])
     async def list_workspaces(

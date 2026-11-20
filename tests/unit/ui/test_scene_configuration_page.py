@@ -81,6 +81,10 @@ def test_generated_scene_shows_settings_preserves_routes_and_waits_for_manual_la
     assert len(launched) == 1
     assert cast(SimulationConfigurationDraft, launched[0]).automation_demands == ()
     assert cast(SimulationConfigurationDraft, launched[0]).duration_ms == 600_000
+    page.set_maps(())
+    assert page.generated_summary.isHidden()
+    assert page.duration_time.isEnabled()
+    assert not page.automation_section.isHidden()
     plain = summary.model_copy(update={"map_id": "plain", "generated_scenario": None})
     page.set_maps((summary, plain))
     page.map_combo.setCurrentIndex(page.map_combo.findData("plain"))

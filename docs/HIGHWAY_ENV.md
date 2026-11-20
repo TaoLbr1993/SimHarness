@@ -46,7 +46,8 @@ uv run --no-sync simharness run --config configs/headless.highway.yaml
 - 保留车辆/路线/车道 ID、车长宽、最大速度、加减速、跟车间距、时距和发车时刻。
   确定性 flow 按 number、period 或 vehsPerHour 展开，保留 `flow_id.index` ID。
   发车口被占用时延迟插入；数值 departPos 和 base、数值 departSpeed 和 max 得到适配。
-- 保留原场景步长、seed 与 begin 时间偏移。信号按静态周期、offset、原 linkIndex 执行，
+- 保留原场景步长、seed 与 begin 时间偏移。共享场景步长须能整除 1000 毫秒，
+  且对应频率不超过 50 Hz。超出范围的场景可选择 SUMO。信号按静态周期、offset、原 linkIndex 执行，
   红/黄灯约束车辆停止；停车指令按指定车道、位置、duration/until 执行。
 - 加塞、避障、紧急让行、汇入、偶发事故复用现有场景控制器和原 ID。支持速度、单步加速度、
   左右换道、停止、显式安全覆盖，以及 lane-change mode 0/512 的无间隙检查/保留碰撞间隙语义。
@@ -121,6 +122,9 @@ HighwayEnv 中不产生；缺失指标不伪造。CARLA 联仿未扩展到 Highw
 
 生产者：桌面配置页及无界面入口；消费者：配置 REST、EngineConfigurationStore、启动装配。
 `SimulationConfigurationDraft.engine` 是可选字段，默认 sumo，已有客户端兼容。
+默认 `GET /api/v1/maps` 沿用原有字段，列出 SUMO 和 Core Run 地图。
+`GET /api/v1/maps?include_engine_metadata=true` 增加原生 HighwayEnv 预设及引擎步长、时长字段。
+原生预设的保存时长必须为策略步长的整数倍，最长一小时；非法时长返回 HTTP 422。
 内部 HighwayEnv 配置增加可选 shared_scene；模型和生成 schema 同步发布。
 部署顺序为后端/契约先行、UI 随后；旧保存配置继续按原引擎读取。
 

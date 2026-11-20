@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -269,11 +268,7 @@ class CoreRuntimeFactory:
             if run_input.sumo_config_path is None:
                 raise ValueError("SUMO run input requires a SUMO configuration")
             staged_config = run_input.sumo_config_path
-        duration_ms = self._scenario.simulation.duration_ms
-        if package.end_time_ms is not None:
-            configured_duration_ms = package.end_time_ms - package.begin_time_ms
-            steps = max(1, math.ceil(configured_duration_ms / package.step_ms))
-            duration_ms = steps * package.step_ms
+        duration_ms = package.duration_ms or self._scenario.simulation.duration_ms
         routes_path = package.route_paths[0] if package.route_paths else package.config_path
         signals_path = (
             package.additional_paths[0] if package.additional_paths else package.network_path
@@ -440,6 +435,7 @@ def build_core_api(
         built_in_directories,
         artifact_root=artifact_root or repository_root / "artifacts/maps",
         package_root=maps_root,
+        default_duration_ms=resolved.simulation.duration_ms,
         highway_network=_highway_network,
     )
     factory = CoreRuntimeFactory(

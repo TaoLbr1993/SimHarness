@@ -48,6 +48,14 @@ class SumoScenarioPackage:
     files: tuple[str, ...]
     output_directories: tuple[Path, ...]
 
+    @property
+    def duration_ms(self) -> int | None:
+        """Return the time through the first whole step reaching the configured end."""
+        if self.end_time_ms is None:
+            return None
+        span_ms = self.end_time_ms - self.begin_time_ms
+        return ((span_ms + self.step_ms - 1) // self.step_ms) * self.step_ms
+
 
 def discover_sumo_packages(
     directory: Path,

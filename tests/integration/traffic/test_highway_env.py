@@ -74,7 +74,7 @@ def test_api_saved_configuration_external_steps_history_and_replay(
         test_artifact_root=tmp_path / "tests",
     )
     with TestClient(app) as client:
-        maps = client.get("/api/v1/maps").json()
+        maps = client.get("/api/v1/maps", params={"include_engine_metadata": True}).json()
         assert any(item["kind"] == "sumo" for item in maps)
         assert any(item["map_id"] == "highway-light" for item in maps)
         workspace = client.get("/api/v1/workspaces").json()[0]["workspace_id"]

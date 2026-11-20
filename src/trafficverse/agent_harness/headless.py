@@ -27,6 +27,7 @@ from trafficverse.agent_harness.manager import AgentManager
 from trafficverse.api.models import ExternalLocalStepRequest
 from trafficverse.bootstrap import build_core_api
 from trafficverse.domain.enums import RequirementMode
+from trafficverse.domain.models.history import SimulationHistorySummary
 from trafficverse.domain.models.observation import LocalObservationFrame
 
 logger = logging.getLogger(__name__)
@@ -134,6 +135,14 @@ class RecordingClient(HttpSimulationClient):
             stream.write(json.dumps(record, ensure_ascii=False, allow_nan=False) + "\n")
         return frame
 
+    def saved_run_id(self, workspace_id: UUID, experiment_id: UUID) -> str:
+        runs = self._request(f"/simulations?workspace_id={workspace_id}")
+        if isinstance(runs, list):
+            for run in runs:
+                if isinstance(run, dict) and run.get("experiment_id") == str(experiment_id):
+                    return SimulationHistorySummary.model_validate(run).run_id
+        raise RuntimeError(f"No simulation artifact directory for experiment {experiment_id}")
+
 
 def run_headless(
     config_path: Path,
@@ -153,7 +162,7 @@ def run_headless(
     with ExitStack() as stack:
         api_url = stack.enter_context(_local_api(repository_root))
         client = RecordingClient(api_url, config.request_timeout_s, steps_path)
-        maps = client._request("/maps")
+        maps = client._request("/maps?include_engine_metadata=true")
         if not isinstance(maps, list) or not any(
             isinstance(item, dict)
             and item.get("map_id") == config.map_id
@@ -174,6 +183,7 @@ def run_headless(
         first = workspaces[0]
         if not isinstance(first, dict) or not isinstance(first.get("workspace_id"), str):
             raise RuntimeError("local simulation API returned an invalid workspace")
+        workspace_id = UUID(first["workspace_id"])
         configuration_id = None
         if engine == "highway" and selected.get("kind") == "sumo":
             saved = client._request(
@@ -184,7 +194,7 @@ def run_headless(
                     "map_id": config.map_id,
                     "engine": engine,
                     "scene_name": config.map_id,
-                    "duration_ms": 3600000,
+                    "duration_ms": selected["engine_duration_ms"],
                     "automation_demands": [],
                 },
             )
@@ -193,7 +203,7 @@ def run_headless(
             configuration_id = saved["configuration_id"]
         harness = HarnessConfig(
             api_url=api_url,
-            workspace_id=UUID(first["workspace_id"]),
+            workspace_id=workspace_id,
             scenario_id=_SCENARIO_ID,
             map_id=config.map_id,
             configuration_id=configuration_id,
@@ -206,6 +216,11 @@ def run_headless(
         )
         experiment_id = AgentManager(harness, client, agents).run()
         experiment = client.experiment(experiment_id)
+        if configuration_id is None:
+            artifact_directory = repository_root / "artifacts" / engine / str(experiment_id)
+        else:
+            run_id = client.saved_run_id(workspace_id, experiment_id)
+            artifact_directory = repository_root / "artifacts/simulations" / run_id
         summary = {
             "experiment_id": str(experiment_id),
             "map_id": config.map_id,
@@ -214,13 +229,7 @@ def run_headless(
             "steps": experiment.latest_sequence,
             "simulation_time_ms": experiment.simulation_time_ms,
             "steps_file": str(steps_path.resolve()),
-            "engine_artifacts": str(
-                (
-                    repository_root / "artifacts/simulations"
-                    if configuration_id
-                    else repository_root / "artifacts" / engine / str(experiment_id)
-                ).resolve()
-            ),
+            "engine_artifacts": str(artifact_directory.resolve()),
         }
         if engine == "sumo":
             summary["sumo_artifacts"] = summary["engine_artifacts"]

@@ -3,6 +3,9 @@
 import math
 import xml.etree.ElementTree as ET
 
+from trafficverse.config.models import HighwayEnvConfig
+from trafficverse.domain.enums import ErrorCode
+from trafficverse.domain.errors import TrafficVerseError
 from trafficverse.domain.models.shared_scene import (
     SceneConnection,
     SceneLane,
@@ -12,6 +15,24 @@ from trafficverse.domain.models.shared_scene import (
     SharedScene,
 )
 from trafficverse.maps.sumo_package import SumoScenarioPackage
+
+
+def shared_highway_config(package: SumoScenarioPackage, duration_ms: int) -> HighwayEnvConfig:
+    """Use the source step exactly when constructing the shared HighwayEnv clock."""
+    if 1000 % package.step_ms:
+        raise TrafficVerseError(
+            ErrorCode.SCENARIO_VALIDATION_FAILED,
+            f"HighwayEnv requires a step that divides 1000 ms exactly, got {package.step_ms} ms",
+        )
+    frequency = 1000 // package.step_ms
+    scene = convert_sumo_scene(package)
+    return HighwayEnvConfig(
+        duration_ms=duration_ms,
+        shared_scene=scene,
+        seed=scene.seed,
+        policy_frequency=frequency,
+        simulation_frequency=frequency * max(1, 20 // frequency),
+    )
 
 
 def convert_sumo_scene(package: SumoScenarioPackage) -> SharedScene:

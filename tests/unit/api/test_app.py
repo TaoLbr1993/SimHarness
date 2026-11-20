@@ -279,6 +279,57 @@ def test_core_api_discovers_image2road_as_directly_runnable_sumo_package(
         assert created.json()["simulation_time_ms"] == 0
 
 
+def test_map_catalog_preserves_previous_response_unless_engine_metadata_is_requested(
+    tmp_path: Path,
+) -> None:
+    app = build_core_api(
+        SCENARIO_PATH, repository_root=REPOSITORY_ROOT, artifact_root=tmp_path / "maps"
+    )
+    with TestClient(app) as client:
+        legacy = client.get("/api/v1/maps").json()
+        expanded = client.get("/api/v1/maps", params={"include_engine_metadata": True}).json()
+    assert {row["kind"] for row in legacy} == {"sumo", "core_run"}
+    assert any(row["map_id"] == "highway-light" for row in expanded)
+    timing = {"engine_step_ms", "engine_duration_ms"}
+    assert all(timing <= row.keys() for row in expanded)
+    assert legacy == [
+        {key: value for key, value in row.items() if key not in timing}
+        for row in expanded
+        if row["kind"] != "highway"
+    ]
+    core = next(row for row in legacy if row["kind"] == "core_run")
+    assert core["manifest_available"] is True
+    assert core["sumo_step_ms"] is None
+
+
+def test_invalid_native_highway_duration_returns_validation_error(tmp_path: Path) -> None:
+    app = build_core_api(
+        SCENARIO_PATH,
+        repository_root=REPOSITORY_ROOT,
+        artifact_root=tmp_path / "maps",
+        configuration_root=tmp_path / "configs",
+    )
+    with TestClient(app) as client:
+        workspace = client.get("/api/v1/workspaces").json()[0]["workspace_id"]
+        response = client.post(
+            "/api/v1/simulation-configurations",
+            json={
+                "workspace_id": workspace,
+                "scenario_id": str(UUID(int=42)),
+                "scene_name": "Invalid duration",
+                "map_id": "highway-light",
+                "engine": "highway",
+                "duration_ms": 150,
+                "automation_demands": [],
+            },
+        )
+    assert response.status_code == 422
+    error = response.json()["error"]
+    assert error["code"] == "SCENARIO_VALIDATION_FAILED"
+    assert error["details"][0]["path"] == "duration_ms"
+    assert not list((tmp_path / "configs").glob("*"))
+
+
 def test_configuration_api_saves_and_stages_test_run_from_generated_package(
     tmp_path: Path,
 ) -> None:

@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import socket
@@ -357,5 +358,31 @@ def test_headless_rejects_unknown_sumo_scenario(tmp_path: Path) -> None:
 
     config = tmp_path / "run.yaml"
     config.write_text("map_id: no-such-scenario\n", encoding="utf-8")
-    with pytest.raises(ValueError, match="SUMO scenario is missing or invalid"):
+    with pytest.raises(ValueError, match="Simulation scenario is missing or invalid"):
         run_headless(config, ROOT, output_root=tmp_path / "output")
+
+
+def test_headless_shared_highway_uses_source_duration_and_run_directory(tmp_path: Path) -> None:
+    from trafficverse.agent_harness.headless import run_headless
+
+    scenario = "mixed-automation-obstacle"
+    shutil.copytree(ROOT / "configs/scenarios", tmp_path / "configs/scenarios")
+    for name in ("town04", scenario):
+        shutil.copytree(ROOT / "configs/maps" / name, tmp_path / "configs/maps" / name)
+    sumo_config = tmp_path / "configs/maps" / scenario / f"{scenario}.sumocfg"
+    contents = sumo_config.read_text(encoding="utf-8")
+    sumo_config.write_text(
+        contents.replace('<end value="90"', '<end value="0.075"'), encoding="utf-8"
+    )
+    config = tmp_path / "run.yaml"
+    config.write_text(f"map_id: {scenario}\nengine: highway\nmax_steps: 3\n", encoding="utf-8")
+
+    assert run_headless(config, tmp_path) == 0
+    summary_file = next((tmp_path / "artifacts/headless").glob("*/summary.json"))
+    summary = json.loads(summary_file.read_text(encoding="utf-8"))
+    assert summary["simulation_time_ms"] == 100
+    assert summary["steps"] == 2
+    run_directory = Path(summary["engine_artifacts"])
+    assert run_directory.parent == tmp_path / "artifacts/simulations"
+    metadata = json.loads((run_directory / "run.json").read_text(encoding="utf-8"))
+    assert metadata["experiment_id"] == summary["experiment_id"]

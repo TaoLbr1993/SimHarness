@@ -396,6 +396,7 @@ class SceneConfigurationPage(QWidget):
         if self.map_combo.count():
             self._select_map(self.map_combo.currentIndex())
         else:
+            self._show_generated_scene("")
             self.map_widget.set_network({"type": "FeatureCollection", "features": []})
             self.map_preview_status.setText("暂无可运行的场景")
 

@@ -13,6 +13,7 @@ from uuid import uuid4
 
 from trafficverse.adapters.sumo.models import SumoTrafficLightSample, SumoVehicleSample
 from trafficverse.config.models import SumoConfig
+from trafficverse.domain.enums import TrafficLightColor
 
 _VERSION_PATTERN = re.compile(r"(?P<version>\d+\.\d+\.\d+)")
 
@@ -107,7 +108,7 @@ class PythonSumoRuntime:
                     f"sumo-tls:{traffic_light_id}:{link_index}",
                 )
                 for signal_id in signal_ids:
-                    phase = _phase_name(state_character)
+                    phase = TrafficLightColor.from_sumo_link_state(state_character).value
                     previous = phases.get(signal_id)
                     phases[signal_id] = _strictest_phase(previous, phase)
         return tuple(
@@ -219,16 +220,6 @@ class PythonSumoRuntime:
         if self._connection is None:
             raise RuntimeError("TraCI connection is not open")
         return self._connection
-
-
-def _phase_name(value: str) -> str:
-    if value in {"r", "R"}:
-        return "RED"
-    if value in {"y", "Y"}:
-        return "YELLOW"
-    if value in {"g", "G"}:
-        return "GREEN"
-    return "OFF"
 
 
 def _strictest_phase(previous: str | None, current: str) -> str:

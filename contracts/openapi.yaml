@@ -2741,6 +2741,16 @@ paths:
   /api/v1/maps:
     get:
       operationId: maps_api_v1_maps_get
+      parameters:
+      - description: Include native engine presets and engine timing fields
+        in: query
+        name: include_engine_metadata
+        required: false
+        schema:
+          default: false
+          description: Include native engine presets and engine timing fields
+          title: Include Engine Metadata
+          type: boolean
       responses:
         '200':
           content:
@@ -2751,6 +2761,12 @@ paths:
                 title: Response Maps Api V1 Maps Get
                 type: array
           description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
       summary: Maps
   /api/v1/maps/import:
     post:

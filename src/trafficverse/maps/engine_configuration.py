@@ -8,7 +8,8 @@ from collections.abc import Callable
 from pathlib import Path
 from uuid import UUID
 
-from trafficverse.config.models import HighwayEnvConfig
+from pydantic import ValidationError
+
 from trafficverse.domain.enums import ErrorCode, SimulationRunKind
 from trafficverse.domain.errors import TrafficVerseError
 from trafficverse.domain.models import (
@@ -17,7 +18,7 @@ from trafficverse.domain.models import (
     SimulationRunInput,
 )
 from trafficverse.maps.highway import HighwayScenario, load_highway_scenario
-from trafficverse.maps.shared_scene import convert_sumo_scene
+from trafficverse.maps.shared_scene import shared_highway_config
 from trafficverse.maps.simulation_configuration import SumoSimulationConfigurationStore
 from trafficverse.maps.sumo_display import sumo_display_geojson
 from trafficverse.maps.sumo_package import SumoScenarioPackage, load_sumo_package
@@ -58,18 +59,10 @@ class EngineConfigurationStore(SumoSimulationConfigurationStore):
                 source = load_sumo_package(
                     config_path, allowed_root=directory, package_id=draft.map_id
                 )
-                shared = convert_sumo_scene(source)
                 package = HighwayScenario(
                     map_id=draft.map_id,
                     display_name=saved.map_name,
-                    config=HighwayEnvConfig(
-                        duration_ms=draft.duration_ms,
-                        shared_scene=shared,
-                        seed=shared.seed,
-                        policy_frequency=1000 // source.step_ms,
-                        simulation_frequency=(1000 // source.step_ms)
-                        * max(1, 20 // (1000 // source.step_ms)),
-                    ),
+                    config=shared_highway_config(source, draft.duration_ms),
                 )
                 (directory / "highway.json").write_text(
                     package.model_dump_json(indent=2), encoding="utf-8"
@@ -99,9 +92,16 @@ class EngineConfigurationStore(SumoSimulationConfigurationStore):
                 ErrorCode.SCENARIO_VALIDATION_FAILED,
                 "HighwayEnv uses native IDM vehicles; L0-L5 demand overrides are unsupported",
             )
-        config = package.config.model_validate(
-            {**package.config.model_dump(), "duration_ms": draft.duration_ms}
-        )
+        try:
+            config = package.config.model_validate(
+                {**package.config.model_dump(), "duration_ms": draft.duration_ms}
+            )
+        except ValidationError as error:
+            raise TrafficVerseError(
+                ErrorCode.SCENARIO_VALIDATION_FAILED,
+                "Invalid duration for this HighwayEnv preset",
+                details={"duration_ms": str(error.errors()[0]["msg"])},
+            ) from error
         package = package.model_copy(update={"config": config})
         # Validate optional SDK availability before creating a saved snapshot.
         network = self._highway_network(package)

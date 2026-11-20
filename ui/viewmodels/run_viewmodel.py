@@ -423,7 +423,7 @@ class RunViewModel(QObject):
     def select_map(self, map_id: str) -> None:
         selected = next((item for item in self._maps if item.map_id == map_id), None)
         if selected is None:
-            self.notification.emit("error", "所选场景不在 仿真场景列表中。")
+            self.notification.emit("error", "所选场景不在仿真场景列表中。")
             return
         if selected.kind not in {"sumo", "highway"}:
             self.notification.emit("error", "所选资产不是可直接运行的仿真场景。")

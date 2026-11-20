@@ -53,12 +53,14 @@ class MapCatalog:
         *,
         artifact_root: Path,
         package_root: Path | None = None,
+        default_duration_ms: int | None = None,
         highway_network: Callable[[HighwayScenario], dict[str, object]] | None = None,
         maximum_upload_bytes: int = 20 * 1024 * 1024,
     ) -> None:
         if maximum_upload_bytes <= 0:
             raise ValueError("maximum map upload size must be positive")
         self._highway_network = highway_network
+        self._default_duration_ms = default_duration_ms
         self._artifact_root = artifact_root
         self._maximum_upload_bytes = maximum_upload_bytes
         self._package_root = package_root.resolve() if package_root is not None else None
@@ -120,6 +122,12 @@ class MapCatalog:
                     manifest_available=False,
                     sumo_config_file=(package.config_path.name if package is not None else None),
                     sumo_step_ms=package.step_ms if package is not None else None,
+                    engine_step_ms=package.step_ms if package is not None else None,
+                    engine_duration_ms=(
+                        package.duration_ms or self._default_duration_ms
+                        if package is not None
+                        else None
+                    ),
                     sumo_begin_time_ms=package.begin_time_ms if package is not None else 0,
                     sumo_end_time_ms=package.end_time_ms if package is not None else None,
                     files=(

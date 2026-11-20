@@ -9,9 +9,8 @@ from pathlib import Path
 from uuid import uuid4
 
 from trafficverse.adapters.highway_env.adapter import HighwayTrafficEngineAdapter
-from trafficverse.config.models import HighwayEnvConfig
 from trafficverse.controllers import controller_for_sumo_package
-from trafficverse.maps.shared_scene import convert_sumo_scene
+from trafficverse.maps.shared_scene import shared_highway_config
 from trafficverse.maps.sumo_package import load_sumo_package
 
 
@@ -19,8 +18,7 @@ def check_scene(root: Path, scenario_id: str, duration_s: int) -> dict[str, obje
     """Advance a real adapter, including events, without the external-agent bypass."""
     source = root / "configs/maps" / scenario_id / f"{scenario_id}.sumocfg"
     package = load_sumo_package(source, allowed_root=source.parent, package_id=scenario_id)
-    scene = convert_sumo_scene(package)
-    frequency = 1000 // package.step_ms
+    config = shared_highway_config(package, duration_s * 1000)
     adapter = HighwayTrafficEngineAdapter(uuid4())
     controller = controller_for_sumo_package(scenario_id)
     previous = None
@@ -30,15 +28,7 @@ def check_scene(root: Path, scenario_id: str, duration_s: int) -> dict[str, obje
     merged_ramp_ids: set[str] = set()
     ambulance_x_m: float | None = None
     try:
-        adapter.load(
-            HighwayEnvConfig(
-                shared_scene=scene,
-                seed=scene.seed,
-                policy_frequency=frequency,
-                simulation_frequency=max(20, frequency),
-                duration_ms=duration_s * 1000,
-            )
-        )
+        adapter.load(config)
         for time_ms in range(package.step_ms, duration_s * 1000 + 1, package.step_ms):
             commands = controller.step(previous, package.step_ms / 1000) if controller else {}
             rejected = adapter.apply_step_controls(commands)

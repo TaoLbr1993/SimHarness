@@ -36,6 +36,11 @@ class TrafficLightColor(str, Enum):
     GREEN = "GREEN"
     OFF = "OFF"
 
+    @classmethod
+    def from_sumo_link_state(cls, state: str) -> "TrafficLightColor":
+        """Normalize a SUMO signal character for snapshots and replay."""
+        return {"R": cls.RED, "Y": cls.YELLOW, "G": cls.GREEN}.get(state.upper(), cls.OFF)
+
 
 class ExperimentStatus(str, Enum):
     CREATED = "CREATED"

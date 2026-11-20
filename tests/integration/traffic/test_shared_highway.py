@@ -105,8 +105,10 @@ def test_signals_stops_late_departure_and_route_completion() -> None:
             frame = adapter.step(time_ms)
             vehicles = {v.vehicle_id: v for v in frame.vehicles}
             if time_ms < 3000:
-                assert frame.traffic_lights[0].phase == "r"
+                assert frame.traffic_lights[0].phase == "RED"
                 assert vehicles["lead_L5_0"].position.x <= 27.6
+            else:
+                assert frame.traffic_lights[0].phase == "GREEN"
             if time_ms < 8000:
                 assert "late" not in vehicles
             if time_ms == 8100:

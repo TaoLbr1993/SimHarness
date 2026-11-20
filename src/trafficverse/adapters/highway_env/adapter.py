@@ -15,6 +15,7 @@ from trafficverse.domain.enums import (
     ComponentStatus,
     ErrorCode,
     LaneChangeDirection,
+    TrafficLightColor,
     VehicleAction,
 )
 from trafficverse.domain.errors import TrafficVerseError
@@ -213,7 +214,7 @@ class HighwayTrafficEngineAdapter:
                     TrafficLightState(
                         signal_id=f"sumo-tls:{signal}:{index}",
                         simulation_time_ms=actual,
-                        phase=phase,
+                        phase=TrafficLightColor.from_sumo_link_state(phase).value,
                         remaining_ms=round(remaining * 1000),
                     )
                     for signal, (state, remaining) in self._env.signal_states().items()
